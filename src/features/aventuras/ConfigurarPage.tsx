@@ -1,11 +1,21 @@
-import { Link, useLoaderData } from 'react-router'
+import { useState } from 'react'
+import { useLoaderData } from 'react-router'
+import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { registrarEvento } from '../../lib/matomo'
-import { Avisos } from './components/Avisos'
-import { ETIQUETA_MODO, MAZOS_POR_MODO, NOMBRE_MAZO, type Modo } from './config/mazos'
-import type { IdMazo } from './lib/mazos'
-import { avisos, completar, recuento, seleccion } from './lib/preparacion'
+import { PanelMazo } from './components/PanelMazo'
+import { PasosAsistente } from './components/PasosAsistente'
+import {
+  DESCRIPCION_MODO,
+  ETIQUETA_MODO,
+  MAZOS_POR_MODO,
+  NOMBRE_MAZO,
+  type Modo,
+} from './config/mazos'
+import { anulaBarajado, pasoActual, TITULO_PASO } from './lib/asistente'
+import { urlDorso, type IdMazo } from './lib/mazos'
+import { avisos, seleccion, type Paso } from './lib/preparacion'
 import { useConfiguracion } from './lib/useConfiguracion'
 import type { DatosConfiguracion } from './rutas'
 
@@ -15,19 +25,20 @@ export function ConfigurarPage() {
   const datos = useLoaderData<DatosConfiguracion>()
   const { aventura, mazos } = datos
   const { mision } = aventura
-  const { config, cambiarMazo, cambiarModo, barajar } = useConfiguracion(datos)
+  const asistente = useConfiguracion(datos)
+  const { config } = asistente
+  const [volverA, setVolverA] = useState<Paso | null>(null)
   const ids = MAZOS_POR_MODO[config.modo]
-  const avisosPorMazo = Object.fromEntries(
-    ids.map((id) => [id, avisos(mazos[id], mision, seleccion(config, id))]),
-  ) as Record<IdMazo, string[]>
-  const hayAvisos = ids.some((id) => avisosPorMazo[id].length)
-  const titulo = (id: IdMazo, carta: string) =>
-    mazos[id].cartas.find((c) => c.id === carta)?.titulo ?? carta
+  const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
+  const paso = pasoActual(config)
+
+  const pedirVolver = (destino: Paso) =>
+    anulaBarajado(config) ? setVolverA(destino) : asistente.volverA(destino)
 
   return (
     <>
-      <PageHeader title="Configurar misión" backTo={`/aventuras/${aventura.id}`}>
-        {hayAvisos && (
+      <PageHeader title="Preparar misión" backTo={`/aventuras/${aventura.id}`}>
+        {conAvisos.length > 0 && (
           <span className="aviso-icono" title="La selección no cumple lo que pide la misión">
             <Icono nombre="aviso" />
           </span>
@@ -35,97 +46,105 @@ export function ConfigurarPage() {
       </PageHeader>
       <p className="configurar-mision">{mision.titulo}</p>
 
-      <fieldset className="modo">
-        <legend>Mazmorra</legend>
-        {(['losetas', 'tablero'] as Modo[]).map((modo) => (
-          <label key={modo}>
-            <input
-              type="radio"
-              name="modo"
-              checked={config.modo === modo}
-              onChange={() => cambiarModo(modo)}
-            />
-            {ETIQUETA_MODO[modo]}
-          </label>
-        ))}
-      </fieldset>
+      <PasosAsistente config={config} onVolver={pedirVolver} />
 
-      {ids.map((id) => {
-        const s = seleccion(config, id)
-        return (
-          <section key={id} className="panel-mazo boceto">
-            <header className="panel-cabecera">
-              <h2>{NOMBRE_MAZO[id]}</h2>
-              <span className={avisosPorMazo[id].length ? 'panel-estado mal' : 'panel-estado'}>
-                <Icono nombre={avisosPorMazo[id].length ? 'aviso' : 'hecho'} />
-                {s.cartas.length} cartas
-              </span>
-            </header>
-
-            <ul className="recuento">
-              {recuento(mazos[id], mision, s).map(({ categoria, hay }) => (
-                <li key={categoria.id} className={hay === categoria.cantidad ? undefined : 'mal'}>
-                  <span>{categoria.etiqueta}</span>
-                  <span>
-                    {hay} / {categoria.cantidad}
-                  </span>
+      {config.barajado ? (
+        <section className="barajado">
+          <h2>Mazos barajados</h2>
+          <p className="nota">
+            {ETIQUETA_MODO[config.modo]} · {fecha.format(new Date(config.barajado.fecha))}. El orden queda
+            guardado para la partida.
+          </p>
+          <ul className="barajado-mazos">
+            {ids.map((id) => {
+              const dorso = urlDorso(mazos[id])
+              return (
+                <li key={id}>
+                  {dorso && <img src={dorso} alt="" />}
+                  <strong>{NOMBRE_MAZO[id]}</strong>
+                  <span>{config.barajado?.orden[id]?.length ?? 0} cartas</span>
                 </li>
-              ))}
-            </ul>
+              )
+            })}
+          </ul>
+          {conAvisos.length > 0 && (
+            <p className="nota mal">Se barajó con avisos en {conAvisos.map((id) => NOMBRE_MAZO[id]).join(', ')}.</p>
+          )}
+        </section>
+      ) : paso === 'mazmorra' ? (
+        <section className="paso-contenido">
+          <fieldset className="modo">
+            <legend>¿Cómo vais a montar la mazmorra?</legend>
+            {(['losetas', 'tablero'] as Modo[]).map((modo) => (
+              <label key={modo}>
+                <input
+                  type="radio"
+                  name="modo"
+                  checked={config.modo === modo}
+                  onChange={() => asistente.cambiarModo(modo)}
+                />
+                {ETIQUETA_MODO[modo]}
+              </label>
+            ))}
+          </fieldset>
+          <p className="nota">{DESCRIPCION_MODO[config.modo]}</p>
+          <button type="button" className="button" onClick={asistente.avanzar}>
+            Siguiente: {TITULO_PASO.mazos}
+          </button>
+        </section>
+      ) : paso === 'mazos' ? (
+        <section className="paso-contenido">
+          {ids.map((id) => (
+            <PanelMazo
+              key={id}
+              id={id}
+              mazo={mazos[id]}
+              mision={mision}
+              seleccion={seleccion(config, id)}
+              onCambiar={(s) => asistente.cambiarMazo(id, s)}
+            />
+          ))}
+          <button type="button" className="button" onClick={asistente.avanzar}>
+            Siguiente: {TITULO_PASO.barajar}
+          </button>
+        </section>
+      ) : (
+        <section className="paso-contenido">
+          <ul className="recuento">
+            {ids.map((id) => (
+              <li key={id} className={conAvisos.includes(id) ? 'mal' : undefined}>
+                <span>{NOMBRE_MAZO[id as IdMazo]}</span>
+                <span>{seleccion(config, id).cartas.length} cartas</span>
+              </li>
+            ))}
+          </ul>
+          {conAvisos.length > 0 && (
+            <p className="nota mal">Hay avisos en la selección; puedes barajar igualmente o volver a Mazos.</p>
+          )}
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              asistente.barajar()
+              registrarEvento('Aventuras', 'Barajar y guardar', config.modo)
+            }}
+          >
+            <Icono nombre="dado" />
+            Barajar y guardar
+          </button>
+        </section>
+      )}
 
-            {s.reemplazos.length > 0 && (
-              <ul className="reemplazos">
-                {s.reemplazos.map((r, i) => (
-                  <li key={i}>
-                    Regla especial: <s>{titulo(id, r.original)}</s> → {titulo(id, r.reemplazo)}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <Avisos avisos={avisosPorMazo[id]} />
-
-            <div className="fila-botones">
-              <Link to={id} className="button secondary">
-                Escoger
-              </Link>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => cambiarMazo(id, completar(mazos[id], mision, s))}
-              >
-                Completar
-              </button>
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => cambiarMazo(id, { cartas: [], reemplazos: [] })}
-              >
-                Descartar
-              </button>
-            </div>
-          </section>
-        )
-      })}
-
-      <div className="configurar-acciones">
-        <button
-          type="button"
-          className="button"
-          onClick={() => {
-            barajar()
-            registrarEvento('Aventuras', 'Barajar y guardar', config.modo)
-          }}
+      {volverA && (
+        <ConfirmarDialog
+          titulo={`Volver a ${TITULO_PASO[volverA]}`}
+          accion="Volver y anular"
+          onConfirmar={() => asistente.volverA(volverA)}
+          onCerrar={() => setVolverA(null)}
         >
-          <Icono nombre="dado" />
-          Barajar y guardar
-        </button>
-        <p className="nota">
-          {config.barajado
-            ? `Mazos barajados y guardados el ${fecha.format(new Date(config.barajado.fecha))}.`
-            : 'Los mazos aún no están barajados.'}
-        </p>
-      </div>
+          Se anulará el barajado y tendrás que volver a barajar los mazos. La selección de cartas se conserva.
+        </ConfirmarDialog>
+      )}
     </>
   )
 }

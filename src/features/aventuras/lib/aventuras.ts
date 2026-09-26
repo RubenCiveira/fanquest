@@ -1,11 +1,12 @@
 import type { Mision } from '../../generar/lib/tipos'
 import type { Configuracion } from './preparacion'
 
-export type EstadoAventura = 'sin-empezar' | 'configurando'
+export type EstadoAventura = 'sin-empezar' | 'configurando' | 'mazo-barajado'
 
 export const ETIQUETA_ESTADO: Record<EstadoAventura, string> = {
   'sin-empezar': 'Sin empezar',
   configurando: 'Configurando',
+  'mazo-barajado': 'Mazo barajado',
 }
 
 /**

@@ -45,7 +45,9 @@ export async function cargarConfiguracion({ params }: LoaderFunctionArgs): Promi
   if (!aventura) throw redirect('/aventuras')
   const { configuracion } = aventura
   if (!configuracion) throw redirect(`/aventuras/${aventura.id}`)
-  if (params.mazo && !MAZOS_POR_MODO[configuracion.modo].includes(params.mazo as IdMazo)) {
+  // escoger cartas solo tiene sentido en el paso de mazos y sin barajar
+  const escogible = MAZOS_POR_MODO[configuracion.modo].includes(params.mazo as IdMazo) && !configuracion.barajado
+  if (params.mazo && !escogible) {
     throw redirect(`/aventuras/${aventura.id}/configurar`)
   }
   return { aventura, configuracion, mazos }

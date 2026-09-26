@@ -792,6 +792,158 @@ input[type='checkbox'] {
   text-align: center;
 }
 
+/* asistente: pasos numerados unidos por un trazo */
+.pasos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+  counter-reset: paso;
+}
+
+.paso {
+  position: relative;
+  display: grid;
+  justify-items: center;
+}
+
+.paso + .paso::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  right: 50%;
+  width: 100%;
+  border-top: 1.5px dashed var(--trazo-suave);
+}
+
+.paso.paso-completado + .paso::before {
+  border-top-style: solid;
+  border-color: var(--trazo);
+}
+
+.paso button,
+.paso-etiqueta {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: 0 4px;
+  font: inherit;
+  font-family: var(--versalitas);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--grafito);
+  background: none;
+  border: 0;
+}
+
+.paso button {
+  cursor: pointer;
+}
+
+.paso button:hover {
+  color: var(--rubrica);
+}
+
+.paso span > span,
+.paso .icono {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  font-family: var(--texto);
+  font-weight: 700;
+  color: var(--grafito);
+  background: var(--pergamino);
+  border: 1.5px solid var(--trazo);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%;
+}
+
+.paso.paso-actual .paso-etiqueta {
+  color: var(--tinta);
+  font-weight: 700;
+}
+
+.paso.paso-actual span > span {
+  color: var(--vitela);
+  background: var(--tinta);
+  border-color: var(--tinta);
+}
+
+.paso.paso-completado .icono {
+  color: var(--rubrica);
+  border-color: var(--rubrica);
+}
+
+.paso-contenido {
+  display: grid;
+  gap: 16px;
+}
+
+.paso-contenido .modo {
+  margin: 0;
+}
+
+.paso-contenido > .nota {
+  margin: -8px 0 0;
+}
+
+.barajado {
+  display: grid;
+  gap: 12px;
+}
+
+.barajado h2 {
+  margin: 0;
+  font-family: var(--gotica);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--rubrica);
+}
+
+.barajado .nota {
+  margin: 0;
+}
+
+.barajado-mazos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barajado-mazos li {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.barajado-mazos img {
+  width: 100%;
+  aspect-ratio: 751 / 1040;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 6px 14px -6px rgb(40 25 10 / 0.5);
+}
+
+.barajado-mazos strong {
+  font-family: var(--versalitas);
+  font-size: 0.85rem;
+}
+
+.barajado-mazos span {
+  font-size: 0.85rem;
+  color: var(--grafito);
+}
+
 /* ---------- Escoger cartas de un mazo ---------- */
 .mazo-acciones {
   margin: 12px 0 8px;

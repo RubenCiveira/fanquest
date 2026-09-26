@@ -15,7 +15,14 @@ export type Reemplazo = { original: string; reemplazo: string }
 /** Cartas sobre la mesa para un mazo (ids de carta, repetidos por copia) */
 export type SeleccionMazo = { cartas: string[]; reemplazos: Reemplazo[] }
 
+/** Pasos del asistente de preparación, en orden */
+export const PASOS = ['mazmorra', 'mazos', 'barajar'] as const
+
+export type Paso = (typeof PASOS)[number]
+
 export type Configuracion = {
+  /** Paso del asistente en curso (las aventuras antiguas no lo tienen) */
+  paso?: Paso
   modo: Modo
   mazos: Partial<Record<IdMazo, SeleccionMazo>>
   /** Orden final tras «barajar y guardar»; se pierde al cambiar la selección */
@@ -169,6 +176,7 @@ export function ordenar(mazo: Mazo, s: SeleccionMazo, modo: Modo): string[] {
 export function nuevaConfiguracion(mazos: Mazos, mision: Mision): Configuracion {
   const ids = [...new Set([...MAZOS_POR_MODO.losetas, ...MAZOS_POR_MODO.tablero])]
   return {
+    paso: 'mazmorra',
     modo: 'losetas',
     mazos: Object.fromEntries(ids.map((id) => [id, completar(mazos[id], mision, VACIA)])),
   }

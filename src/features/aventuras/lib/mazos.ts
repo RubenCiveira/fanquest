@@ -67,3 +67,7 @@ export function urlImagen(
 ): string | undefined {
   return carta.imagen && fuente.url('mazos', `${mazo}/${carta.imagen.archivo}`)
 }
+
+export function urlDorso(mazo: Mazo, fuente: FuentePlantillas = fuenteLocal): string | undefined {
+  return fuente.url('mazos', `${mazo.id}/${mazo.dorso}`)
+}

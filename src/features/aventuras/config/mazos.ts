@@ -9,6 +9,11 @@ export const ETIQUETA_MODO: Record<Modo, string> = {
   tablero: 'Tablero',
 }
 
+export const DESCRIPCION_MODO: Record<Modo, string> = {
+  losetas: 'Salas y pasillos modulares. Se juega con el Mazo de Mazmorra.',
+  tablero: 'Un tablero con salas fijas. Se juega con el Mazo de Salas y el de Pasillo.',
+}
+
 /** Mazos que se preparan para la misión según el modo */
 export const MAZOS_POR_MODO: Record<Modo, IdMazo[]> = {
   losetas: ['mazmorra', 'salas-especiales', 'atrezo'],
