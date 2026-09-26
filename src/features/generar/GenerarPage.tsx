@@ -6,7 +6,6 @@ import { registrarEvento } from '../../lib/matomo'
 import { guardarAventura } from '../aventuras/lib/aventuras'
 import { MisionCard } from './components/MisionCard'
 import { ReglasExtrasDialog } from './components/ReglasExtrasDialog'
-import { TIPOS_MISION } from './config/misiones'
 import { generarMision, type SeleccionRegla } from './lib/generador'
 import { cargarPlantillaAventuras } from './lib/plantilla'
 import { textoPlano } from './lib/textoPlano'
@@ -28,7 +27,7 @@ export function GenerarPage() {
   const [errorGuardar, setErrorGuardar] = useState(false)
 
   const etiquetaTipo = (regla: number) =>
-    TIPOS_MISION.find((tipo) => tipo.regla === regla)?.etiqueta
+    plantilla.especiales.reglas.find((tipo) => tipo.regla === regla)?.etiqueta
 
   const guardar = async () => {
     try {
@@ -66,7 +65,7 @@ export function GenerarPage() {
             }
           >
             <option value="aleatoria">Aleatoria (tirada de dados)</option>
-            {TIPOS_MISION.map(({ regla, etiqueta }) => (
+            {plantilla.especiales.reglas.map(({ regla, etiqueta }) => (
               <option key={regla} value={regla}>
                 {regla} · {etiqueta}
               </option>

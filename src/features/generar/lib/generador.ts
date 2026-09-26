@@ -1,7 +1,7 @@
 import { d6, entre, rnd } from '../../../lib/dados'
 import { rellenar } from '../../../lib/texto'
 import { FACCIONES } from '../config/facciones'
-import { TABLA_OBJETIVOS_2D6, TIPOS_MISION } from '../config/misiones'
+import { TABLA_OBJETIVOS_2D6 } from '../config/misiones'
 import { PREPARACION as preparacion } from '../config/preparacion'
 import { REGLAS_EXTRAS } from '../config/reglasExtras'
 import { redactar, redactarLargo } from './narrativa'
@@ -17,10 +17,10 @@ function porTirada<T extends { tirada: number[] }>(opciones: T[], tirada: number
   return opcion
 }
 
-function tipoMision(seleccion: SeleccionRegla) {
+function tipoMision(p: PlantillaAventuras, seleccion: SeleccionRegla) {
   const regla =
     seleccion === 'aleatoria' ? TABLA_OBJETIVOS_2D6[`${d6()},${d6()}`] : seleccion
-  const tipo = TIPOS_MISION.find((t) => t.regla === regla)
+  const tipo = p.especiales.reglas.find((t) => t.regla === regla)
   if (!tipo) throw new Error(`No existe el tipo de misión ${regla}`)
   return tipo
 }
@@ -32,7 +32,7 @@ export function generarMision(
 ): Mision {
   const faccion = porTirada(FACCIONES, d6())
   const tipoJefe = porTirada(faccion.jefes, d6()).tipo
-  const tipo = tipoMision(seleccion)
+  const tipo = tipoMision(p, seleccion)
   // solo se sortea lo que el objetivo del tipo de misión necesita
   const usa = (marcador: string) => tipo.objetivo.includes(`{${marcador}}`)
   const objeto = usa('objeto') ? rnd(p.objetos) : null
@@ -84,7 +84,8 @@ export function generarMision(
     puntosCuerpoJefe: preparacion.puntosCuerpoJefe,
     objetivo: rellenar(tipo.objetivo, valores),
     salaObjetivo: `${preparacion.salaObjetivo} ${rnd(preparacion.atrezoAdicional)}`,
-    reglaEspecial: tipo.reglaEspecial,
+    reglaEspecial: tipo.texto,
+    efectos: tipo.efectos,
     extras: extras.map(({ nombre, texto }) => ({ nombre, texto })),
     sinReglasExtras: REGLAS_EXTRAS.sinReglas,
   }

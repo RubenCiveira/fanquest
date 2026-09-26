@@ -1,10 +1,12 @@
 import { fuenteLocal, type FuentePlantillas } from '../../../lib/plantillas'
-import { NARRATIVAS, type PlantillaAventuras } from './tipos'
+import { TABLA_OBJETIVOS_2D6 } from '../config/misiones'
+import { NARRATIVAS, type EfectoEspecial, type PlantillaAventuras } from './tipos'
 
 const COLECCION = 'aventuras'
 
 /** Archivo JSON de cada parte y las claves que no pueden faltar */
 const ARCHIVOS = {
+  especiales: { archivo: 'especiales', claves: ['reglas'] },
   jefes: { archivo: 'jefes', claves: [] },
   personajes: { archivo: 'personajes', claves: ['mecenas', 'pnjs', 'perfilesPnj'] },
   lugares: { archivo: 'lugares', claves: ['heroes', 'aventura'] },
@@ -37,8 +39,32 @@ async function cargar(fuente: FuentePlantillas): Promise<PlantillaAventuras> {
     ]),
   )
   // la forma de cada parte se ha comprobado en `leer`
-  return Object.fromEntries(partes) as PlantillaAventuras
+  const plantilla = Object.fromEntries(partes) as PlantillaAventuras
+  const desconocidos = plantilla.especiales.reglas.flatMap(({ regla, efectos }) =>
+    efectos.filter(({ tipo }) => !TIPOS_EFECTO.includes(tipo)).map(({ tipo }) => `${regla}: ${tipo}`),
+  )
+  if (desconocidos.length) {
+    throw new Error(`especiales.json usa efectos desconocidos (${desconocidos.join(', ')})`)
+  }
+  const reglas = new Set(plantilla.especiales.reglas.map(({ regla }) => regla))
+  const faltan = [...new Set(Object.values(TABLA_OBJETIVOS_2D6))].filter((r) => !reglas.has(r))
+  if (faltan.length) {
+    throw new Error(`especiales.json no define las reglas ${faltan.join(', ')} de la tabla de objetivos`)
+  }
+  return plantilla
 }
+
+/** Vocabulario de efectos de las reglas especiales que entiende la app */
+const TIPOS_EFECTO: EfectoEspecial['tipo'][] = [
+  'cambiar-cartas',
+  'anadir-cartas',
+  'sala',
+  'objeto',
+  'pnj',
+  'contador-muerte',
+  'jefe',
+  'recompensa',
+]
 
 const cache = new WeakMap<FuentePlantillas, Promise<PlantillaAventuras>>()
 

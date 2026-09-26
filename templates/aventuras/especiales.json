@@ -1,0 +1,581 @@
+{
+  "reglas": [
+    {
+      "regla": 0,
+      "etiqueta": "Matar al Jefe Final",
+      "narrativa": "jefe",
+      "objetivo": "Matar al Jefe Final.",
+      "texto": "Ninguna regla especial adicional. El objetivo es simplemente matar al Jefe Final.",
+      "efectos": []
+    },
+    {
+      "regla": 1,
+      "etiqueta": "Objeto almacenado (Librerías)",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} almacenado en un lugar.",
+      "texto": "♦ Regla Especial 1: cambia 2 Cartas de Atrezo al azar del Mazo de Atrezo (que no sean cofres) por 2 Librerías. Las Salas Especiales, además de lo que se especifique, contendrán una Librería si es posible. Si un héroe revisa una Librería deberá lanzar 1D6. Si obtiene 6 se habrá encontrado el objeto (los héroes podrán salir de la mazmorra y cobrar una recompensa). Cada Librería adicional revisada otorgará +1 al D6. Si no se encontró el objeto en las Librerías, se encontrará al matar al Jefe de la Sala Objetivo.",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "atrezo",
+          "quitar": {
+            "cantidad": 2,
+            "excepto": [
+              "cofre"
+            ]
+          },
+          "poner": {
+            "tipo": "libreria",
+            "cantidad": 2
+          }
+        },
+        {
+          "tipo": "sala",
+          "sala": "especial",
+          "elementos": [
+            {
+              "tipo": "libreria",
+              "siEsPosible": true
+            }
+          ]
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "revisar",
+              "carta": "libreria",
+              "tirada": {
+                "dado": "1D6",
+                "exito": 6,
+                "bonoPorRepeticion": 1
+              }
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true
+          },
+          "siNoSeEncuentra": "jefe"
+        }
+      ]
+    },
+    {
+      "regla": 2,
+      "etiqueta": "Objeto en lugar mágico (Mesa de Hechicero)",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} almacenado en un lugar mágico.",
+      "texto": "♦ Regla Especial 2: cambia una Carta de Atrezo al azar del Mazo de Atrezo (que no sea un cofre) por una Mesa de Hechicero. Si un héroe revisa la Mesa de Hechicero, habrá encontrado el objeto (los héroes podrán salir de la mazmorra y cobrar la recompensa). Si no, se encontrará al matar al Jefe de la Sala Objetivo.",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "atrezo",
+          "quitar": {
+            "cantidad": 1,
+            "excepto": [
+              "cofre"
+            ]
+          },
+          "poner": {
+            "tipo": "mesa-del-brujo",
+            "cantidad": 1
+          }
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "revisar",
+              "carta": "mesa-del-brujo"
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true
+          },
+          "siNoSeEncuentra": "jefe"
+        }
+      ]
+    },
+    {
+      "regla": 3,
+      "etiqueta": "Objeto perdido (Armería)",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} perdido en un lugar.",
+      "texto": "♦ Regla Especial 3: cambia una Carta de Atrezo al azar del Mazo de Atrezo (que no sea un cofre) por una Armería. Si un héroe revisa la Armería, habrá encontrado el objeto (los héroes podrán salir de la mazmorra y cobrar la recompensa). Si no, se encontrará al matar al Jefe de la Sala Objetivo.",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "atrezo",
+          "quitar": {
+            "cantidad": 1,
+            "excepto": [
+              "cofre"
+            ]
+          },
+          "poner": {
+            "tipo": "armeria",
+            "cantidad": 1
+          }
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "revisar",
+              "carta": "armeria"
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true
+          },
+          "siNoSeEncuentra": "jefe"
+        }
+      ]
+    },
+    {
+      "regla": 4,
+      "etiqueta": "Objeto perdido (Armarios)",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} perdido en un lugar.",
+      "texto": "♦ Regla Especial 4: cambia dos Cartas de Atrezo al azar del Mazo de Atrezo (que no sean cofres) por Armarios. Las Salas Especiales, además de lo que se especifique, contendrán un Armario si es posible. Si un héroe revisa un Armario deberá lanzar 1D6. Si obtiene 6 se habrá encontrado el objeto (los héroes podrán salir de la mazmorra y cobrar la recompensa). Cada Armario adicional revisado otorgará +1 al D6. Si no se encontró el objeto en los Armarios, se encontrará al matar al Jefe de la Sala Objetivo.",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "atrezo",
+          "quitar": {
+            "cantidad": 2,
+            "excepto": [
+              "cofre"
+            ]
+          },
+          "poner": {
+            "tipo": "armario",
+            "cantidad": 2
+          }
+        },
+        {
+          "tipo": "sala",
+          "sala": "especial",
+          "elementos": [
+            {
+              "tipo": "armario",
+              "siEsPosible": true
+            }
+          ]
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "revisar",
+              "carta": "armario",
+              "tirada": {
+                "dado": "1D6",
+                "exito": 6,
+                "bonoPorRepeticion": 1
+              }
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true
+          },
+          "siNoSeEncuentra": "jefe"
+        }
+      ]
+    },
+    {
+      "regla": 5,
+      "etiqueta": "Objeto perdido (Tesoros marcados)",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} perdido en un lugar.",
+      "texto": "♦ Regla Especial 5: Introduce 2 Cartas de Tesoro marcadas en tu Mazo de Tesoros. Si se roba alguna de ellas al buscar tesoros, el héroe que buscó habrá encontrado el Objeto (los héroes podrán salir de la mazmorra y cobrar la recompensa). Si no, el objeto se encontrará al matar al Jefe de la Sala Objetivo.",
+      "efectos": [
+        {
+          "tipo": "anadir-cartas",
+          "mazo": "tesoros",
+          "cantidad": 2,
+          "carta": "Carta de Tesoro marcada"
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "buscar-tesoros",
+              "carta": "marcada"
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true
+          },
+          "siNoSeEncuentra": "jefe"
+        }
+      ]
+    },
+    {
+      "regla": 6,
+      "etiqueta": "Objeto en manos del Jefe Final",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} en manos del Jefe Final.",
+      "texto": "♦ Regla Especial 6: cuando muera el Jefe de la Sala Objetivo, el objeto se encontrará en su cadáver.",
+      "efectos": [
+        {
+          "tipo": "objeto",
+          "buscar": [],
+          "siNoSeEncuentra": "jefe"
+        }
+      ]
+    },
+    {
+      "regla": 7,
+      "etiqueta": "Objeto custodiado (Cofre en Sala Especial)",
+      "narrativa": "objeto",
+      "objetivo": "Recuperar {objeto} custodiado en un lugar.",
+      "texto": "♦ Regla Especial 7: la primera Sala Especial que aparezca, además de su contenido, tiene un Cofre que al abrirlo se encontrará el objeto (no robes Carta de Cofre para este cofre). Los héroes podrán salir de la mazmorra y cobrar una recompensa de 100mo o bien continuar para abatir al Jefe Final.",
+      "efectos": [
+        {
+          "tipo": "sala",
+          "sala": "primera-especial",
+          "elementos": [
+            {
+              "tipo": "cofre",
+              "contiene": "objeto",
+              "sinCartaDeCofre": true
+            }
+          ]
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "abrir-cofre",
+              "sala": "primera-especial"
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true,
+            "recompensa": 100,
+            "puedeContinuar": true
+          }
+        }
+      ]
+    },
+    {
+      "regla": 8,
+      "etiqueta": "Salvar a un prisionero",
+      "narrativa": "rescate",
+      "objetivo": "Salvar a un prisionero: {pnj}.",
+      "texto": "♦ Regla Especial 8: Cambia una carta de Sala Especial por la carta Sala Especial A.\nSala Especial A: Al abrir la puerta os encontráis con unos imponentes monstruos que custodian con celo un cofre tras ellos. Coloca tantos monstruos de Categoría 3 de la facción de la Misión como héroes en juego. El cofre se abre de la forma habitual pero además del oro, contiene una Llave de Jaula.\nSala Objetivo: además del Jefe, en la sala objetivo se encuentra el PNJ cautivo en una jaula. Una vez destruido el Jefe, los héroes podrán liberar al PNJ si consiguieron la Llave de Jaula y la misión acabará.",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "salas-especiales",
+          "quitar": {
+            "cantidad": 1
+          },
+          "poner": {
+            "id": "sala-especial-de-mision-1",
+            "cantidad": 1
+          }
+        },
+        {
+          "tipo": "sala",
+          "sala": "especial-a",
+          "texto": "Al abrir la puerta os encontráis con unos imponentes monstruos que custodian con celo un cofre tras ellos. Coloca tantos monstruos de Categoría 3 de la facción de la Misión como héroes en juego. El cofre se abre de la forma habitual pero además del oro, contiene una Llave de Jaula.",
+          "monstruos": [
+            {
+              "categoria": 3,
+              "faccion": "mision",
+              "cantidad": "heroes"
+            }
+          ],
+          "elementos": [
+            {
+              "tipo": "cofre",
+              "contiene": "Llave de Jaula"
+            }
+          ]
+        },
+        {
+          "tipo": "sala",
+          "sala": "objetivo",
+          "texto": "además del Jefe, en la sala objetivo se encuentra el PNJ cautivo en una jaula. Una vez destruido el Jefe, los héroes podrán liberar al PNJ si consiguieron la Llave de Jaula y la misión acabará."
+        },
+        {
+          "tipo": "pnj",
+          "aparece": "sala-objetivo",
+          "estado": "cautivo",
+          "liberar": {
+            "requiere": "Llave de Jaula",
+            "tras": "jefe"
+          },
+          "alLiberar": "fin-mision"
+        }
+      ]
+    },
+    {
+      "regla": 9,
+      "etiqueta": "Encontrar a alguien perdido",
+      "narrativa": "rescate",
+      "objetivo": "Encontrar a {pnj} {perfil}.",
+      "texto": "♦ Regla Especial 9: Cambia una carta de Sala Especial por la carta Sala Especial A. Cuando dicha sala sea encontrada lee el texto a continuación.\nSala Especial A: Coloca un Armario y ninguna puerta. Quien revise el Armario encontrará al PNJ escondido en él. Parece encontrarse en buen estado y a partir de ahora acompañará a los héroes (uno de los jugadores lo manejará como mercenario). Deberéis encontrar al Jefe final y matarlo para aseguraros de que el PNJ esté a salvo en el futuro. Si lo hacéis, y aún está vivo el PNJ, recibiréis una recompensa adicional de 100 mo.",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "salas-especiales",
+          "quitar": {
+            "cantidad": 1
+          },
+          "poner": {
+            "id": "sala-especial-de-mision-1",
+            "cantidad": 1
+          }
+        },
+        {
+          "tipo": "sala",
+          "sala": "especial-a",
+          "texto": "Coloca un Armario y ninguna puerta. Quien revise el Armario encontrará al PNJ escondido en él. Parece encontrarse en buen estado y a partir de ahora acompañará a los héroes (uno de los jugadores lo manejará como mercenario). Deberéis encontrar al Jefe final y matarlo para aseguraros de que el PNJ esté a salvo en el futuro. Si lo hacéis, y aún está vivo el PNJ, recibiréis una recompensa adicional de 100 mo.",
+          "elementos": [
+            {
+              "tipo": "armario"
+            }
+          ],
+          "sinPuertas": true
+        },
+        {
+          "tipo": "pnj",
+          "aparece": "sala-especial-a",
+          "estado": "escondido",
+          "al": "revisar",
+          "carta": "armario",
+          "mercenario": true
+        },
+        {
+          "tipo": "recompensa",
+          "extra": 100,
+          "condicion": "jefe-y-pnj-vivo"
+        }
+      ]
+    },
+    {
+      "regla": 10,
+      "etiqueta": "Rescatar a alguien torturado",
+      "narrativa": "rescate",
+      "objetivo": "Rescatar a {pnj} {perfil}.",
+      "texto": "♦ Regla Especial 10: Cambia una carta de Sala Especial por la carta de Sala Especial A. Cuando dicha sala sea encontrada lee el texto a continuación.\nSala Especial A: Coloca un Potro de tortura y tira en la Tabla de Encuentros. El PNJ se encuentra ensangrentado y con la ropa hecha girones sobre el potro. Cuando acabéis con los monstruos y reviséis el Potro lanzad 1D6:\n1-2: al acercaros el PNJ expira su último aliento mientras señala una zona oscura de la sala. Obtenéis un Pergamino al azar que se hallaba en la zona señalada. Debéis matar al Jefe Final para vengarle.\n3-4: el PNJ está malherido y tiene la mitad de sus PCs. Tras liberarlo os acompaña durante esta Misión como mercenario para destruir al jefe de sus captores (Jefe Final).\n5-6: el PNJ apenas está herido, pues sus torturadores no han tenido tiempo suficiente. Al liberarlo, os acompaña durante esta Misión como mercenario para destruir al jefe de sus captores (Jefe Final).",
+      "efectos": [
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "salas-especiales",
+          "quitar": {
+            "cantidad": 1
+          },
+          "poner": {
+            "id": "sala-especial-de-mision-1",
+            "cantidad": 1
+          }
+        },
+        {
+          "tipo": "sala",
+          "sala": "especial-a",
+          "texto": "Coloca un Potro de tortura y tira en la Tabla de Encuentros. El PNJ se encuentra ensangrentado y con la ropa hecha girones sobre el potro. Cuando acabéis con los monstruos y reviséis el Potro lanzad 1D6:",
+          "elementos": [
+            {
+              "tipo": "potro-de-tortura"
+            }
+          ],
+          "tiradaEncuentros": true
+        },
+        {
+          "tipo": "pnj",
+          "aparece": "sala-especial-a",
+          "estado": "torturado",
+          "al": "revisar",
+          "carta": "potro-de-tortura",
+          "tirada": {
+            "dado": "1D6",
+            "resultados": [
+              {
+                "resultado": "1-2",
+                "estado": "muerto",
+                "texto": "al acercaros el PNJ expira su último aliento mientras señala una zona oscura de la sala. Obtenéis un Pergamino al azar que se hallaba en la zona señalada. Debéis matar al Jefe Final para vengarle."
+              },
+              {
+                "resultado": "3-4",
+                "estado": "malherido",
+                "mercenario": true,
+                "puntosCuerpo": "mitad",
+                "texto": "el PNJ está malherido y tiene la mitad de sus PCs. Tras liberarlo os acompaña durante esta Misión como mercenario para destruir al jefe de sus captores (Jefe Final)."
+              },
+              {
+                "resultado": "5-6",
+                "estado": "sano",
+                "mercenario": true,
+                "texto": "el PNJ apenas está herido, pues sus torturadores no han tenido tiempo suficiente. Al liberarlo, os acompaña durante esta Misión como mercenario para destruir al jefe de sus captores (Jefe Final)."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "regla": 11,
+      "etiqueta": "Salvar de un sacrificio",
+      "narrativa": "rescate",
+      "objetivo": "Salvar a {pnj} que va a ser sacrificado.",
+      "texto": "♦ Regla Especial 11: Debéis daros prisa, pues el PNJ va a ser sacrificado en un horrible ritual de invocación. Cada vez que se haga una Tirada de Peligro, además lanza 1D10 y suma el nivel del mismo. Si el resultado es 10 o más, pon un Contador de Muerte en el PNJ. Si se llega a 6 contadores de muerte, el PNJ habrá muerto sacrificado: ahora el mal al que os tendréis que enfrentar será mayor y deberéis encontrar la Sala Objetivo para destruirlo.\nSala Objetivo: sustituye los Monstruos Errantes a colocar por Cultistas. En vez de robar Cartas de Atrezo para montar la sala, coloca un Potro de Tortura donde se hallará el PNJ (vivo o muerto). Si el PNJ ha muerto, sustituye un Cultista por una Gárgola (el demonio ha sido invocado).",
+      "efectos": [
+        {
+          "tipo": "contador-muerte",
+          "sobre": "pnj",
+          "cuando": "tirada-peligro",
+          "dado": "1D10",
+          "sumaNivelPeligro": true,
+          "umbral": 10,
+          "maximo": 6,
+          "alCompletar": "El PNJ ha muerto sacrificado: ahora el mal al que os tendréis que enfrentar será mayor y deberéis encontrar la Sala Objetivo para destruirlo."
+        },
+        {
+          "tipo": "sala",
+          "sala": "objetivo",
+          "texto": "sustituye los Monstruos Errantes a colocar por Cultistas. En vez de robar Cartas de Atrezo para montar la sala, coloca un Potro de Tortura donde se hallará el PNJ (vivo o muerto). Si el PNJ ha muerto, sustituye un Cultista por una Gárgola (el demonio ha sido invocado).",
+          "sinAtrezo": true,
+          "elementos": [
+            {
+              "tipo": "potro-de-tortura"
+            }
+          ],
+          "sustituirMonstruos": [
+            {
+              "de": "errante",
+              "a": "Cultista"
+            }
+          ],
+          "siPnjMuerto": {
+            "sustituirMonstruos": [
+              {
+                "de": "Cultista",
+                "a": "Gárgola",
+                "cantidad": 1
+              }
+            ]
+          }
+        },
+        {
+          "tipo": "pnj",
+          "aparece": "sala-objetivo",
+          "estado": "sacrificio"
+        }
+      ]
+    },
+    {
+      "regla": 12,
+      "etiqueta": "Encontrar explorador + objeto",
+      "narrativa": "explorador",
+      "objetivo": "Encontrar a {pnj} {perfil} y ayudarle a recuperar {objeto}.",
+      "texto": "♦ Regla Especial 12: Encontráis al PNJ en la primera sala de la mazmorra intentando encontrar el objeto sagrado. En las Salas Especiales, al buscar tesoros o revisar muebles, lanzad 1d6, si sacáis un 6, el objeto aparecerá, y podréis abandonar la misión y cobrar la recompensa, si no, lo tendrá el Jefe Final. \nEl PNJ os acompañará durante toda la Misión en busca del objeto. Si la completáis, pero el PNJ muere, no recibiréis la recompensa por acabarla.",
+      "efectos": [
+        {
+          "tipo": "pnj",
+          "aparece": "primera-sala",
+          "estado": "acompanante"
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "buscar-tesoros-o-revisar",
+              "sala": "especial",
+              "tirada": {
+                "dado": "1D6",
+                "exito": 6
+              }
+            }
+          ],
+          "alEncontrar": {
+            "puedeSalir": true
+          },
+          "siNoSeEncuentra": "jefe"
+        },
+        {
+          "tipo": "recompensa",
+          "perdida": true,
+          "condicion": "pnj-muerto"
+        }
+      ]
+    },
+    {
+      "regla": 13,
+      "etiqueta": "Objeto para salvar una vida",
+      "narrativa": "salvavidas",
+      "objetivo": "Encontrar {objeto} para salvar la vida de {pnj}.",
+      "texto": "♦ Regla Especial 13: Debéis daros prisa en encontrar el objeto, pues la vida del PNJ pende de un hilo.\n- Introduce la Carta de Tesoro Antídoto en el Mazo de Tesoros o bien marca una carta, la cual será el objeto.\n- Cambia una carta al azar del Mazo de Atrezo por una carta Mesa de Alquimista. El primer héroe que la revise, encontrará el objeto.\n- Si no se encontró el objeto, se encontrará en el cadáver del Jefe de la Sala Objetivo. Los héroes deben encontrarlo antes de que el PNJ muera. Cada vez que se haga una Tirada de Peligro, además lanza 1D10 y suma el nivel del mismo. Si el resultado es 10 o más, pon un Contador de Muerte en el PNJ. Si se llega a 6 contadores de muerte, el PNJ habrá muerto.\nSi el PNJ murió, los héroes pueden continuar la partida, para acabar con el Jefe de la Sala Objetivo.\nSi los héroes encontraron el Antídoto antes de llegar a la Sala Objetivo, podrán finalizar la misión, y cobrar una recompensa extra de 100 mo por salvar la vida del PNJ.",
+      "efectos": [
+        {
+          "tipo": "anadir-cartas",
+          "mazo": "tesoros",
+          "cantidad": 1,
+          "carta": "Carta de Tesoro Antídoto (o una carta marcada)"
+        },
+        {
+          "tipo": "cambiar-cartas",
+          "mazo": "atrezo",
+          "quitar": {
+            "cantidad": 1
+          },
+          "poner": {
+            "tipo": "banco-de-alquimista",
+            "cantidad": 1
+          }
+        },
+        {
+          "tipo": "objeto",
+          "buscar": [
+            {
+              "al": "buscar-tesoros",
+              "carta": "antidoto"
+            },
+            {
+              "al": "revisar",
+              "carta": "banco-de-alquimista",
+              "soloElPrimero": true
+            }
+          ],
+          "siNoSeEncuentra": "jefe"
+        },
+        {
+          "tipo": "contador-muerte",
+          "sobre": "pnj",
+          "cuando": "tirada-peligro",
+          "dado": "1D10",
+          "sumaNivelPeligro": true,
+          "umbral": 10,
+          "maximo": 6,
+          "alCompletar": "El PNJ ha muerto. Los héroes pueden continuar la partida para acabar con el Jefe de la Sala Objetivo."
+        },
+        {
+          "tipo": "recompensa",
+          "extra": 100,
+          "condicion": "objeto-antes-de-sala-objetivo",
+          "puedeSalir": true
+        }
+      ]
+    },
+    {
+      "regla": 14,
+      "etiqueta": "Ayudar a un PNJ (compañero)",
+      "narrativa": "aliado",
+      "objetivo": "Ayudar a {pnj} {perfil} en su objetivo de matar al Jefe Final",
+      "texto": "♦ Regla Especial 14: El PNJ acompañará a los héroes desde el principio para ayudar a destruir al Jefe Final. Suma al Jefe Final de esta Misión 2 PCs adicionales.",
+      "efectos": [
+        {
+          "tipo": "pnj",
+          "aparece": "inicio",
+          "estado": "acompanante"
+        },
+        {
+          "tipo": "jefe",
+          "puntosCuerpo": 2
+        }
+      ]
+    }
+  ]
+}

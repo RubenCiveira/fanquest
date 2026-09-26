@@ -4,8 +4,9 @@ Port del *Generador de Aventuras FAI* (`ref/Generador_Aventuras_FAI_v3.html`,
 autoría original: Ryback).
 
 - `config/`: reglas del juego que no se editan como contenido: facciones y
-  sus tiradas, tabla de objetivos 2D6, tipos de misión y reglas especiales,
-  preparación y reglas extras con sus efectos.
+  sus tiradas, tabla de objetivos 2D6, preparación y reglas extras con sus
+  efectos. Los tipos de misión y sus reglas especiales están en
+  `templates/aventuras/especiales.json`.
 - [`templates/aventuras/`](../../../templates/README.md): textos y elementos
   ampliables que se combinan en cada misión, cargados de forma asíncrona.
 - `lib/plantilla.ts`: carga y comprobación de las plantillas.

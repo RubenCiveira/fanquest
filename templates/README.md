@@ -18,6 +18,7 @@ Basado en el *Generador de Aventuras FAI* (autoría original: Ryback).
 | `personajes.json` | Quien encarga la misión (`mecenas`), PNJ y sus perfiles |
 | `lugares.json` | Dónde están los héroes y dónde transcurre la aventura |
 | `objetos.json` | Objetos que buscar |
+| `especiales.json` | Tipos de misión y sus reglas especiales, estructuradas |
 | `titulos.json` | Títulos por tipo de narrativa |
 | `introducciones.json` | Introducciones por tipo de narrativa y `relleno` para las cortas |
 | `epilogos.json` | Epílogos por tipo de narrativa, `relleno` y `botinPorDefecto` |
@@ -42,6 +43,32 @@ Con `|mayus` se pone en mayúscula la primera letra: `{mecenas|mayus}`.
 `{pnj}`, `{perfil}` y `{objeto}` solo tienen valor en los tipos de misión
 cuyo objetivo los usa (por ejemplo, `rescate` siempre tiene `{pnj}`). Un
 marcador sin valor se muestra tal cual, para detectar el error.
+
+### Reglas especiales (`especiales.json`)
+
+Cada entrada de `reglas` es un tipo de misión: `regla` (el número que usa la
+tabla de objetivos 2D6), `etiqueta` (el selector del generador),
+`narrativa`, `objetivo` (texto con marcadores), `texto` (la regla completa,
+tal como se muestra) y `efectos`: la regla estructurada para que las ayudas
+de juego la apliquen. Cada efecto tiene un `tipo`:
+
+| `tipo` | Qué describe | Campos |
+|---|---|---|
+| `cambiar-cartas` | Al preparar la partida, cambia cartas al azar de un mazo | `mazo`, `quitar` (`cantidad`, `excepto`: tipos), `poner` (`tipo` o `id`, `cantidad`) |
+| `anadir-cartas` | Cartas para un mazo que la app aún no gestiona (tesoros) | `mazo`, `cantidad`, `carta` |
+| `sala` | Qué contiene una sala al descubrirla | `sala`, `texto`, `elementos`, `monstruos`, `sustituirMonstruos`, `siPnjMuerto`, `sinAtrezo`, `sinPuertas`, `tiradaEncuentros` |
+| `objeto` | Dónde y cómo se encuentra el objeto | `buscar` (`al`: `revisar`, `buscar-tesoros`, `abrir-cofre` o `buscar-tesoros-o-revisar`), `alEncontrar`, `siNoSeEncuentra` |
+| `pnj` | Cuándo aparece el PNJ y en qué estado | `aparece`, `estado`, `al`, `carta`, `mercenario`, `tirada`, `liberar`, `alLiberar` |
+| `contador-muerte` | Tirada por la vida del PNJ en cada tirada de peligro | `dado`, `sumaNivelPeligro`, `umbral`, `maximo`, `alCompletar` |
+| `jefe` | Modificadores del Jefe Final | `puntosCuerpo` |
+| `recompensa` | Recompensa extra o perdida | `extra` o `perdida`, `condicion` |
+
+Las salas son `inicial`, `primera-sala`, `especial` (todas), `primera-especial`,
+`especial-a` y `objetivo`. Las cartas se nombran con el `tipo` o el `id` de
+`templates/mazos/`: `mesa-del-brujo` para la «Mesa de Hechicero»,
+`banco-de-alquimista` para la «Mesa de Alquimista» y
+`sala-especial-de-mision-1` para la «Sala Especial A». Un efecto con un `tipo`
+desconocido hace fallar la carga de la plantilla.
 
 ## `mazos/`: mazos de cartas
 
