@@ -43,6 +43,10 @@
   text-rendering: optimizeLegibility;
   caret-color: var(--rubrica);
   scrollbar-color: var(--trazo) transparent;
+  /* lo que se desplaza a la vista (p. ej. con el foco) no queda tapado por
+     la cabecera ni la navegación fijas */
+  scroll-padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 12px);
+  scroll-padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
 }
 
 *,
@@ -524,6 +528,95 @@ input[type='checkbox'] {
   color: var(--rubrica);
 }
 
+.guardar-aventura {
+  margin-top: 20px;
+}
+
+.guardar-aventura .nota {
+  margin: 8px 0 0;
+  text-align: center;
+}
+
+.guardar-aventura a {
+  color: var(--rubrica);
+}
+
+/* ---------- Aventuras guardadas ---------- */
+.aventura {
+  display: grid;
+  gap: 4px;
+  padding: 14px 18px;
+  text-decoration: none;
+  background: rgb(246 238 217 / 0.55);
+  transition: background-color 200ms var(--ease);
+}
+
+.aventura:hover {
+  background: var(--vitela);
+}
+
+.aventura-titulo {
+  font-family: var(--gotica);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--rubrica);
+  text-wrap: balance;
+}
+
+.aventura-datos {
+  font-size: 0.98rem;
+}
+
+.aventura-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.aventura-pie .nota {
+  font-size: 0.9rem;
+}
+
+/* sello del estado de la aventura */
+.estado {
+  flex: none;
+  padding: 0 8px;
+  font-family: var(--versalitas);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--grafito);
+  border: 1.5px solid var(--trazo);
+  border-radius: var(--boceto-2);
+  transform: rotate(-3deg);
+}
+
+.page-header .estado {
+  margin-left: auto;
+}
+
+.aventura-empezar {
+  margin-bottom: 24px;
+}
+
+.aventura-borrar {
+  margin-top: 20px;
+}
+
+.button.peligro {
+  background: var(--rubrica);
+}
+
+.button.peligro:hover {
+  background: var(--tinta);
+}
+
+.pendiente a {
+  color: var(--rubrica);
+}
+
 /* ---------- Diálogo ---------- */
 .dialog {
   width: min(100% - 32px, 480px);
@@ -544,6 +637,10 @@ input[type='checkbox'] {
   display: grid;
   gap: 20px;
   padding: 18px;
+}
+
+.dialog-contenido > p {
+  margin: 0;
 }
 
 .dialog-cabecera {
@@ -706,6 +803,10 @@ input[type='checkbox'] {
     padding: 40px 24px 48px;
   }
 
+  :root {
+    scroll-padding-bottom: 12px;
+  }
+
   .aviso {
     left: auto;
     bottom: 24px;
@@ -736,6 +837,9 @@ input[type='checkbox'] {
 
 @media print {
   .aviso,
+  .guardar-aventura,
+  .aventura-empezar,
+  .aventura-borrar,
   .app-header,
   .app-nav,
   .page-header,

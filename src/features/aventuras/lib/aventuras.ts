@@ -1,0 +1,59 @@
+import type { Mision } from '../../generar/lib/tipos'
+
+export type EstadoAventura = 'sin-empezar'
+
+export const ETIQUETA_ESTADO: Record<EstadoAventura, string> = {
+  'sin-empezar': 'Sin empezar',
+}
+
+/**
+ * Misión guardada para jugarla. La misión es autónoma: guarda sus textos y
+ * sus datos de preparación como números para las ayudas de juego.
+ */
+export type Aventura = {
+  id: string
+  /** Fecha ISO 8601 */
+  guardadaEn: string
+  estado: EstadoAventura
+  mision: Mision
+}
+
+const CLAVE = 'fanquest.aventuras.v1'
+
+function leer(): Aventura[] {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE) ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+// La API es asíncrona para poder cambiar de almacenamiento sin tocar la UI
+
+/** Aventuras guardadas, de la más reciente a la más antigua */
+export async function listarAventuras(): Promise<Aventura[]> {
+  return leer()
+}
+
+export async function obtenerAventura(id: string): Promise<Aventura | undefined> {
+  return leer().find((aventura) => aventura.id === id)
+}
+
+/** Guarda la misión como aventura sin empezar; falla si no hay almacenamiento */
+export async function guardarAventura(mision: Mision): Promise<Aventura> {
+  const aventura: Aventura = {
+    id: crypto.randomUUID(),
+    guardadaEn: new Date().toISOString(),
+    estado: 'sin-empezar',
+    mision,
+  }
+  localStorage.setItem(CLAVE, JSON.stringify([aventura, ...leer()]))
+  return aventura
+}
+
+export async function borrarAventura(id: string): Promise<void> {
+  localStorage.setItem(
+    CLAVE,
+    JSON.stringify(leer().filter((aventura) => aventura.id !== id)),
+  )
+}

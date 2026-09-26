@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useLoaderData, useRouteError } from 'react-router'
+import { Link, useLoaderData, useRouteError } from 'react-router'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { registrarEvento } from '../../lib/matomo'
+import { guardarAventura } from '../aventuras/lib/aventuras'
 import { MisionCard } from './components/MisionCard'
 import { ReglasExtrasDialog } from './components/ReglasExtrasDialog'
 import { TIPOS_MISION } from './config/misiones'
@@ -22,6 +23,22 @@ export function GenerarPage() {
   const [tirada, setTirada] = useState(0)
   const [extrasAbierto, setExtrasAbierto] = useState(false)
   const [copiado, setCopiado] = useState(false)
+  // id de la aventura guardada a partir de la misión actual
+  const [guardada, setGuardada] = useState<string | null>(null)
+  const [errorGuardar, setErrorGuardar] = useState(false)
+
+  const etiquetaTipo = (regla: number) =>
+    TIPOS_MISION.find((tipo) => tipo.regla === regla)?.etiqueta
+
+  const guardar = async () => {
+    try {
+      setGuardada((await guardarAventura(mision)).id)
+      setErrorGuardar(false)
+      registrarEvento('Aventuras', 'Guardar', etiquetaTipo(mision.regla))
+    } catch {
+      setErrorGuardar(true)
+    }
+  }
 
   const copiar = async () => {
     try {
@@ -64,10 +81,12 @@ export function GenerarPage() {
             const nueva = generarMision(plantilla, seleccion, configExtras)
             setMision(nueva)
             setTirada((t) => t + 1)
+            setGuardada(null)
+            setErrorGuardar(false)
             registrarEvento(
               'Generador',
               seleccion === 'aleatoria' ? 'Generar aleatoria' : 'Generar tipo',
-              TIPOS_MISION.find(({ regla }) => regla === nueva.regla)?.etiqueta,
+              etiquetaTipo(nueva.regla),
             )
           }}
         >
@@ -89,6 +108,24 @@ export function GenerarPage() {
       </div>
 
       <MisionCard key={tirada} mision={mision} />
+
+      <div className="guardar-aventura">
+        {guardada ? (
+          <p className="nota">
+            Aventura guardada. <Link to={`/aventuras/${guardada}`}>Verla en Aventuras</Link>
+          </p>
+        ) : (
+          <button type="button" className="button" onClick={guardar}>
+            <Icono nombre="pergamino" />
+            Guardar aventura
+          </button>
+        )}
+        {errorGuardar && (
+          <p className="nota" role="alert">
+            No se ha podido guardar: este navegador no permite almacenar datos.
+          </p>
+        )}
+      </div>
 
       {extrasAbierto && (
         <ReglasExtrasDialog
