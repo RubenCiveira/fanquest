@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLoaderData } from 'react-router'
+import { Form, Link, useLoaderData } from 'react-router'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { MisionCard } from '../generar/components/MisionCard'
@@ -16,10 +16,19 @@ export function AventuraPage() {
         <span className="estado">{ETIQUETA_ESTADO[estado]}</span>
       </PageHeader>
 
-      <Link to="jugar" className="button aventura-empezar">
-        <Icono nombre="dado" />
-        Empezar aventura
-      </Link>
+      {estado === 'sin-empezar' ? (
+        <Form method="post" className="aventura-empezar">
+          <button type="submit" name="intent" value="empezar" className="button">
+            <Icono nombre="dado" />
+            Empezar aventura
+          </button>
+        </Form>
+      ) : (
+        <Link to="configurar" className="button aventura-empezar">
+          <Icono nombre="dado" />
+          Continuar preparación
+        </Link>
+      )}
 
       <MisionCard mision={mision} />
 

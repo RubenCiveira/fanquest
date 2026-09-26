@@ -27,6 +27,16 @@ const trazos = {
   ),
   volver: <path d="M14.6 5.4 8.2 12l6.4 6.6" />,
   cerrar: <path d="M6.4 6.2 17.8 17.6M17.6 6.4 6.2 17.8" />,
+  mas: <path d="M12 5.2v13.6M5.2 12h13.6" />,
+  menos: <path d="M5.2 12.2h13.6" />,
+  aviso: (
+    <>
+      <path d="M12 3.6 21 19.6H3Z" />
+      <path d="M12 9.6v4.6" />
+      <circle cx="12" cy="17" r=".9" />
+    </>
+  ),
+  hecho: <path d="M5 12.6 9.8 17.4 19.2 6.8" />,
 }
 
 export type NombreIcono = keyof typeof trazos

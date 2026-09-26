@@ -617,6 +617,284 @@ input[type='checkbox'] {
   color: var(--rubrica);
 }
 
+/* ---------- Configurar misión ---------- */
+.configurar-mision {
+  margin: -8px 0 20px;
+  font-family: var(--gotica);
+  font-size: 1.35rem;
+  line-height: 1.15;
+  color: var(--rubrica);
+}
+
+.aviso-icono {
+  margin-left: auto;
+  color: var(--rubrica);
+}
+
+.modo {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+}
+
+.modo legend {
+  margin-bottom: 6px;
+  font-family: var(--versalitas);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--grafito);
+}
+
+.modo label {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  font-family: var(--versalitas);
+  font-weight: 500;
+  border: 1.5px solid var(--trazo);
+  cursor: pointer;
+}
+
+.modo label:first-of-type {
+  border-radius: 14px 2px 2px 12px / 12px 2px 2px 14px;
+}
+
+.modo label:last-of-type {
+  border-left: 0;
+  border-radius: 2px 12px 14px 2px / 2px 14px 12px 2px;
+}
+
+.modo label:has(input:checked) {
+  color: var(--vitela);
+  background: var(--tinta);
+}
+
+.modo input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modo label:has(input:focus-visible) {
+  outline: 2px dashed var(--rubrica);
+  outline-offset: 3px;
+}
+
+.panel-mazo {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgb(246 238 217 / 0.6);
+}
+
+.panel-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-cabecera h2 {
+  margin: 0;
+  font-family: var(--gotica);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.panel-estado {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--versalitas);
+  font-size: 0.9rem;
+  color: var(--grafito);
+}
+
+.panel-estado .icono {
+  width: 18px;
+  height: 18px;
+}
+
+.mal,
+.panel-estado.mal {
+  color: var(--rubrica);
+}
+
+.recuento {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recuento li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--trazo-suave);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.reemplazos {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--lapiz);
+  font-weight: 300;
+  color: var(--grafito);
+}
+
+.avisos {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.95rem;
+  color: var(--rubrica);
+}
+
+.avisos li {
+  display: flex;
+  gap: 6px;
+}
+
+.avisos .icono {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+}
+
+.panel-mazo .fila-botones {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.panel-mazo .button.secondary {
+  padding: 8px 6px;
+  font-size: 0.9rem;
+}
+
+.configurar-acciones {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.configurar-acciones .nota {
+  margin: 0;
+  text-align: center;
+}
+
+/* ---------- Escoger cartas de un mazo ---------- */
+.mazo-acciones {
+  margin: 12px 0 8px;
+}
+
+.mazo-grupo h2 {
+  display: flex;
+  justify-content: space-between;
+  margin: 24px 0 8px;
+  font-family: var(--versalitas);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--rubrica);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.mazo-grupo h2 span:not(.mal) {
+  color: var(--grafito);
+}
+
+.cartas {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.carta-fila {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-amplio);
+  opacity: 0.8;
+}
+
+.carta-fila.en-mesa {
+  background: var(--vitela);
+  border-color: var(--trazo);
+  opacity: 1;
+}
+
+.carta-fila img,
+.carta-sin-imagen {
+  width: 64px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--pergamino-oscuro);
+}
+
+.carta-info {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.carta-texto {
+  overflow: hidden;
+  font-size: 0.85rem;
+  color: var(--grafito);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.etiqueta {
+  justify-self: start;
+  padding: 0 6px;
+  font-family: var(--versalitas);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--rubrica);
+  border: 1px solid var(--rubrica);
+  border-radius: var(--boceto-2);
+}
+
+.contador {
+  display: flex;
+  align-items: center;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.contador span {
+  min-width: 2.6em;
+  text-align: center;
+}
+
+.contador .icon-button {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+}
+
+.icon-button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* ---------- Diálogo ---------- */
 .dialog {
   width: min(100% - 32px, 480px);

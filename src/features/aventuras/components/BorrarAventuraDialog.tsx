@@ -37,7 +37,7 @@ export function BorrarAventuraDialog({ titulo, onCerrar }: Props) {
           <button type="button" className="button secondary" onClick={onCerrar}>
             Cancelar
           </button>
-          <button type="submit" className="button peligro">
+          <button type="submit" name="intent" value="borrar" className="button peligro">
             Borrar
           </button>
         </div>

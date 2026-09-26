@@ -1,9 +1,11 @@
 import type { Mision } from '../../generar/lib/tipos'
+import type { Configuracion } from './preparacion'
 
-export type EstadoAventura = 'sin-empezar'
+export type EstadoAventura = 'sin-empezar' | 'configurando'
 
 export const ETIQUETA_ESTADO: Record<EstadoAventura, string> = {
   'sin-empezar': 'Sin empezar',
+  configurando: 'Configurando',
 }
 
 /**
@@ -16,6 +18,8 @@ export type Aventura = {
   guardadaEn: string
   estado: EstadoAventura
   mision: Mision
+  /** Mazos preparados para la misión (desde «configurando») */
+  configuracion?: Configuracion
 }
 
 const CLAVE = 'fanquest.aventuras.v1'
@@ -49,6 +53,13 @@ export async function guardarAventura(mision: Mision): Promise<Aventura> {
   }
   localStorage.setItem(CLAVE, JSON.stringify([aventura, ...leer()]))
   return aventura
+}
+
+export async function actualizarAventura(aventura: Aventura): Promise<void> {
+  localStorage.setItem(
+    CLAVE,
+    JSON.stringify(leer().map((a) => (a.id === aventura.id ? aventura : a))),
+  )
 }
 
 export async function borrarAventura(id: string): Promise<void> {

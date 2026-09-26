@@ -1,16 +1,18 @@
-import { createBrowserRouter, Navigate, redirect } from 'react-router'
+import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from './AppLayout'
 import { GenerarError, GenerarPage } from '../features/generar/GenerarPage'
 import { cargarPlantillaAventuras } from '../features/generar/lib/plantilla'
-import { registrarEvento } from '../lib/matomo'
 import { AventurasPage } from '../features/aventuras/AventurasPage'
 import { AventuraPage } from '../features/aventuras/AventuraPage'
 import { JugarPage } from '../features/aventuras/JugarPage'
+import { ConfigurarPage } from '../features/aventuras/ConfigurarPage'
+import { listarAventuras } from '../features/aventuras/lib/aventuras'
+import { MazoPage } from '../features/aventuras/MazoPage'
 import {
-  borrarAventura,
-  listarAventuras,
-  obtenerAventura,
-} from '../features/aventuras/lib/aventuras'
+  accionAventura,
+  cargarAventura,
+  cargarConfiguracion,
+} from '../features/aventuras/rutas'
 import { ImprimirPage } from '../features/imprimir/ImprimirPage'
 import { ImprimirTipoPage } from '../features/imprimir/ImprimirTipoPage'
 
@@ -33,14 +35,19 @@ export const router = createBrowserRouter([
       },
       {
         path: 'aventuras/:id',
-        loader: async ({ params }) =>
-          (await obtenerAventura(params.id ?? '')) ?? redirect('/aventuras'),
-        action: async ({ params }) => {
-          await borrarAventura(params.id ?? '')
-          registrarEvento('Aventuras', 'Borrar')
-          return redirect('/aventuras')
-        },
+        loader: cargarAventura,
+        action: accionAventura,
         element: <AventuraPage />,
+      },
+      {
+        path: 'aventuras/:id/configurar',
+        loader: cargarConfiguracion,
+        element: <ConfigurarPage />,
+      },
+      {
+        path: 'aventuras/:id/configurar/:mazo',
+        loader: cargarConfiguracion,
+        element: <MazoPage />,
       },
       { path: 'aventuras/:id/jugar', element: <JugarPage /> },
       { path: 'imprimir', element: <ImprimirPage /> },
