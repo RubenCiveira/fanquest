@@ -7,7 +7,7 @@ import {
   type Categoria,
   type Modo,
 } from '../config/mazos'
-import type { CartaMazo, IdMazo, Mazo, Mazos } from './mazos'
+import type { CartaMazo, IdMazo, Mazo, Mazos } from '../../../lib/mazos'
 
 /** Carta apartada por una regla especial y la que ocupa su lugar */
 export type Reemplazo = { original: string; reemplazo: string }
@@ -16,7 +16,7 @@ export type Reemplazo = { original: string; reemplazo: string }
 export type SeleccionMazo = { cartas: string[]; reemplazos: Reemplazo[] }
 
 /** Pasos del asistente de preparación, en orden */
-export const PASOS = ['mazmorra', 'mazos', 'barajar'] as const
+export const PASOS = ['mazos', 'barajar'] as const
 
 export type Paso = (typeof PASOS)[number]
 
@@ -176,7 +176,7 @@ export function ordenar(mazo: Mazo, s: SeleccionMazo, modo: Modo): string[] {
 export function nuevaConfiguracion(mazos: Mazos, mision: Mision): Configuracion {
   const ids = [...new Set([...MAZOS_POR_MODO.losetas, ...MAZOS_POR_MODO.tablero])]
   return {
-    paso: 'mazmorra',
+    paso: 'mazos',
     modo: 'losetas',
     mazos: Object.fromEntries(ids.map((id) => [id, completar(mazos[id], mision, VACIA)])),
   }

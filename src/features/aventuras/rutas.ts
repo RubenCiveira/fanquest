@@ -7,7 +7,7 @@ import {
   obtenerAventura,
   type Aventura,
 } from './lib/aventuras'
-import { cargarMazos, type IdMazo, type Mazos } from './lib/mazos'
+import { cargarMazos, type IdMazo, type Mazos } from '../../lib/mazos'
 import { nuevaConfiguracion, type Configuracion } from './lib/preparacion'
 
 export async function cargarAventura({ params }: LoaderFunctionArgs) {

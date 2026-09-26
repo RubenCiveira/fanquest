@@ -2,16 +2,15 @@ import type { EstadoAventura } from './aventuras'
 import { PASOS, type Configuracion, type Paso } from './preparacion'
 
 export const TITULO_PASO: Record<Paso, string> = {
-  mazmorra: 'Mazmorra',
   mazos: 'Mazos',
   barajar: 'Barajar',
 }
 
 export type EstadoPaso = 'completado' | 'actual' | 'pendiente'
 
-/** Paso en curso; sin dato, el que corresponde a lo ya hecho */
+/** Paso en curso; sin dato válido (aventuras antiguas), el que corresponde a lo hecho */
 export function pasoActual(c: Configuracion): Paso {
-  return c.paso ?? (c.barajado ? 'barajar' : 'mazmorra')
+  return c.paso && PASOS.includes(c.paso) ? c.paso : c.barajado ? 'barajar' : 'mazos'
 }
 
 export function estadoPaso(c: Configuracion, paso: Paso): EstadoPaso {

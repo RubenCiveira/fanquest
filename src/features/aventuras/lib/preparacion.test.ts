@@ -4,7 +4,7 @@ import { cargarPlantillaAventuras } from '../../generar/lib/plantilla'
 import { CONFIG_EXTRAS_DEFECTO } from '../../generar/lib/reglasExtras'
 import type { Mision, PlantillaAventuras } from '../../generar/lib/tipos'
 import { MAZOS_POR_MODO, type Modo } from '../config/mazos'
-import { cargarMazos, type IdMazo, type Mazos } from './mazos'
+import { cargarMazos, type IdMazo, type Mazos } from '../../../lib/mazos'
 import {
   avisos,
   barajarYGuardar,

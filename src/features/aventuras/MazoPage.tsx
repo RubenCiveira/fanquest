@@ -3,7 +3,7 @@ import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { Avisos } from './components/Avisos'
 import { NOMBRE_MAZO } from './config/mazos'
-import { urlImagen, type CartaMazo, type IdMazo } from './lib/mazos'
+import { urlImagen, type CartaMazo, type IdMazo } from '../../lib/mazos'
 import {
   avisos,
   coincide,

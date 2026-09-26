@@ -792,10 +792,223 @@ input[type='checkbox'] {
   text-align: center;
 }
 
+/* resumen de grupos de un mazo en una línea */
+.resumen-grupos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--grafito);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* rejilla de cartas escogidas */
+.naipes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px 12px;
+  padding: 8px 8px 0 0;
+}
+
+.naipe-boton {
+  display: block;
+  padding: 0;
+  font: inherit;
+  text-align: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: transform 160ms var(--ease);
+}
+
+.naipe-boton:hover {
+  transform: translateY(-2px) rotate(-0.6deg);
+}
+
+/* Carta: naipe con el marco y la proporción de la carta impresa */
+.carta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 7px 6px;
+  background: var(--vitela);
+  border: 5px solid var(--tinta);
+  border-radius: 6px;
+  box-shadow: 0 5px 12px -6px rgb(40 25 10 / 0.55);
+}
+
+.carta-mini {
+  aspect-ratio: 751 / 1040;
+}
+
+.carta-titulo {
+  flex: none;
+  font-family: var(--gotica);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.05;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.carta img {
+  flex: none;
+  width: 100%;
+  object-fit: cover;
+  border: 1px solid var(--tinta);
+}
+
+.carta-mini.carta-pequeña img {
+  height: 34%;
+}
+
+.carta-mini.carta-mediana img {
+  height: 50%;
+}
+
+.carta-mini.carta-grande img {
+  height: 58%;
+}
+
+.carta-grande img {
+  border: 0;
+}
+
+.carta-resumen {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.56rem;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--grafito);
+  /* el texto se desvanece en el espacio que queda en el naipe */
+  mask-image: linear-gradient(to bottom, #000 60%, transparent);
+}
+
+.carta-copias {
+  position: absolute;
+  z-index: 1;
+  top: -12px;
+  right: -12px;
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  font-family: var(--versalitas);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--vitela);
+  background: var(--rubrica);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%;
+  box-shadow: 0 1px 3px rgb(40 25 10 / 0.4);
+}
+
+.carta-sello {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  left: -1px;
+  padding: 3px 4px;
+  font-family: var(--versalitas);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--vitela);
+  background: var(--rubrica);
+}
+
+/* variante completa: la carta entera, legible */
+.carta-completa {
+  gap: 10px;
+  width: 360px;
+  max-width: 100%;
+  padding: 16px 14px 18px;
+  border-width: 9px;
+  border-radius: 10px;
+}
+
+.carta-completa .carta-titulo {
+  font-size: 1.6rem;
+}
+
+.carta-completa .carta-sello {
+  position: static;
+  margin: 4px -14px -18px;
+  padding: 6px;
+  font-size: 0.8rem;
+}
+
+.carta-cuerpo {
+  display: grid;
+  gap: 8px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.carta-cuerpo p {
+  margin: 0;
+}
+
+.carta-cita {
+  font-style: italic;
+  text-align: center;
+  color: var(--grafito);
+}
+
+.carta-seccion {
+  font-family: var(--gotica);
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.carta-tirada-titulo {
+  font-weight: 700;
+}
+
+.carta-tirada {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+
+.carta-tirada .carta-tirada {
+  padding-left: 16px;
+}
+
+/* doble clase: debe ganar a .dialog, que va después */
+.dialog.dialog-carta {
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  padding: 0;
+  overflow: visible;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+.dialog-carta-cerrar {
+  position: absolute;
+  top: -48px;
+  right: -4px;
+  color: var(--vitela);
+}
+
 /* asistente: pasos numerados unidos por un trazo */
 .pasos {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
   margin: 0 0 24px;
   padding: 0;
   list-style: none;

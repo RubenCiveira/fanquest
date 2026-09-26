@@ -1,4 +1,4 @@
-import { fuenteLocal, type FuentePlantillas } from '../../../lib/plantillas'
+import { fuenteLocal, type FuentePlantillas } from './plantillas'
 
 /** Carta de un mazo de `templates/mazos/<mazo>/base.json` */
 export type CartaMazo = {
@@ -10,7 +10,18 @@ export type CartaMazo = {
   imagen?: { archivo: string; tamano: 'pequeña' | 'mediana' | 'grande' }
   cita?: string
   texto?: string
-  tirada?: { resultados: { resultado: string; texto?: string }[] }
+  /** Lo que va tras la tirada (p. ej. el contenido del cofre) */
+  notas?: string
+  tirada?: TiradaCarta
+  /** Solo trampas */
+  activada?: { sinMonstruos: string; conMonstruos: string }
+  encontrada?: string
+}
+
+export type TiradaCarta = {
+  accion?: string
+  dado?: string
+  resultados: { resultado: string; texto?: string; tirada?: TiradaCarta }[]
 }
 
 export type Mazo = {

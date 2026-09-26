@@ -14,7 +14,7 @@ import {
   type Modo,
 } from './config/mazos'
 import { anulaBarajado, pasoActual, TITULO_PASO } from './lib/asistente'
-import { urlDorso, type IdMazo } from './lib/mazos'
+import { urlDorso, type IdMazo } from '../../lib/mazos'
 import { avisos, seleccion, type Paso } from './lib/preparacion'
 import { useConfiguracion } from './lib/useConfiguracion'
 import type { DatosConfiguracion } from './rutas'
@@ -71,7 +71,7 @@ export function ConfigurarPage() {
             <p className="nota mal">Se barajó con avisos en {conAvisos.map((id) => NOMBRE_MAZO[id]).join(', ')}.</p>
           )}
         </section>
-      ) : paso === 'mazmorra' ? (
+      ) : paso === 'mazos' ? (
         <section className="paso-contenido">
           <fieldset className="modo">
             <legend>¿Cómo vais a montar la mazmorra?</legend>
@@ -88,12 +88,6 @@ export function ConfigurarPage() {
             ))}
           </fieldset>
           <p className="nota">{DESCRIPCION_MODO[config.modo]}</p>
-          <button type="button" className="button" onClick={asistente.avanzar}>
-            Siguiente: {TITULO_PASO.mazos}
-          </button>
-        </section>
-      ) : paso === 'mazos' ? (
-        <section className="paso-contenido">
           {ids.map((id) => (
             <PanelMazo
               key={id}

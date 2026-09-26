@@ -1,5 +1,5 @@
 import type { Mision } from '../../generar/lib/tipos'
-import type { IdMazo } from '../lib/mazos'
+import type { IdMazo } from '../../../lib/mazos'
 
 /** Tablero con salas fijas o losetas modulares (Aventuras Infinitas) */
 export type Modo = 'tablero' | 'losetas'

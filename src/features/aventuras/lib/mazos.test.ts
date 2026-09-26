@@ -4,7 +4,7 @@ import { cargarPlantillaAventuras } from '../../generar/lib/plantilla'
 import { CONFIG_EXTRAS_DEFECTO } from '../../generar/lib/reglasExtras'
 import type { PlantillaAventuras } from '../../generar/lib/tipos'
 import { categorias, MAZOS_POR_MODO } from '../config/mazos'
-import { cargarMazos, MAZOS, urlImagen, type Mazos } from './mazos'
+import { cargarMazos, MAZOS, urlImagen, type Mazos } from '../../../lib/mazos'
 import { coincide } from './preparacion'
 
 let mazos: Mazos
