@@ -1,0 +1,801 @@
+{
+  "id": "atrezo",
+  "nombre": "Atrezo",
+  "dorso": "dorso.webp",
+  "totalCartas": 41,
+  "cartas": [
+    {
+      "id": "sin-atrezo-1",
+      "tipo": "sin-atrezo",
+      "titulo": "Sin Atrezo",
+      "copias": 5,
+      "imagen": {
+        "archivo": "imagenes/sin-atrezo-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Sólo quedan rocas y polvo.",
+      "texto": "La sala está totalmente vacía. Si juegas con losetas, la sala no contiene nada salvo lo que tenga la propia loseta."
+    },
+    {
+      "id": "sin-atrezo-2",
+      "tipo": "sin-atrezo",
+      "titulo": "Sin Atrezo",
+      "copias": 7,
+      "imagen": {
+        "archivo": "imagenes/sin-atrezo-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Sólo quedan rocas y polvo.",
+      "texto": "La sala está totalmente vacía. Si juegas con losetas, la sala no contiene nada salvo lo que tenga la propia loseta."
+    },
+    {
+      "id": "armario-1",
+      "tipo": "armario",
+      "titulo": "Armario",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/armario-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un antiguo armario que parece contener algo en su interior.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-4",
+            "texto": "Polvo y ratas."
+          },
+          {
+            "resultado": "5",
+            "texto": "Carta de tesoro."
+          },
+          {
+            "resultado": "6",
+            "texto": "Una poción común al azar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "armario-2",
+      "tipo": "armario",
+      "titulo": "Armario",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/armario-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un antiguo armario que parece contener algo en su interior.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-4",
+            "texto": "Viejos ropajes hechos jirones."
+          },
+          {
+            "resultado": "5",
+            "texto": "Carta de tesoro."
+          },
+          {
+            "resultado": "6",
+            "texto": "Una cajita con una gema por un valor de 50mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "armario-3",
+      "tipo": "armario",
+      "titulo": "Armario",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/armario-3.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una vieja alacena que parece contener algo en su interior.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-4",
+            "texto": "Vacío."
+          },
+          {
+            "resultado": "5",
+            "texto": "Carta de tesoro."
+          },
+          {
+            "resultado": "6",
+            "texto": "Una antigua botella de vino por un valor de 25mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "armeria-1",
+      "tipo": "armeria",
+      "titulo": "Armería",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/armeria-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un viejo estante de madera utilizado para albergar todo tipo de armas.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Armas oxidadas (nada)."
+          },
+          {
+            "resultado": "3",
+            "texto": "Daga."
+          },
+          {
+            "resultado": "4",
+            "texto": "Hacha de mano."
+          },
+          {
+            "resultado": "5",
+            "texto": "Escudo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Lanza."
+          }
+        ]
+      }
+    },
+    {
+      "id": "armeria-2",
+      "tipo": "armeria",
+      "titulo": "Armería",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/armeria-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un viejo estante de madera utilizado para albergar todo tipo de armas.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Armas oxidadas (nada)."
+          },
+          {
+            "resultado": "3",
+            "texto": "Arco corto."
+          },
+          {
+            "resultado": "4",
+            "texto": "Espada corta."
+          },
+          {
+            "resultado": "5",
+            "texto": "Martillo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Espada ancha."
+          }
+        ]
+      }
+    },
+    {
+      "id": "banco-de-alquimista-1",
+      "tipo": "banco-de-alquimista",
+      "titulo": "Banco de alquimista",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/banco-de-alquimista-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una mesa llena de viales, matraces y notas sobre alquimia.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Nada interesante."
+          },
+          {
+            "resultado": "4-6",
+            "texto": "Una pócima (común o infrecuente) al azar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "banco-de-alquimista-2",
+      "tipo": "banco-de-alquimista",
+      "titulo": "Banco de alquimista",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/banco-de-alquimista-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una mesa llena de viales, matraces y notas sobre alquimia.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Encuentras una pócima de buen aspecto que no dudas en tomar, pero resulta ser venenosa. Lanza 1DC, si obtienes calavera pierdes 1PC."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "Nada de interés."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Una pócima infrecuente al azar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "chimenea-1",
+      "tipo": "chimenea",
+      "titulo": "Chimenea",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/chimenea-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una ornamentada chimenea con un siniestro cuadro encima.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-4",
+            "texto": "Nada relevante."
+          },
+          {
+            "resultado": "5",
+            "texto": "La lumbre está encendida y el ambiente es agradable. Cualquier héroe podrá gastar una acción en descansar una sola vez en esta sala para recuperar 1PC y 1PM, siempre que no haya monstruos en ella o en las adyacentes."
+          },
+          {
+            "resultado": "6",
+            "texto": "Roba una Carta de Tesoro."
+          }
+        ]
+      }
+    },
+    {
+      "id": "chimenea-2",
+      "tipo": "chimenea",
+      "titulo": "Chimenea",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/chimenea-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una ornamentada chimenea con un siniestro cuadro encima.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-4",
+            "texto": "Nada relevante."
+          },
+          {
+            "resultado": "5",
+            "texto": "Detrás del cuadro se esconde un pequeño compartimento que contiene 1D6 + Nivel de Peligro x 10 mo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Encuentras un resorte que abre una puerta secreta. Coloca una Puerta Secreta en un muro libre de la sala que comunique con otra sala no explorada."
+          }
+        ]
+      }
+    },
+    {
+      "id": "cofre-1",
+      "tipo": "cofre",
+      "titulo": "Cofre",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/cofre-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un misterioso cofre ¿Qué tesoros albergará?",
+      "notas": "CONTENIDO: (2D6+Nivel de Peligro)x10mo.\nCONTENIDO MODO ÉPICO: ver manual.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "¡Trampa! Roba una Carta de Trampa y resuelve la sección “Activada”. El próximo héroe que revise el cofre, obtendrá su contenido."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "El cofre está cerrado. Un intento por héroe de una acción de Desactivar Trampas para abrir y obtener su contenido. También se puede abrir a golpes mediante una acción (obtienes su contenido y +1 Nivel de Peligro)."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Abres el cofre sin problemas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "cofre-2",
+      "tipo": "cofre",
+      "titulo": "Cofre",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/cofre-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un misterioso cofre ¿Qué tesoros albergará?",
+      "notas": "CONTENIDO: (2D6+Nivel de Peligro)x10mo.\nCONTENIDO MODO ÉPICO: ver manual.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "¡Trampa! ¡El cofre es un mímico! Recibes 3DC no defendibles. Finalmente consigues destruir al mímico y obtener el contenido."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "El cofre está cerrado. Un intento por héroe de una acción de Desactivar Trampas para abrir y obtener su contenido. También se puede abrir a golpes mediante una acción (obtienes su contenido y +1 Nivel de Peligro)."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Abres el cofre sin problemas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "cofre-3",
+      "tipo": "cofre",
+      "titulo": "Cofre",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/cofre-3.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un misterioso cofre ¿Qué tesoros albergará?",
+      "notas": "CONTENIDO: (2D6+Nivel de Peligro)x10mo.\nCONTENIDO MODO ÉPICO: ver manual.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "¡Trampa! El cofre contiene una trampa de gas venenoso. Todos los héroes en la sala lanzan 1DC, si obtienen calavera pierden 1 PC. Finalmente consigues obtener su contenido."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "El cofre está cerrado. Un intento por héroe de una acción de Desactivar Trampas para abrir y obtener su contenido. También se puede abrir a golpes mediante una acción (obtienes su contenido y +1 Nivel de Peligro)."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Abres el cofre sin problemas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "libreria-1",
+      "tipo": "libreria",
+      "titulo": "Librería",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/libreria-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una polvorienta librería repleta de viejos libros.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Viejos tomos sin interés."
+          },
+          {
+            "resultado": "4-5",
+            "texto": "Al mover un libro se abre una puerta secreta. Colócala si es posible en una pared que comunique con una sala inexplorada."
+          },
+          {
+            "resultado": "6",
+            "texto": "Un pergamino al azar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "libreria-2",
+      "tipo": "libreria",
+      "titulo": "Librería",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/libreria-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una polvorienta librería repleta de viejos libros.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Una rata muerde tu mano. Lanza 1DC, con calavera pierdes 1 PC."
+          },
+          {
+            "resultado": "2-5",
+            "texto": "Viejos tomos sin interés."
+          },
+          {
+            "resultado": "6",
+            "texto": "Un pergamino al azar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "libreria-3",
+      "tipo": "libreria",
+      "titulo": "Librería",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/libreria-3.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una polvorienta librería repleta de viejos libros.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Un horrible tomo capta tu atención. Lanza 1DC, con calavera pierdes 1 PM."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "Viejos tomos sin interés."
+          },
+          {
+            "resultado": "5",
+            "texto": "Tomo mágico: Podrás usarlo tú o dárselo a cualquier héroe para que, mediante una acción de leer, recupere un uso de un hechizo que posea. Se descarta al leerlo o al acabar la misión."
+          },
+          {
+            "resultado": "6",
+            "texto": "Pergamino al azar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mesa-1",
+      "tipo": "mesa",
+      "titulo": "Mesa",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mesa-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una sucia mesa que parece haber sido utilizada para comer.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-5",
+            "texto": "Algún resto de comida en mal estado."
+          },
+          {
+            "resultado": "6",
+            "texto": "Una vieja copa de bronce con un valor de 10mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mesa-2",
+      "tipo": "mesa",
+      "titulo": "Mesa",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mesa-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una polvorienta mesa de madera. Ha conocido tiempos mejores.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-5",
+            "texto": "Polvo y manchas de sangre."
+          },
+          {
+            "resultado": "6",
+            "texto": "Oculta entre el polvo hay una antigua moneda con un valor de 10mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mesa-3",
+      "tipo": "mesa",
+      "titulo": "Mesa",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mesa-3.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una desvencijada mesa de madera. Ha conocido tiempos mejores.",
+      "texto": "No revisable."
+    },
+    {
+      "id": "mesa-del-brujo-1",
+      "tipo": "mesa-del-brujo",
+      "titulo": "Mesa del Brujo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mesa-del-brujo-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un altar mágico coronado por un extraño tomo de poder.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6 por cada PM máximo que tengas",
+        "resultados": [
+          {
+            "resultado": "Ningún seis",
+            "texto": "Al tratar de leer el libro, horribles visiones atormentan tu mente. Pierdes 1PM."
+          },
+          {
+            "resultado": "Un seis",
+            "texto": "Recuperas un uso de uno de tus hechizos."
+          },
+          {
+            "resultado": "Dos o más seises",
+            "texto": "Obtienes un Hechizo del Caos que podrás usar una vez durante esta misión."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mesa-del-brujo-2",
+      "tipo": "mesa-del-brujo",
+      "titulo": "Mesa del Brujo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mesa-del-brujo-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un siniestro altar mágico con un misterioso libro.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Maléficas energías te rodean. Haz una tirada de Vientos del Caos -2."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "La magia es poderosa en este altar. Haz una tirada de Vientos del Caos."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Recupera un uso de un hechizo que tengas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "potro-de-tortura-1",
+      "tipo": "potro-de-tortura",
+      "titulo": "Potro de tortura",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/potro-de-tortura-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un siniestro artilugio para causar dolor.",
+      "texto": "No revisable."
+    },
+    {
+      "id": "potro-de-tortura-2",
+      "tipo": "potro-de-tortura",
+      "titulo": "Potro de tortura",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/potro-de-tortura-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un siniestro artilugio para causar dolor.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Te cortas con unos grilletes oxidados. Lanza 1DC, con calavera pierdes 1PC."
+          },
+          {
+            "resultado": "2-5",
+            "texto": "Restos de sangre y ropajes."
+          },
+          {
+            "resultado": "6",
+            "texto": "Encuentras una ornamentada daga de sacrificios con valor de 60mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "trono-1",
+      "tipo": "trono",
+      "titulo": "Trono",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/trono-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un ataviado asiento que perteneció a alguien noble.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-4",
+            "texto": "Nada."
+          },
+          {
+            "resultado": "5",
+            "texto": "Tocas un mecanismo que abre una puerta secreta. Colócala en esta sala hacia una sala inexplorada si es posible."
+          },
+          {
+            "resultado": "6",
+            "texto": "Bajo el trono encuentras unos viejos manuscritos por un valor de 20mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "trono-2",
+      "tipo": "trono",
+      "titulo": "Trono",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/trono-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Un ataviado asiento que perteneció a alguien noble.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Al sentarte, se activa el mecanismo de una trampa. Designa un héroe al azar que no seas tú en la misma sala. Este caerá en una trampa de foso (coloca el marcador bajo su miniatura)."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "Nada."
+          },
+          {
+            "resultado": "5",
+            "texto": "Tocas un mecanismo que abre una puerta secreta. Colócala en esta sala hacia una sala inexplorada si es posible."
+          },
+          {
+            "resultado": "6",
+            "texto": "Bajo él encuentras un viejo cetro con un valor de 50mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "tumba-1",
+      "tipo": "tumba",
+      "titulo": "Tumba",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/tumba-1.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una antigua tumba ornamentada de alguien que debió ser importante.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Monstruo errante (1D6):",
+            "tirada": {
+              "dado": "1D6",
+              "resultados": [
+                {
+                  "resultado": "1-3",
+                  "texto": "Esqueleto"
+                },
+                {
+                  "resultado": "4-5",
+                  "texto": "Zombi"
+                },
+                {
+                  "resultado": "6",
+                  "texto": "Momia"
+                }
+              ]
+            }
+          },
+          {
+            "resultado": "4-5",
+            "texto": "Diversos objetos con un valor de 50mo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Encuentras joyas por un valor de 100mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "tumba-2",
+      "tipo": "tumba",
+      "titulo": "Tumba",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/tumba-2.webp",
+        "tamano": "pequeña"
+      },
+      "cita": "Una vieja tumba que parece no haber sido profanada... Aún.",
+      "tirada": {
+        "accion": "Acción gratuita de revisar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Monstruo errante (1D6):",
+            "tirada": {
+              "dado": "1D6",
+              "resultados": [
+                {
+                  "resultado": "1-3",
+                  "texto": "Esqueleto"
+                },
+                {
+                  "resultado": "4-5",
+                  "texto": "Zombi"
+                },
+                {
+                  "resultado": "6",
+                  "texto": "Momia"
+                }
+              ]
+            }
+          },
+          {
+            "resultado": "3-4",
+            "texto": "Nada."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Ajuar por un valor de 50 mo."
+          }
+        ]
+      }
+    }
+  ]
+}

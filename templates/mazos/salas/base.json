@@ -1,0 +1,96 @@
+{
+  "id": "salas",
+  "nombre": "Salas",
+  "dorso": "dorso.webp",
+  "totalCartas": 21,
+  "cartas": [
+    {
+      "id": "sala-de-escaleras-1",
+      "tipo": "sala-de-escaleras",
+      "titulo": "Sala de Escaleras",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/sala-de-escaleras-1.webp",
+        "tamano": "grande"
+      },
+      "texto": "Coloca unas escaleras al siguiente nivel."
+    },
+    {
+      "id": "sala-especial-con-1-puerta-1",
+      "tipo": "sala-especial-con-1-puerta",
+      "titulo": "Sala Especial con 1 Puerta",
+      "copias": 3,
+      "imagen": {
+        "archivo": "imagenes/sala-especial-con-1-puerta-1.webp",
+        "tamano": "mediana"
+      },
+      "texto": "Roba una Carta de Sala Especial y suma 1 al Nivel de Peligro."
+    },
+    {
+      "id": "sala-especial-con-2-puertas-1",
+      "tipo": "sala-especial-con-2-puertas",
+      "titulo": "Sala Especial con 2 Puertas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/sala-especial-con-2-puertas-1.webp",
+        "tamano": "mediana"
+      },
+      "texto": "Roba una Carta de Sala Especial y suma 1 al Nivel de Peligro."
+    },
+    {
+      "id": "sala-especial-sin-puertas-1",
+      "tipo": "sala-especial-sin-puertas",
+      "titulo": "Sala Especial sin Puertas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/sala-especial-sin-puertas-1.webp",
+        "tamano": "mediana"
+      },
+      "texto": "Roba una Carta de Sala Especial y suma 1 al Nivel de Peligro."
+    },
+    {
+      "id": "sala-normal-con-1-puerta-1",
+      "tipo": "sala-normal-con-1-puerta",
+      "titulo": "Sala Normal con 1 Puerta",
+      "copias": 8,
+      "imagen": {
+        "archivo": "imagenes/sala-normal-con-1-puerta-1.webp",
+        "tamano": "mediana"
+      },
+      "texto": "Roba una Carta de Atrezo (3 y elige una si abriste una puerta secreta, las demás devuélvelas y baraja) y lanza 1D20+Nivel de Peligro en la Tabla de Encuentros."
+    },
+    {
+      "id": "sala-normal-con-2-puertas-1",
+      "tipo": "sala-normal-con-2-puertas",
+      "titulo": "Sala Normal con 2 Puertas",
+      "copias": 3,
+      "imagen": {
+        "archivo": "imagenes/sala-normal-con-2-puertas-1.webp",
+        "tamano": "mediana"
+      },
+      "texto": "Roba una Carta de Atrezo (3 y elige una si abriste una puerta secreta, las demás devuélvelas y baraja) y lanza 1D20+Nivel de Peligro en la Tabla de Encuentros."
+    },
+    {
+      "id": "sala-normal-sin-puertas-1",
+      "tipo": "sala-normal-sin-puertas",
+      "titulo": "Sala Normal sin Puertas",
+      "copias": 3,
+      "imagen": {
+        "archivo": "imagenes/sala-normal-sin-puertas-1.webp",
+        "tamano": "mediana"
+      },
+      "texto": "Roba una Carta de Atrezo (3 y elige una si abriste una puerta secreta, las demás devuélvelas y baraja) y lanza 1D20+Nivel de Peligro en la Tabla de Encuentros."
+    },
+    {
+      "id": "sala-objetivo-1",
+      "tipo": "sala-objetivo",
+      "titulo": "Sala Objetivo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/sala-objetivo-1.webp",
+        "tamano": "grande"
+      },
+      "texto": "Coloca los elementos indicados en la sección “Sala Objetivo” de la misión."
+    }
+  ]
+}

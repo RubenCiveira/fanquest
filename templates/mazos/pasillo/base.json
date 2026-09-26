@@ -1,0 +1,74 @@
+{
+  "id": "pasillo",
+  "nombre": "Pasillo",
+  "dorso": "dorso.webp",
+  "totalCartas": 12,
+  "cartas": [
+    {
+      "id": "pasillo-1",
+      "tipo": "pasillo",
+      "titulo": "Pasillo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pasillo-1.webp",
+        "tamano": "grande"
+      },
+      "texto": "Sin Puertas.\nBloqueado al final de uno de los lados de la sección a elegir.\nSi era la última carta, forma un nuevo mazo con los descartes."
+    },
+    {
+      "id": "pasillo-2",
+      "tipo": "pasillo",
+      "titulo": "Pasillo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pasillo-2.webp",
+        "tamano": "grande"
+      },
+      "texto": "1 puerta en la sala más alejada de la sección.\nHaz una tirada en la Tabla de Monstruos Errantes.\nSi era la última carta, forma un nuevo mazo con los descartes."
+    },
+    {
+      "id": "pasillo-3",
+      "tipo": "pasillo",
+      "titulo": "Pasillo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pasillo-3.webp",
+        "tamano": "grande"
+      },
+      "texto": "Una puerta en la sala más alejada de la sección.\nBloqueado tras la puerta.\nSi era la última carta, forma un nuevo mazo con los descartes."
+    },
+    {
+      "id": "pasillo-4",
+      "tipo": "pasillo",
+      "titulo": "Pasillo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pasillo-4.webp",
+        "tamano": "grande"
+      },
+      "texto": "Una puerta en una sala a elegir.\nSi era la última carta, forma un nuevo mazo con los descartes."
+    },
+    {
+      "id": "pasillo-5",
+      "tipo": "pasillo",
+      "titulo": "Pasillo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pasillo-5.webp",
+        "tamano": "grande"
+      },
+      "texto": "Dos puertas en dos salas a elegir.\nBloqueado tras la última puerta.\nSi era la última carta, forma un nuevo mazo con los descartes."
+    },
+    {
+      "id": "pasillo-6",
+      "tipo": "pasillo",
+      "titulo": "Pasillo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pasillo-6.webp",
+        "tamano": "grande"
+      },
+      "texto": "Dos puertas en dos salas a elegir.\nHaz una tirada en la Tabla de Monstruos Errantes.\nSi era la última carta, forma un nuevo mazo con los descartes."
+    }
+  ]
+}
