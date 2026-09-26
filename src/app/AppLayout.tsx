@@ -1,5 +1,7 @@
-import { NavLink, Outlet } from 'react-router'
+import { useEffect } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { Icono } from '../components/Icono'
+import { registrarVisita } from '../lib/matomo'
 import { AvisoActualizacion } from './AvisoActualizacion'
 
 const secciones = [
@@ -9,6 +11,10 @@ const secciones = [
 ] as const
 
 export function AppLayout() {
+  const { pathname } = useLocation()
+
+  useEffect(() => registrarVisita(), [pathname])
+
   return (
     <div className="app">
       <header className="app-header">

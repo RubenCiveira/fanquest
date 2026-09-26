@@ -23,3 +23,15 @@ pnpm dev
 pnpm build
 pnpm lint
 ```
+
+## Analítica
+
+Matomo (`https://matomo.civeira.net/`) sin cookies y respetando «Do Not
+Track». Solo se activa si hay ID de sitio:
+
+- Local: `VITE_MATOMO_SITE_ID` en `.env.local` (sin él no se registra nada).
+- GitHub Pages: sitio `2`, fijado en `.github/workflows/deploy-pages.yml`.
+- `VITE_MATOMO_URL` permite apuntar a otra instalación.
+
+Se registra cada cambio de página y el evento `Generador` al generar una
+misión, con el tipo de misión como nombre.

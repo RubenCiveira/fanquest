@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLoaderData, useRouteError } from 'react-router'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
+import { registrarEvento } from '../../lib/matomo'
 import { MisionCard } from './components/MisionCard'
 import { ReglasExtrasDialog } from './components/ReglasExtrasDialog'
 import { TIPOS_MISION } from './config/misiones'
@@ -60,8 +61,14 @@ export function GenerarPage() {
           type="button"
           className="button"
           onClick={() => {
-            setMision(generarMision(plantilla, seleccion, configExtras))
+            const nueva = generarMision(plantilla, seleccion, configExtras)
+            setMision(nueva)
             setTirada((t) => t + 1)
+            registrarEvento(
+              'Generador',
+              seleccion === 'aleatoria' ? 'Generar aleatoria' : 'Generar tipo',
+              TIPOS_MISION.find(({ regla }) => regla === nueva.regla)?.etiqueta,
+            )
           }}
         >
           <Icono nombre="dado" />
