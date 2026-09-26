@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { Icono } from '../components/Icono'
+import { AvisoActualizacion } from './AvisoActualizacion'
 
 const secciones = [
   { to: '/generar', label: 'Generar', icono: 'dado' },
@@ -26,6 +27,8 @@ export function AppLayout() {
           </NavLink>
         ))}
       </nav>
+
+      <AvisoActualizacion />
     </div>
   )
 }

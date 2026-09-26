@@ -37,6 +37,13 @@ jobs:
 
       - name: Build
         run: pnpm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+
+      # GitHub Pages sirve 404.html para rutas desconocidas: así una recarga
+      # en /fanquest/generar vuelve a cargar la SPA en lugar de dar error
+      - name: SPA fallback
+        run: cp dist/index.html dist/404.html
 
       - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v4

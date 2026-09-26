@@ -414,7 +414,8 @@ input[type='checkbox'] {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mision {
+  .mision,
+  .aviso {
     animation: none;
   }
 }
@@ -642,6 +643,25 @@ input[type='checkbox'] {
   background: var(--vitela);
 }
 
+/* ---------- Aviso de versión nueva / sin conexión ---------- */
+.aviso {
+  position: fixed;
+  z-index: 20;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom) + 12px);
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--vitela);
+  box-shadow: 0 12px 30px -10px rgb(40 25 10 / 0.45);
+  animation: entintar 600ms var(--ease);
+}
+
+.aviso p {
+  margin: 0;
+}
+
 /* ---------- A partir de tablet la navegación sube a la cabecera ---------- */
 @media (min-width: 768px) {
   .app {
@@ -686,6 +706,12 @@ input[type='checkbox'] {
     padding: 40px 24px 48px;
   }
 
+  .aviso {
+    left: auto;
+    bottom: 24px;
+    width: 380px;
+  }
+
   .generar-controles {
     grid-template-columns: 1fr auto;
     align-items: end;
@@ -709,6 +735,7 @@ input[type='checkbox'] {
 }
 
 @media print {
+  .aviso,
   .app-header,
   .app-nav,
   .page-header,
