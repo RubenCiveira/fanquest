@@ -22,7 +22,12 @@ pnpm install
 pnpm dev
 pnpm build
 pnpm lint
+pnpm test        # tests unitarios (Vitest); pnpm test:watch para desarrollo
 ```
+
+Los tests cargan las plantillas y mazos reales de `templates/`, así que
+también detectan cambios en ellos que rompan el generador o la preparación
+de misiones.
 
 ## Analítica
 
