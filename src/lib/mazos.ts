@@ -1,4 +1,4 @@
-import { fuenteLocal, type FuentePlantillas } from './plantillas'
+import { cachePorFuente, fuenteLocal, type FuentePlantillas } from './plantillas'
 
 /** Carta de un mazo de `templates/mazos/<mazo>/base.json` */
 export type CartaMazo = {
@@ -44,7 +44,8 @@ export type IdMazo = (typeof MAZOS)[number]
 
 export type Mazos = Record<IdMazo, Mazo>
 
-async function cargar(fuente: FuentePlantillas): Promise<Mazos> {
+/** Carga (una sola vez por fuente) los mazos base */
+export const cargarMazos = cachePorFuente(async (fuente): Promise<Mazos> => {
   const mazos = await Promise.all(
     MAZOS.map(async (id) => {
       const mazo = await fuente.leer('mazos', `${id}/base`)
@@ -56,20 +57,7 @@ async function cargar(fuente: FuentePlantillas): Promise<Mazos> {
     }),
   )
   return Object.fromEntries(mazos) as Mazos
-}
-
-const cache = new WeakMap<FuentePlantillas, Promise<Mazos>>()
-
-/** Carga (una sola vez por fuente) los mazos base */
-export function cargarMazos(fuente: FuentePlantillas = fuenteLocal): Promise<Mazos> {
-  let mazos = cache.get(fuente)
-  if (!mazos) {
-    mazos = cargar(fuente)
-    mazos.catch(() => cache.delete(fuente))
-    cache.set(fuente, mazos)
-  }
-  return mazos
-}
+})
 
 export function urlImagen(
   mazo: IdMazo,

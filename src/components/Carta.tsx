@@ -14,7 +14,7 @@ type Props = {
   sello?: string
 }
 
-function Tirada({ tirada }: { tirada: TiradaCarta }) {
+export function Tirada({ tirada }: { tirada: TiradaCarta }) {
   return (
     <>
       {(tirada.accion || tirada.dado) && (

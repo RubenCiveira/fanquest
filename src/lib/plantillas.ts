@@ -21,6 +21,20 @@ const recursos = import.meta.glob<string>('/templates/**/*.webp', {
   import: 'default',
 })
 
+/** Carga una sola vez por fuente; si falla, se reintenta en la siguiente llamada */
+export function cachePorFuente<T>(cargar: (fuente: FuentePlantillas) => Promise<T>) {
+  const cache = new WeakMap<FuentePlantillas, Promise<T>>()
+  return (fuente: FuentePlantillas = fuenteLocal): Promise<T> => {
+    let valor = cache.get(fuente)
+    if (!valor) {
+      valor = cargar(fuente)
+      valor.catch(() => cache.delete(fuente))
+      cache.set(fuente, valor)
+    }
+    return valor
+  }
+}
+
 export const fuenteLocal: FuentePlantillas = {
   async leer(coleccion, archivo) {
     const cargar = locales[`/templates/${coleccion}/${archivo}.json`]

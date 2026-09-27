@@ -1023,12 +1023,74 @@ input[type='checkbox'] {
   padding-left: 16px;
 }
 
+/* héroes y monstruos: retrato cuadrado y fila de estadísticas */
+.carta-personaje.carta-mini.carta-mediana img {
+  height: 44%;
+}
+
+.carta-stats {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(5, 1fr);
+  margin: 0;
+  border: 1px solid var(--tinta);
+  font-variant-numeric: lining-nums tabular-nums;
+  text-align: center;
+}
+
+.carta-stats div + div {
+  border-left: 1px solid var(--tinta);
+}
+
+.carta-stats dt {
+  font-family: var(--versalitas);
+  font-size: 0.5rem;
+  line-height: 1.3;
+  color: var(--vitela);
+  background: var(--tinta);
+}
+
+.carta-stats dd {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.carta-completa .carta-stats dt {
+  font-size: 0.72rem;
+}
+
+.carta-completa .carta-stats dd {
+  font-size: 1.15rem;
+}
+
+.carta-nota {
+  font-family: var(--lapiz);
+  font-weight: 300;
+  color: var(--grafito);
+}
+
+.dialog-carta-acciones {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.dialog-carta-acciones .nota {
+  margin: 0;
+  text-align: center;
+  color: var(--vitela);
+}
+
 /* doble clase: debe ganar a .dialog, que va después */
 .dialog.dialog-carta {
   width: fit-content;
   max-width: calc(100% - 32px);
-  padding: 0;
-  overflow: visible;
+  /* arriba, el hueco del botón de cerrar; los naipes altos se desplazan */
+  padding: 48px 0 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: none;
   border: 0;
   box-shadow: none;
@@ -1036,8 +1098,8 @@ input[type='checkbox'] {
 
 .dialog-carta-cerrar {
   position: absolute;
-  top: -48px;
-  right: -4px;
+  top: 0;
+  right: 0;
   color: var(--vitela);
 }
 
@@ -1256,7 +1318,8 @@ input[type='checkbox'] {
   line-height: 1.25;
 }
 
-.carta-texto {
+/* acotado: .carta-texto es también la carta sin imagen */
+.carta-info .carta-texto {
   overflow: hidden;
   font-size: 0.85rem;
   color: var(--grafito);
@@ -1539,4 +1602,5 @@ input[type='checkbox'] {
   .app-main {
     padding: 0;
   }
+
 }
