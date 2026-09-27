@@ -1,4 +1,4 @@
-import { barajar, caraDC, enResultado, tirable, tirar } from '../../../lib/dados'
+import { barajar, caraDC, enResultado, rnd, tirable, tirar } from '../../../lib/dados'
 import type { CartaMazo, IdMazo, Mazo, Mazos, TiradaCarta } from '../../../lib/mazos'
 import { DADOS_MOVIMIENTO, version, type Aliado, type Heroe, type Monstruos } from '../../../lib/personajes'
 import { PREPARACION } from '../../generar/config/preparacion'
@@ -62,6 +62,7 @@ export type Suceso =
   | { tipo: 'trampa'; motivo: 'entrar' | 'mover' | 'buscar'; dado: string; valor: number; carta?: string; conMonstruos: boolean }
   | { tipo: 'tirada'; mazo: IdMazo; carta: string; valores: number[] }
   | { tipo: 'movimiento'; valores: number[] }
+  | { tipo: 'combate'; atacante: string; defensor: string; perdidas: { nombre: string; pc: number }[] }
   | { tipo: 'puertas-secretas'; valores: number[] }
   | { tipo: 'brujo'; valor: number; evento?: number; tabla?: number; muerte?: number }
   | { tipo: 'cofre'; nivel: number; anadido: boolean }
@@ -85,6 +86,8 @@ export type MonstruoEnJuego = {
   avanzado: boolean
   /** Para distinguir miniaturas iguales: Orco 1, Orco 2… */
   numero: number
+  /** Nombre corto al azar de su plantilla o el que le da la misión (el Jefe) */
+  nombre?: string
   cuerpo: number
   pc: number
 }
@@ -533,19 +536,29 @@ export function apariciones(e: Encuentro, heroes: number, monstruos: Monstruos):
 export const reglasDeZona = (m: Mision, z: Zona) => efectosSala(m, z.momentos)
 
 /** Monstruos que aparecen: uno de los que pueden salir y cuántos */
-type Llegada = { opciones: string[]; avanzado: boolean; cantidad: number; cuerpo?: number }
+type Llegada = { opciones: string[]; avanzado: boolean; cantidad: number; cuerpo?: number; nombre?: string }
 
 /** Coloca monstruos en juego; de varias opciones, la que tenéis preparada */
 export function aparecen(p: Partida, ctx: Contexto, llegadas: Llegada[]): Partida {
   const monstruos = [...(p.monstruos ?? [])]
-  for (const { opciones: ids, avanzado, cantidad, cuerpo } of llegadas) {
+  for (const { opciones: ids, avanzado, cantidad, cuerpo, nombre } of llegadas) {
     const monstruo = ids.find((id) => ctx.seleccion[claveMonstruo(id, avanzado)]) ?? ids[0]
     const datos = monstruo && ctx.monstruos[monstruo]
     if (!datos) continue
     const pc = cuerpo ?? version(datos, avanzado).cuerpo
     for (let i = 0; i < cantidad; i++) {
       const numero = Math.max(0, ...monstruos.filter((m) => m.monstruo === monstruo).map((m) => m.numero)) + 1
-      monstruos.push({ id: `${monstruo}-${numero}`, monstruo, avanzado, numero, cuerpo: pc, pc })
+      // un nombre que no lleve ya otro monstruo en juego
+      const libres = (datos.nombres ?? []).filter((n) => !monstruos.some((m) => m.nombre === n))
+      monstruos.push({
+        id: `${monstruo}-${numero}`,
+        monstruo,
+        avanzado,
+        numero,
+        nombre: nombre ?? (libres.length ? rnd(libres) : undefined),
+        cuerpo: pc,
+        pc,
+      })
     }
   }
   return { ...p, monstruos, hayMonstruos: p.hayMonstruos || monstruos.length > 0 }
@@ -576,7 +589,15 @@ function monstruosObjetivo(ctx: Contexto): Llegada[] {
   return [
     ...errantes(ctx.mision.faccion.errante, Math.max(1, ctx.heroes)),
     ...(jefe
-      ? [{ opciones: [jefe.monstruo], avanzado: Boolean(jefe.avanzado), cantidad: 1, cuerpo: puntosCuerpoJefe(ctx.mision, ctx.monstruos, ctx.heroes) }]
+      ? [
+          {
+            opciones: [jefe.monstruo],
+            avanzado: Boolean(jefe.avanzado),
+            cantidad: 1,
+            cuerpo: puntosCuerpoJefe(ctx.mision, ctx.monstruos, ctx.heroes),
+            nombre: ctx.mision.jefe,
+          },
+        ]
       : []),
   ]
 }
@@ -590,3 +611,18 @@ export function cambiarVidaMonstruo(p: Partida, id: string, delta: number): Part
 }
 
 export const sinMonstruos = (p: Partida): Partida => ({ ...p, monstruos: [], hayMonstruos: false })
+
+/** Daño de un combate: a cada combatiente, sus PC perdidos */
+export function aplicarCombate(
+  p: Partida,
+  atacante: string,
+  defensor: string,
+  perdidas: { clave: string; nombre: string; pc: number; monstruo: boolean; cuerpo: number }[],
+): Partida {
+  let nueva = anotar(p, { tipo: 'combate', atacante, defensor, perdidas: perdidas.map(({ nombre, pc }) => ({ nombre, pc })) })
+  for (const x of perdidas) {
+    if (!x.pc) continue
+    nueva = x.monstruo ? cambiarVidaMonstruo(nueva, x.clave, -x.pc) : cambiarVida(nueva, x.clave, -x.pc, x.cuerpo)
+  }
+  return nueva
+}

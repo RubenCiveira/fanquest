@@ -2,7 +2,7 @@ import { caraDC } from '../../../lib/dados'
 import { urlImagen, type IdMazo } from '../../../lib/mazos'
 import type { Monstruos } from '../../../lib/personajes'
 import { ENCUENTRO_SIN_MONSTRUOS, EVENTOS_MAZMORRA, filaErrantes, PUERTA_SECRETA, TIRADA_PELIGRO } from '../config/partida'
-import { opciones } from '../lib/monstruos'
+import { nombreErrante, nombreMonstruo } from '../lib/monstruos'
 import { apariciones, carta, filaEncuentro, resultados, type Contexto, type Suceso } from '../lib/partida'
 
 type Props = {
@@ -10,6 +10,8 @@ type Props = {
   contexto: Contexto
   monstruos: Monstruos
   onVerCarta: (mazo: IdMazo, id: string) => void
+  /** Abre la tabla de monstruos de una tirada */
+  onVerTabla: (s: Extract<Suceso, { tipo: 'encuentro' | 'errantes' }>) => void
 }
 
 /** Carta robada: se abre entera al pulsarla */
@@ -27,13 +29,8 @@ export function FilaCartaJuego({ mazo, id, contexto, onVerCarta, texto }: { mazo
   )
 }
 
-const nombreMonstruo = (ids: string[], monstruos: Monstruos) => ids.map((id) => monstruos[id]?.nombre ?? id).join(' o ')
-
-const nombreErrante = (nombre: string, monstruos: Monstruos) =>
-  opciones(nombre).map((o) => monstruos[o.monstruo]?.nombre ?? o.monstruo).join(' o ') || nombre
-
 /** Lo que ha pasado en la zona, con el resultado de cada tirada */
-export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta }: Props) {
+export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta, onVerTabla }: Props) {
   const { mision, heroes } = contexto
   const fila = (mazo: IdMazo, id: string, texto?: string) => (
     <FilaCartaJuego key={id} mazo={mazo} id={id} contexto={contexto} onVerCarta={onVerCarta} texto={texto} />
@@ -66,7 +63,10 @@ export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta }: Pr
       return (
         <li className="suceso">
           <p className="suceso-titulo">
-            Tabla de encuentros: {s.dado} + {s.peligro} de peligro = <strong>{total}</strong>
+            Tabla de encuentros: {s.dado} + {s.peligro} de peligro = <strong>{total}</strong>{' '}
+            <button type="button" className="enlace" onClick={() => onVerTabla(s)}>
+              Ver tabla
+            </button>
           </p>
           {total <= ENCUENTRO_SIN_MONSTRUOS ? (
             <p>Hacéis más ruido del debido: no hay monstruos y el Nivel de Peligro sube 1.</p>
@@ -100,7 +100,12 @@ export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta }: Pr
         : `${f.errantes} ${nombreErrante(mision.faccion.errante, monstruos)} (errante)`
       return (
         <li className="suceso">
-          <p className="suceso-titulo">Tabla de monstruos errantes: {s.dado}</p>
+          <p className="suceso-titulo">
+            Tabla de monstruos errantes: {s.dado}{' '}
+            <button type="button" className="enlace" onClick={() => onVerTabla(s)}>
+              Ver tabla
+            </button>
+          </p>
           <p>
             <strong>{quien}</strong> a {s.distancia} casillas del héroe. Actúan nada más aparecer.
           </p>
@@ -171,6 +176,18 @@ export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta }: Pr
           {s.valores.length > 1 && s.valores.every((v) => v === s.valores[0]) && <p className="nota">¡Dobles!</p>}
         </li>
       )
+
+    case 'combate': {
+      const heridos = s.perdidas.filter((x) => x.pc > 0)
+      return (
+        <li className={heridos.length ? 'suceso suceso-alerta' : 'suceso'}>
+          <p className="suceso-titulo">
+            Combate: {s.atacante} contra {s.defensor}
+          </p>
+          <p>{heridos.length ? heridos.map((x) => `${x.nombre} pierde ${x.pc} PC`).join('; ') : 'Nadie pierde PC.'}</p>
+        </li>
+      )
+    }
 
     case 'puertas-secretas':
       return (

@@ -86,6 +86,11 @@ describe('monstruos de templates/monstruos', () => {
     expect(fuera.map((m) => m.id)).toEqual([])
   })
 
+  it('cada monstruo tiene al menos 12 nombres cortos distintos para sus miniaturas', () => {
+    const pocos = Object.values(monstruos).filter((m) => new Set(m.nombres ?? []).size < 12 || m.nombres?.some((n) => n.length > 12))
+    expect(pocos.map((m) => m.id)).toEqual([])
+  })
+
   it('los monstruos sin datos en los libros explican su estimación', () => {
     expect(Object.values(monstruos).filter((m) => m.estimado === '').map((m) => m.id)).toEqual([])
   })

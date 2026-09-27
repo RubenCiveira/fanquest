@@ -95,6 +95,8 @@ export type Monstruo = Estadisticas & {
   id: string
   nombre: string
   familia: FamiliaMonstruos
+  /** Nombres cortos para distinguir miniaturas iguales en la mesa */
+  nombres?: string[]
   /** Poder de 1 a 8 de las Categorías de monstruos de Aventuras Infinitas */
   categoria?: number
   descripcion: string

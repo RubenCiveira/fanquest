@@ -316,6 +316,18 @@ describe('monstruos en juego', () => {
     expect(p.monstruos?.map((m) => m.id)).toEqual(['zombi-1', 'zombi-2', 'conde-vampiro-1'])
   })
 
+  it('el Jefe Final lleva el nombre de la misión', () => {
+    const ctx = contexto('losetas', { ...noMuertos(), tipoJefe: 'Vampiro', jefe: 'Vlad el Pálido' })
+    const p = entrar(partida(ctx, { caminos: [['sala-objetivo-grande-1']] }), ctx, {})
+    expect(p.monstruos?.at(-1)?.nombre).toBe('Vlad el Pálido')
+  })
+
+  it('cada monstruo recibe un nombre corto de su lista sin repetir', () => {
+    const ctx = contexto()
+    const p = aparecen(partida(ctx), ctx, [{ opciones: ['goblin'], avanzado: false, cantidad: 20 }])
+    expect(new Set(p.monstruos?.map((m) => m.nombre))).toEqual(new Set(monstruos.goblin.nombres))
+  })
+
   it('de varias opciones aparece la que tenéis preparada', () => {
     const ctx = { ...contexto(), seleccion: { 'horror-rosa': 3 } }
     const p = aparecen(partida(ctx), ctx, [{ opciones: ['desangrador-de-khorne', 'horror-rosa'], avanzado: false, cantidad: 1 }])

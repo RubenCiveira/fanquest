@@ -96,3 +96,10 @@ export function puntosCuerpoJefe(m: Mision, monstruos: Monstruos, heroes: number
   const extra = (m.efectos ?? []).reduce((n, e) => n + (e.tipo === 'jefe' ? e.puntosCuerpo : 0), 0)
   return cuerpo + heroes + extra
 }
+
+/** Nombres del bestiario de una o varias opciones: «Diablilla o Horror Rosa» */
+export const nombreMonstruo = (ids: string[], monstruos: Monstruos) => ids.map((id) => monstruos[id]?.nombre ?? id).join(' o ')
+
+/** Nombre de los errantes que da el generador («Cultista/Orco»), con el del bestiario */
+export const nombreErrante = (nombre: string, monstruos: Monstruos) =>
+  nombreMonstruo(opciones(nombre).map((o) => o.monstruo), monstruos) || nombre

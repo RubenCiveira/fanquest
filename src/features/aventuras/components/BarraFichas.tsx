@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { Icono } from '../../../components/Icono'
 import { NaipeDialog } from '../../../components/NaipeDialog'
 
@@ -9,10 +9,16 @@ export type Ficha = {
   retrato?: string
   pc: number
   cuerpo: number
-  /** Para distinguir miniaturas iguales, p. ej. su número */
-  marca?: string
+  /** Nombre corto para distinguir miniaturas iguales */
+  alias?: string
   carta: ReactNode
 }
+
+/** Distancia a partir de la que pulsar «Atacar» pasa a ser arrastrarlo */
+const UMBRAL_ARRASTRE = 8
+
+/** Soltar cerca de una ficha enemiga (p. ej. entre dos) también cuenta */
+const MARGEN_OBJETIVO = 32
 
 type Props = {
   etiqueta: string
@@ -21,6 +27,10 @@ type Props = {
   /** Aviso bajo el contador, p. ej. que a 0 PC el monstruo muere */
   nota?: string
   className?: string
+  /** Bando de la barra: se ataca arrastrando hasta una ficha del otro */
+  bando: string
+  /** Atacar sin objetivo (se elige después) o soltando sobre un enemigo */
+  onAtacar: (clave: string, objetivo?: string) => void
 }
 
 const iniciales = (texto: string) =>
@@ -31,27 +41,126 @@ const iniciales = (texto: string) =>
     .join('')
 
 /** Héroes o monstruos a mano: su ficha y su contador de Puntos de Cuerpo */
-export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '' }: Props) {
+/** Ficha enemiga bajo el puntero o, si no hay ninguna, la más cercana dentro del margen */
+function enemigoEn(x: number, y: number, bando: string): HTMLElement | undefined {
+  const bajo = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-ficha]')
+  if (bajo) return bajo.dataset.bando !== bando ? bajo : undefined
+  const distancia = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect()
+    return Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom))
+  }
+  return [...document.querySelectorAll<HTMLElement>('[data-ficha]')]
+    .filter((el) => el.dataset.bando !== bando && distancia(el) <= MARGEN_OBJETIVO)
+    .toSorted((a, b) => distancia(a) - distancia(b))[0]
+}
+
+export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', bando, onAtacar }: Props) {
   const [abierta, setAbierta] = useState<string | null>(null)
   const ficha = fichas.find((f) => f.clave === abierta)
+  const barra = useRef<HTMLElement>(null)
+  const lista = useRef<HTMLDivElement>(null)
+  const [alto, setAlto] = useState<number>()
+  const [desborde, setDesborde] = useState({ arriba: false, abajo: false })
+
+  // la barra llega hasta la navegación inferior y, con más fichas de las que
+  // caben, muestra flechas para recorrer la lista
+  const medirLista = () => {
+    const el = lista.current
+    if (el) setDesborde({ arriba: el.scrollTop > 1, abajo: el.scrollTop + el.clientHeight < el.scrollHeight - 1 })
+  }
+  const medir = () => {
+    const arriba = barra.current?.getBoundingClientRect().top
+    const abajo = document.querySelector('.app-nav')?.getBoundingClientRect().top ?? window.innerHeight
+    const cabecera = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0
+    // al menos la mitad del alto entre la cabecera y la navegación
+    if (arriba !== undefined) setAlto(Math.max((abajo - cabecera) / 2, abajo - arriba - 12))
+    medirLista()
+  }
+  // con la nueva altura cambia lo que cabe
+  useEffect(medirLista, [alto])
+  useEffect(() => {
+    medir()
+    window.addEventListener('resize', medir)
+    window.addEventListener('scroll', medir, { passive: true })
+    return () => {
+      window.removeEventListener('resize', medir)
+      window.removeEventListener('scroll', medir)
+    }
+  }, [fichas.length])
+  const desplazar = (sentido: 1 | -1) =>
+    lista.current?.scrollBy({ top: sentido * lista.current.clientHeight * 0.8, behavior: 'smooth' })
+  const flechas = desborde.arriba || desborde.abajo
+
+  // «Atacar»: al pulsar se elige el enemigo en el diálogo; al arrastrar, se suelta sobre él
+  const arrastre = useRef<{ clave: string; x: number; y: number; moviendo: boolean } | null>(null)
+  const [fantasma, setFantasma] = useState<{ x: number; y: number } | null>(null)
+  const marcar = (objetivo?: HTMLElement) => {
+    document.querySelectorAll('.objetivo').forEach((el) => el !== objetivo && el.classList.remove('objetivo'))
+    objetivo?.classList.add('objetivo')
+  }
+  const soltar = (e: PointerEvent, cancelar = false) => {
+    const a = arrastre.current
+    arrastre.current = null
+    setFantasma(null)
+    marcar()
+    if (!a || cancelar) return
+    if (!a.moviendo) return onAtacar(a.clave)
+    const objetivo = enemigoEn(e.clientX, e.clientY, bando)?.dataset.ficha
+    if (objetivo) onAtacar(a.clave, objetivo)
+  }
+  const atacar = (clave: string) => ({
+    onPointerDown: (e: PointerEvent<HTMLButtonElement>) => {
+      e.currentTarget.setPointerCapture(e.pointerId)
+      arrastre.current = { clave, x: e.clientX, y: e.clientY, moviendo: false }
+    },
+    onPointerMove: (e: PointerEvent) => {
+      const a = arrastre.current
+      if (!a || (!a.moviendo && Math.hypot(e.clientX - a.x, e.clientY - a.y) < UMBRAL_ARRASTRE)) return
+      a.moviendo = true
+      setFantasma({ x: e.clientX, y: e.clientY })
+      marcar(enemigoEn(e.clientX, e.clientY, bando))
+    },
+    onPointerUp: (e: PointerEvent) => soltar(e),
+    onPointerCancel: (e: PointerEvent) => soltar(e, true),
+  })
 
   return (
-    <aside className={`partida-fichas ${className}`} aria-label={etiqueta}>
-      {fichas.map((f) => (
-        <button
-          key={f.clave}
-          type="button"
-          className={f.pc ? 'miembro' : 'miembro caido'}
-          onClick={() => setAbierta(f.clave)}
-          aria-label={`${f.nombre}: ${f.pc} de ${f.cuerpo} PC`}
-        >
-          {f.retrato ? <img src={f.retrato} alt="" /> : <span className="miembro-iniciales">{iniciales(f.nombre)}</span>}
-          {f.marca && <span className="miembro-marca">{f.marca}</span>}
-          <span className="miembro-vida">
-            {f.pc}/{f.cuerpo}
-          </span>
+    <aside ref={barra} className={`partida-fichas ${className}`} aria-label={etiqueta} style={{ maxHeight: alto }}>
+      {flechas && (
+        <button type="button" className="icon-button barra-flecha" disabled={!desborde.arriba} onClick={() => desplazar(-1)} aria-label="Ver anteriores">
+          <Icono nombre="arriba" />
         </button>
+      )}
+      <div ref={lista} className="partida-fichas-lista" onScroll={medirLista}>
+      {fichas.map((f) => (
+        <div key={f.clave} className="ficha-barra" data-ficha={f.clave} data-bando={bando}>
+          <button
+            type="button"
+            className={f.pc ? 'miembro' : 'miembro caido'}
+            onClick={() => setAbierta(f.clave)}
+            aria-label={`${f.alias ? `${f.alias}, ` : ''}${f.nombre}: ${f.pc} de ${f.cuerpo} PC`}
+          >
+            {f.alias && <span className="miembro-alias">{f.alias}</span>}
+            {f.retrato ? <img src={f.retrato} alt="" /> : <span className="miembro-iniciales">{iniciales(f.nombre)}</span>}
+          </button>
+          <span className="ficha-pie">
+            <span className="miembro-vida">
+              {f.pc}/{f.cuerpo}
+            </span>
+            {f.pc > 0 && (
+              <button type="button" className="icon-button atacar" aria-label={`${f.alias ?? f.nombre} ataca`} title="Pulsa o arrastra hasta un enemigo" {...atacar(f.clave)}>
+                <Icono nombre="espada" />
+              </button>
+            )}
+          </span>
+        </div>
       ))}
+      </div>
+      {flechas && (
+        <button type="button" className="icon-button barra-flecha" disabled={!desborde.abajo} onClick={() => desplazar(1)} aria-label="Ver siguientes">
+          <Icono nombre="abajo" />
+        </button>
+      )}
 
       {ficha && (
         <NaipeDialog
@@ -83,11 +192,30 @@ export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '' }: 
                 </button>
               </div>
               {nota && <p className="nota">{nota}</p>}
+              {ficha.pc > 0 && (
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    setAbierta(null)
+                    onAtacar(ficha.clave)
+                  }}
+                >
+                  <Icono nombre="espada" />
+                  Atacar
+                </button>
+              )}
             </>
           }
         >
           {ficha.carta}
         </NaipeDialog>
+      )}
+
+      {fantasma && (
+        <span className="fantasma-ataque" style={{ left: fantasma.x, top: fantasma.y }} aria-hidden="true">
+          <Icono nombre="espada" />
+        </span>
       )}
     </aside>
   )

@@ -134,8 +134,9 @@ monstruos del Bestiario de FetenQuest y los que citan las Categorías de
 monstruos y las tablas de encuentros de Aventuras Infinitas. Una familia nueva
 se añade también a `FAMILIAS_MONSTRUOS` (`src/lib/personajes.ts`); los tests
 avisan si falta. Los ids no se pueden repetir entre familias. Cada monstruo
-tiene `id`, `nombre`, `categoria` (1 a 8, si figura en las
-Categorías), `movimiento`, `ataque`, `defensa`, `cuerpo`, `mente`,
+tiene `id`, `nombre`, `nombres` (nombres cortos que la partida reparte al
+azar entre las miniaturas iguales para distinguirlas), `categoria` (1 a 8, si
+figura en las Categorías), `movimiento`, `ataque`, `defensa`, `cuerpo`, `mente`,
 `descripcion`, `reglas` (`nombre` y `texto` opcional) e `imagen` opcional.
 
 - `avanzado`: estadísticas y reglas de «Monstruos avanzados».

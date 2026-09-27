@@ -5,18 +5,22 @@ import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { registrarEvento } from '../../lib/matomo'
-import { DADOS_MOVIMIENTO, urlRetrato } from '../../lib/personajes'
+import { DADOS_MOVIMIENTO, urlRetrato, version } from '../../lib/personajes'
 import type { IdMazo, Mazos } from '../../lib/mazos'
 import type { EfectoEspecial } from '../generar/lib/tipos'
 import { CartaAliado } from '../../components/CartaAliado'
 import { CartaHeroe } from '../../components/CartaHeroe'
 import { CartaMonstruo } from '../../components/CartaMonstruo'
 import { BarraFichas, type Ficha } from './components/BarraFichas'
+import { CombateDialog, type Participante } from './components/CombateDialog'
+import { perdidas } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
+import { TablaTiradaDialog, type TiradaEnTabla } from './components/TablaTiradaDialog'
 import { SALA_INICIAL } from './config/partida'
 import { opciones, puntosCuerpoJefe } from './lib/monstruos'
 import {
+  aplicarCombate,
   atrezoColocado,
   avanzar,
   buscarPuertasSecretas,
@@ -130,6 +134,8 @@ export function JugarPage() {
   const [verCarta, setVerCarta] = useState<{ mazo: IdMazo; id: string } | null>(null)
   const [verReglas, setVerReglas] = useState(false)
   const [terminar, setTerminar] = useState<FinPartida | null>(null)
+  const [tabla, setTabla] = useState<TiradaEnTabla | null>(null)
+  const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
   const { zona } = p
   const { movimientoFijo } = reglasPartida(aventura.configuracion)
   const [paso] = zona.pendientes
@@ -162,16 +168,33 @@ export function JugarPage() {
       ? [
           {
             clave: m.id,
-            nombre: `${datos.nombre} ${m.numero}`,
+            nombre: m.nombre ? datos.nombre : `${datos.nombre} ${m.numero}`,
+            alias: m.nombre ?? String(m.numero),
             retrato: urlRetrato('monstruos', datos),
             pc: m.pc,
             cuerpo: m.cuerpo,
-            marca: String(m.numero),
-            carta: <CartaMonstruo monstruo={datos} avanzado={m.avanzado} variante="completa" papel={`Nº ${m.numero}`} />,
+            carta: <CartaMonstruo monstruo={datos} avanzado={m.avanzado} variante="completa" papel={m.nombre ?? `Nº ${m.numero}`} />,
           },
         ]
       : []
   })
+  // quién puede atacar a quién: el grupo a los monstruos y al revés
+  const participantes: Participante[] = [
+    ...miembros.map((m): Participante => {
+      const datos = 'heroe' in m ? m.heroe : m.aliado
+      const ficha = grupo.find((f) => f.clave === m.clave)
+      return { clave: m.clave, nombre: datos.nombre, bando: 'grupo', ataque: datos.ataque, defensa: datos.defensa, retrato: ficha?.retrato }
+    }),
+    ...(p.monstruos ?? []).flatMap((m): Participante[] => {
+      const datos = monstruos[m.monstruo]
+      const ficha = enJuego.find((f) => f.clave === m.id)
+      if (!datos || !ficha) return []
+      const { ataque: dados, defensa } = version(datos, m.avanzado)
+      return [{ clave: m.id, nombre: ficha.alias ?? ficha.nombre, bando: 'monstruos', ataque: dados, defensa, retrato: ficha.retrato }]
+    }),
+  ]
+  const participante = (clave?: string) => participantes.find((x) => x.clave === clave)
+  const atacante = participante(ataque?.atacante)
   const pcJefe = puntosCuerpoJefe(mision, monstruos, heroes)
 
   return (
@@ -193,6 +216,8 @@ export function JugarPage() {
           etiqueta="Grupo"
           className="partida-grupo"
           fichas={grupo}
+          bando="grupo"
+          onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
           onVida={(clave, delta) =>
             hacer((a) => cambiarVida(a, clave, delta, grupo.find((f) => f.clave === clave)?.cuerpo ?? 0))
           }
@@ -297,7 +322,7 @@ export function JugarPage() {
             {zona.sucesos.length > 0 && (
               <ol className="sucesos">
                 {zona.sucesos.map((s, i) => (
-                  <SucesoPartida key={i} suceso={s} contexto={contexto} monstruos={monstruos} onVerCarta={onVerCarta} />
+                  <SucesoPartida key={i} suceso={s} contexto={contexto} monstruos={monstruos} onVerCarta={onVerCarta} onVerTabla={setTabla} />
                 ))}
               </ol>
             )}
@@ -315,7 +340,19 @@ export function JugarPage() {
                     ))}
                   </div>
                 ) : (
-                  <button type="button" className="button" onClick={() => hacer((a) => avanzar(a, contexto))}>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => {
+                      const nueva = avanzar(p, contexto)
+                      hacer(() => nueva)
+                      // la tirada en una tabla de monstruos se muestra con la tabla entera
+                      const tirada = nueva.zona.sucesos.findLast(
+                        (s): s is TiradaEnTabla => s.tipo === 'encuentro' || s.tipo === 'errantes',
+                      )
+                      if (tirada && (paso.tipo === 'encuentro' || paso.tipo === 'errantes')) setTabla(tirada)
+                    }}
+                  >
                     <Icono nombre="dado" />
                     {explicarPaso(paso, p.dadoTrampa, p.peligro)[0]}
                   </button>
@@ -484,6 +521,8 @@ export function JugarPage() {
             etiqueta="Monstruos en juego"
             className="partida-monstruos"
             fichas={enJuego}
+            bando="monstruos"
+            onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
             onVida={(id, delta) => hacer((a) => cambiarVidaMonstruo(a, id, delta))}
             nota="A 0 PC el monstruo muere y sale de la barra."
           />
@@ -497,6 +536,29 @@ export function JugarPage() {
           onCerrar={() => setVerCarta(null)}
         />
       )}
+      {atacante && (
+        <CombateDialog
+          atacante={atacante}
+          defensor={participante(ataque?.defensor)}
+          enemigos={participantes.filter((x) => x.bando !== atacante.bando && (x.bando === 'monstruos' || (p.vidas[x.clave] ?? 1) > 0))}
+          onAplicar={(c) =>
+            hacer((a) =>
+              aplicarCombate(
+                a,
+                c.atacante.nombre,
+                c.defensor.nombre,
+                perdidas(c).map((x) => ({
+                  ...x,
+                  monstruo: participante(x.clave)?.bando === 'monstruos',
+                  cuerpo: grupo.find((f) => f.clave === x.clave)?.cuerpo ?? 0,
+                })),
+              ),
+            )
+          }
+          onCerrar={() => setAtaque(null)}
+        />
+      )}
+      {tabla && <TablaTiradaDialog tirada={tabla} contexto={contexto} monstruos={monstruos} onCerrar={() => setTabla(null)} />}
       {verReglas && <ReglasMisionDialog mision={mision} onCerrar={() => setVerReglas(false)} />}
       {terminar && (
         <ConfirmarDialog
