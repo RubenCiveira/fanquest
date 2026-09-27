@@ -11,7 +11,7 @@ type Props = {
   monstruos: Monstruos
   onVerCarta: (mazo: IdMazo, id: string) => void
   /** Abre la tabla de monstruos de una tirada */
-  onVerTabla: (s: Extract<Suceso, { tipo: 'encuentro' | 'errantes' }>) => void
+  onVerTabla: (s: Extract<Suceso, { tipo: 'encuentro' | 'errantes' | 'azar' }>) => void
 }
 
 /** Carta robada: se abre entera al pulsarla */
@@ -174,6 +174,19 @@ export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta, onVe
             Movimiento: {s.valores.join(' + ')} = <strong>{s.valores.reduce((a, b) => a + b, 0)}</strong> casillas
           </p>
           {s.valores.length > 1 && s.valores.every((v) => v === s.valores[0]) && <p className="nota">¡Dobles!</p>}
+        </li>
+      )
+
+    case 'azar':
+      return (
+        <li className="suceso">
+          <p className="suceso-titulo">
+            Monstruos al azar de categoría {s.categoria} (1D{s.candidatos.length}): {s.valores.join(', ')}{' '}
+            <button type="button" className="enlace" onClick={() => onVerTabla(s)}>
+              Ver tabla
+            </button>
+          </p>
+          <p>{s.valores.map((v) => nombreMonstruo([s.candidatos[v - 1]], monstruos)).join(', ')}</p>
         </li>
       )
 

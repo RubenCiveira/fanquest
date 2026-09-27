@@ -11,7 +11,15 @@ import { cartasDeAtrezo, letraSalaDeMision, pideErrantes, seccionDe } from '../c
 import {
   aparecen,
   apariciones,
+  anadirPuerta,
+  candidatosDeCategoria,
+  monstruosAlAzar,
+  cambiarSinPuertas,
   cambiarVidaMonstruo,
+  conMapa,
+  quitarPuerta,
+  secciones,
+  volver,
   atrezoColocado,
   avanzar,
   buscarPuertasSecretas,
@@ -149,9 +157,9 @@ describe('abrir una puerta', () => {
     const p = entrar(
       partida(contexto(), { caminos: [['sala-normal-pequena-sin-puertas-1', 'a'], ['b']] }),
       contexto(),
-      { camino: 0 },
+      { puerta: 0 },
     )
-    expect(p.caminos).toEqual([['b', 'a']])
+    expect(p.caminos).toEqual([[], ['b', 'a']])
   })
 
   it('con tablero, un pasillo sale del Mazo de Pasillo y se rehace al acabarse', () => {
@@ -169,19 +177,19 @@ describe('abrir una puerta', () => {
 describe('secuencia de exploración', () => {
   it('con 1-10 en la tabla de encuentros no hay monstruos y sube el peligro', () => {
     dados(0)
-    const p = avanzar(partida(contexto(), { zona: { tipo: 'sala', momentos: [], pendientes: [{ tipo: 'encuentro' }], sucesos: [] } }), contexto())
+    const p = avanzar(partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [{ tipo: 'encuentro' }], sucesos: [] } }), contexto())
     expect([p.peligro, p.hayMonstruos]).toEqual([1, false])
   })
 
   it('con más de 10 en la tabla de encuentros hay monstruos', () => {
     dados(0.999)
-    const p = avanzar(partida(contexto(), { zona: { tipo: 'sala', momentos: [], pendientes: [{ tipo: 'encuentro' }], sucesos: [] } }), contexto())
+    const p = avanzar(partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [{ tipo: 'encuentro' }], sucesos: [] } }), contexto())
     expect([p.peligro, p.hayMonstruos]).toEqual([0, true])
   })
 
   it('con un 1 en el dado de trampa se activa una y sube el peligro', () => {
     dados(0)
-    const p = avanzar(partida(contexto(), { zona: { tipo: 'sala', momentos: [], pendientes: [{ tipo: 'trampa' }], sucesos: [] } }), contexto())
+    const p = avanzar(partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [{ tipo: 'trampa' }], sucesos: [] } }), contexto())
     expect([p.peligro, p.zona.sucesos[0]]).toMatchObject([1, { tipo: 'trampa', valor: 1, carta: expect.any(String) }])
   })
 
@@ -189,7 +197,7 @@ describe('secuencia de exploración', () => {
     const p = avanzar(
       partida(contexto(), {
         mazos: { ...partida().mazos, atrezo: ['sin-atrezo-1', 'sin-atrezo-2', 'armario-1', 'mesa-1'] },
-        zona: { tipo: 'objetivo', momentos: [], pendientes: [{ tipo: 'atrezo', robar: 'hasta-con-atrezo' }], sucesos: [] },
+        zona: { id: 1, salidas: [], tipo: 'objetivo', momentos: [], pendientes: [{ tipo: 'atrezo', robar: 'hasta-con-atrezo' }], sucesos: [] },
       }),
       contexto(),
     )
@@ -197,14 +205,14 @@ describe('secuencia de exploración', () => {
   })
 
   it('la sala especial sube el peligro y marca la primera especial', () => {
-    const p = avanzar(partida(contexto(), { zona: { tipo: 'especial', momentos: [], pendientes: [{ tipo: 'especial' }], sucesos: [] } }), contexto())
+    const p = avanzar(partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'especial', momentos: [], pendientes: [{ tipo: 'especial' }], sucesos: [] } }), contexto())
     expect([p.peligro, p.zona.momentos]).toEqual([1, ['especial', 'primera-especial']])
   })
 
   it('de tres cartas de atrezo se coloca la elegida y las demás vuelven al mazo', () => {
     const inicio = partida(contexto(), {
       mazos: { ...partida().mazos, atrezo: ['armario-1', 'mesa-1', 'trono-1', 'tumba-1'] },
-      zona: { tipo: 'secreta', momentos: [], pendientes: [{ tipo: 'atrezo', robar: 3, elegir: true }], sucesos: [] },
+      zona: { id: 1, salidas: [], tipo: 'secreta', momentos: [], pendientes: [{ tipo: 'atrezo', robar: 3, elegir: true }], sucesos: [] },
     })
     const p = elegirAtrezo(avanzar(inicio, contexto()), 'mesa-1')
     expect([atrezoColocado(p.zona), [...p.mazos.atrezo].sort()]).toEqual([['mesa-1'], ['armario-1', 'trono-1', 'tumba-1']])
@@ -230,18 +238,18 @@ describe('nivel de peligro', () => {
 
 describe('acciones', () => {
   it('sin atributo de movimiento, moverse tira 2D6 y el dado de trampa', () => {
-    const antes = partida(contexto(), { zona: { tipo: 'sala', momentos: [], pendientes: [], sucesos: [] } })
+    const antes = partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [], sucesos: [] } })
     dados(0.999)
     expect(moverse(antes, contexto(), true).zona.sucesos.map((s) => s.tipo)).toEqual(['movimiento', 'trampa'])
   })
 
   it('donde ya se buscaron trampas, moverse solo tira el movimiento', () => {
-    const antes = partida(contexto(), { zona: { tipo: 'sala', momentos: [], pendientes: [], sucesos: [], sinTrampas: true } })
+    const antes = partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [], sucesos: [], sinTrampas: true } })
     expect(moverse(antes, contexto(), true).zona.sucesos).toMatchObject([{ tipo: 'movimiento', valores: [expect.any(Number), expect.any(Number)] }])
   })
 
   it('buscar trampas deja la sección sin tirar el dado de trampa', () => {
-    const antes = partida(contexto(), { zona: { tipo: 'sala', momentos: [], pendientes: [], sucesos: [] } })
+    const antes = partida(contexto(), { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [], sucesos: [] } })
     dados(0.999)
     const p = buscarTrampas(antes, contexto())
     const [s] = p.zona.sucesos
@@ -302,7 +310,7 @@ describe('monstruos en juego', () => {
 
   it('un encuentro pone en juego sus monstruos con sus PC', () => {
     const ctx = contexto('losetas', noMuertos())
-    const antes = partida(ctx, { zona: { tipo: 'sala', momentos: [], pendientes: [{ tipo: 'encuentro' }], sucesos: [] } })
+    const antes = partida(ctx, { zona: { id: 1, salidas: [], tipo: 'sala', momentos: [], pendientes: [{ tipo: 'encuentro' }], sucesos: [] } })
     dados(0.55) // un 12 en 1D20: con 2 héroes, 2 esqueletos
     expect(avanzar(antes, ctx).monstruos?.map((m) => [m.id, m.pc])).toEqual([
       ['esqueleto-1', monstruos.esqueleto.cuerpo],
@@ -339,5 +347,130 @@ describe('monstruos en juego', () => {
     const p = aparecen(partida(ctx), ctx, [{ opciones: ['goblin'], avanzado: false, cantidad: 1, cuerpo: 1 }])
     const tras = cambiarVidaMonstruo(p, 'goblin-1', -1)
     expect([tras.monstruos, tras.hayMonstruos]).toEqual([[], false])
+  })
+})
+
+describe('mapa de la mazmorra', () => {
+  const inicio = (caminos: string[][]) => partida(contexto(), { caminos })
+
+  it('la puerta cruzada lleva a la nueva sección y esta recuerda su entrada', () => {
+    const p = entrar(inicio([['pasillo-1', 'pasillo-2']]), contexto(), { puerta: 0 })
+    const inicial = secciones(p)[0]
+    expect([inicial.salidas[0].destino, p.zona.padre]).toEqual([p.zona.id, 0])
+  })
+
+  it('volver por la entrada recupera la sección anterior con lo que pasó en ella', () => {
+    const ctx = contexto()
+    const sala = avanzar(entrar(inicio([['sala-normal-mediana-1-puerta-1', 'pasillo-1']]), ctx, { puerta: 0 }), ctx)
+    const deVuelta = volver(entrar(sala, ctx, { puerta: 0 }))
+    expect([deVuelta.zona.id, deVuelta.zona.sucesos]).toEqual([sala.zona.id, sala.zona.sucesos])
+  })
+
+  it('avanzar por una puerta ya explorada no roba carta', () => {
+    const ctx = contexto()
+    const ida = entrar(inicio([['pasillo-1', 'pasillo-2']]), ctx, { puerta: 0 })
+    const vuelta = entrar(volver(ida), ctx, { puerta: 0 })
+    expect([vuelta.zona.id, vuelta.caminos]).toEqual([ida.zona.id, ida.caminos])
+  })
+
+  it('tras una bifurcación cada puerta roba de su mitad del mazo', () => {
+    const ctx = contexto()
+    const bifurcacion = entrar(inicio([['pasillo-con-bifurcacion-1', 'pasillo-1', 'pasillo-2', 'pasillo-3']]), ctx, { puerta: 0 })
+    const segunda = entrar(volver(entrar(bifurcacion, ctx, { puerta: 0 })), ctx, { puerta: 1 })
+    expect(segunda.zona.sucesos[0]).toEqual({ tipo: 'carta', mazo: 'mazmorra', id: 'pasillo-2' })
+  })
+
+  it('las partidas anteriores al mapa tienen una puerta por camino con cartas', () => {
+    const { exploradas: _, ...antigua } = inicio([['a'], [], ['b']])
+    const { id: __, salidas: ___, ...zona } = antigua.zona
+    expect(conMapa({ ...antigua, zona } as Partida, 'losetas').zona.salidas).toEqual([{ camino: 0 }, { camino: 2 }])
+  })
+
+  it('en una partida anterior al mapa siempre se puede volver por la entrada', () => {
+    const { exploradas: _, ...antigua } = inicio([[], ['b']])
+    const zona = { tipo: 'sala', momentos: [], pendientes: [], sucesos: [{ tipo: 'carta', mazo: 'mazmorra', id: 'sala-normal-pequena-sin-puertas-1' }] }
+    const p = volver(conMapa({ ...antigua, zona } as unknown as Partida, 'losetas'))
+    expect([p.zona.nombre, p.zona.salidas]).toEqual(['Secciones ya exploradas', [{ destino: 1 }, { camino: 1 }]])
+  })
+})
+
+describe('secciones sin puertas', () => {
+  it('con tablero, una sala sin puertas no deja avanzar', () => {
+    const ctx = contexto('tablero')
+    const p = entrar(partida(ctx, { caminos: [['sala-normal-sin-puertas-1']] }), ctx, { seccion: 'sala' })
+    expect([p.zona.sinPuertas, p.zona.salidas]).toEqual([true, []])
+  })
+
+  it('con losetas y otro camino en juego, la sala sin puertas no deja avanzar', () => {
+    const p = entrar(partida(contexto(), { caminos: [['sala-normal-pequena-sin-puertas-1', 'a'], ['b']] }), contexto(), { puerta: 0 })
+    expect([p.zona.sinPuertas, p.zona.salidas]).toEqual([true, []])
+  })
+
+  it('con losetas y un solo mazo, la carta pone una puerta para no quedar atrapados', () => {
+    const p = entrar(partida(contexto(), { caminos: [['sala-normal-pequena-sin-puertas-1', 'a']] }), contexto(), { puerta: 0 })
+    expect([p.zona.sinPuertas, p.zona.salidas]).toEqual([undefined, [{ camino: 0 }]])
+  })
+
+  it('la regla de la misión puede dejar la Sala Especial A sin puertas', () => {
+    const ctx = contexto('losetas', mision(9))
+    const antes = partida(ctx, {
+      mazos: { ...partida(ctx).mazos, 'salas-especiales': ['sala-especial-de-mision-1'] },
+      zona: { id: 1, salidas: [{ camino: 0 }], tipo: 'especial', momentos: [], pendientes: [{ tipo: 'especial' }], sucesos: [] },
+    })
+    const p = avanzar(antes, ctx)
+    expect([p.zona.sinPuertas, p.zona.salidas]).toEqual([true, []])
+  })
+})
+
+describe('editar las puertas', () => {
+  const pasillo = (caminos: string[][]) => entrar(partida(contexto(), { caminos }), contexto(), { puerta: 0 })
+
+  it('añadir una puerta reparte el mazo entre las dos, como una bifurcación', () => {
+    const p = anadirPuerta(pasillo([['pasillo-1', 'a', 'b', 'c']]))
+    expect([p.zona.salidas, p.caminos]).toEqual([[{ camino: 0 }, { camino: 1 }], [['a', 'c'], ['b']]])
+  })
+
+  it('quitar una puerta devuelve sus cartas al mazo de otra', () => {
+    const p = quitarPuerta(anadirPuerta(pasillo([['pasillo-1', 'a', 'b', 'c']])))
+    expect([p.zona.salidas, p.caminos[0].toSorted()]).toEqual([[{ camino: 0 }], ['a', 'b', 'c']])
+  })
+
+  it('sin puertas por delante la sección queda sin puertas', () => {
+    expect(quitarPuerta(pasillo([['pasillo-1', 'a']])).zona.sinPuertas).toBe(true)
+  })
+
+  it('una puerta añadida vuelve a dejar avanzar', () => {
+    expect(anadirPuerta(quitarPuerta(pasillo([['pasillo-1', 'a']]))).zona.sinPuertas).toBeUndefined()
+  })
+
+  it('no se quitan las puertas ya exploradas', () => {
+    const ctx = contexto()
+    const inicial = volver(entrar(partida(ctx, { caminos: [['pasillo-1', 'a']] }), ctx, { puerta: 0 }))
+    expect(quitarPuerta(inicial)).toBe(inicial)
+  })
+
+  it('con tablero se marca si la sección no tiene puertas', () => {
+    expect(cambiarSinPuertas(partida(contexto('tablero')), true).zona.sinPuertas).toBe(true)
+  })
+})
+
+describe('monstruos al azar', () => {
+  const pielesVerdes = () => ({ ...mision(), faccion: { nombre: 'Pieles-Verdes', errante: 'Orco', erranteSuperior: 'Fimir' } })
+
+  it('se sortean entre los de esa categoría de la tabla de encuentros de la misión', () => {
+    expect(candidatosDeCategoria(contexto('losetas', pielesVerdes()), 4).toSorted()).toEqual(['chaman-goblin', 'orco-negro'])
+  })
+
+  it('si la tabla no tiene ninguno de esa categoría, entre todos los del bestiario', () => {
+    expect(candidatosDeCategoria(contexto('losetas', pielesVerdes()), 8).toSorted()).toEqual(['dragon-zombi', 'gran-dragon', 'principe-demonio'])
+  })
+
+  it('cada tirada pone en juego el monstruo que sale', () => {
+    const ctx = contexto('losetas', pielesVerdes())
+    const antes = partida(ctx)
+    dados(0)
+    const p = monstruosAlAzar(antes, ctx, 4, 2)
+    const [primero] = candidatosDeCategoria(ctx, 4)
+    expect(p.monstruos?.map((m) => m.monstruo)).toEqual([primero, primero])
   })
 })

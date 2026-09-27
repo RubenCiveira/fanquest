@@ -19,13 +19,22 @@ import {
   REGLAS_A_DISTANCIA,
   REGLAS_DE_MAGIA,
   seccionDe,
+  sinPuertas,
   subePeligro,
   TRAMPA_ACTIVADA,
   TRAMPA_ENCONTRADA,
   une,
   type Seccion,
 } from '../config/partida'
-import { claveMonstruo, columna, opciones, puntosCuerpoJefe, tablaDeMision, type SeleccionMonstruos } from './monstruos'
+import {
+  claveMonstruo,
+  columna,
+  mazoMonstruos,
+  opciones,
+  puntosCuerpoJefe,
+  tablaDeMision,
+  type SeleccionMonstruos,
+} from './monstruos'
 import { claveAliado, type Configuracion } from './preparacion'
 
 /** Lo que la partida necesita saber de la aventura */
@@ -62,12 +71,30 @@ export type Suceso =
   | { tipo: 'trampa'; motivo: 'entrar' | 'mover' | 'buscar'; dado: string; valor: number; carta?: string; conMonstruos: boolean }
   | { tipo: 'tirada'; mazo: IdMazo; carta: string; valores: number[] }
   | { tipo: 'movimiento'; valores: number[] }
+  /** Monstruos al azar de una categoría: una tirada por monstruo en la lista de candidatos */
+  | { tipo: 'azar'; categoria: number; candidatos: string[]; valores: number[] }
   | { tipo: 'combate'; atacante: string; defensor: string; perdidas: { nombre: string; pc: number }[] }
   | { tipo: 'puertas-secretas'; valores: number[] }
   | { tipo: 'brujo'; valor: number; evento?: number; tabla?: number; muerte?: number }
   | { tipo: 'cofre'; nivel: number; anadido: boolean }
 
+/** Puerta de una sección: la que lleva a lo inexplorado roba de su camino */
+export type Salida = {
+  /** Camino (Mazo de Mazmorra) del que se roba al cruzarla por primera vez */
+  camino?: number
+  /** Sección a la que lleva, una vez explorada */
+  destino?: number
+  secreta?: boolean
+}
+
 export type Zona = {
+  /** Orden de exploración: la Sala Inicial es la 0 */
+  id: number
+  /** Sección por la que se entró; volver por la entrada lleva a ella */
+  padre?: number
+  salidas: Salida[]
+  /** Nombre en vez del de su tipo (la entrada que se crea para partidas antiguas) */
+  nombre?: string
   tipo: TipoZona
   /** Momentos de la misión que interesan a esta zona (sus reglas especiales) */
   momentos: Sala[]
@@ -77,6 +104,8 @@ export type Zona = {
   sinTrampas?: boolean
   /** Puerta secreta encontrada y aún sin abrir */
   puertaSecreta?: boolean
+  /** Sin puertas hacia delante: solo se vuelve por la entrada o por una puerta secreta */
+  sinPuertas?: boolean
 }
 
 /** Monstruo sobre la mesa con sus Puntos de Cuerpo */
@@ -98,7 +127,10 @@ export type Partida = {
   peligro: number
   /** Puede bajar con el evento «Repleta de trampas» */
   dadoTrampa: string
-  /** Mazo de Mazmorra (losetas) o de Salas (tablero); varios tras una bifurcación */
+  /**
+   * Mazo de Mazmorra (losetas) o de Salas (tablero); varios tras una
+   * bifurcación. Los índices no cambian: las puertas los guardan
+   */
   caminos: string[][]
   mazos: Record<'pasillo' | 'salas-especiales' | 'atrezo' | 'cofres' | 'trampas', string[]>
   /** PC de cada miembro del grupo, por `clave` */
@@ -107,6 +139,8 @@ export type Partida = {
   /** Monstruos en juego (las partidas antiguas no los tienen) */
   monstruos?: MonstruoEnJuego[]
   zona: Zona
+  /** Secciones exploradas que no son la actual, con lo que pasó en ellas */
+  exploradas?: Zona[]
   /** Salas (sin contar pasillos) y Salas Especiales exploradas */
   salas: number
   especiales: number
@@ -168,7 +202,9 @@ export function nuevaPartida(ctx: Contexto, c: Configuracion, miembros: Miembro[
     vidas: Object.fromEntries(miembros.map((m) => [m.clave, m.cuerpo])),
     hayMonstruos: false,
     monstruos: [],
-    zona: { tipo: 'inicial', momentos: ['inicial'], pendientes: [], sucesos: [] },
+    // con tablero las puertas las pone el tablero y se anotan al cruzarlas
+    zona: { id: 0, salidas: ctx.modo === 'losetas' ? [{ camino: 0 }] : [], tipo: 'inicial', momentos: ['inicial'], pendientes: [], sucesos: [] },
+    exploradas: [],
     salas: 0,
     especiales: 0,
     cofres: [],
@@ -249,16 +285,113 @@ function repartir(mazo: string[]): [string[], string[]] {
   return [izquierda, derecha]
 }
 
-type Entrada = { camino?: number; seccion?: 'sala' | 'pasillo'; secreta?: boolean }
+/** Nombre de la entrada que se crea para las partidas guardadas antes del mapa */
+export const SECCIONES_ANTERIORES = 'Secciones ya exploradas'
 
 /**
- * Abre una puerta y entra: con losetas se roba del camino elegido; con
- * tablero, del Mazo de Salas o del de Pasillo según lo que haya tras ella.
+ * Partidas guardadas antes del mapa: con losetas, una puerta por camino con
+ * cartas. Fuera de la Sala Inicial se crea una entrada que representa lo ya
+ * explorado, para poder volver siempre; si la sección no tiene puertas, las
+ * de los caminos pendientes quedan en esa entrada.
  */
-export function entrar(p: Partida, ctx: Contexto, { camino = 0, seccion = 'sala', secreta = false }: Entrada): Partida {
+export function conMapa(p: Partida, modo: Modo): Partida {
+  if (p.zona.salidas) return p
+  const puertas: Salida[] = modo === 'losetas' ? p.caminos.flatMap((c, camino) => (c.length ? [{ camino }] : [])) : []
+  if (p.zona.tipo === 'inicial') return { ...p, exploradas: [], zona: { ...p.zona, id: 0, salidas: puertas } }
+  const cerrada = p.zona.sucesos.some((s) => s.tipo === 'carta' && s.id.includes('sin-puertas'))
+  const entrada: Zona = {
+    id: 0,
+    nombre: SECCIONES_ANTERIORES,
+    tipo: 'sala',
+    salidas: [{ destino: 1 }, ...(cerrada ? puertas : [])],
+    momentos: [],
+    pendientes: [],
+    sucesos: [],
+    sinTrampas: true,
+  }
+  const zona: Zona = { ...p.zona, id: 1, padre: 0, salidas: cerrada ? [] : puertas, sinPuertas: cerrada || undefined }
+  return { ...p, exploradas: [entrada], zona }
+}
+
+/** Todas las secciones exploradas, la actual incluida, por orden */
+export const secciones = (p: Partida): Zona[] => [...(p.exploradas ?? []), p.zona].toSorted((a, b) => a.id - b.id)
+
+/** Deja la sección actual entre las exploradas y pasa a otra */
+function cambiarDeZona(p: Partida, zona: Zona): Partida {
+  const exploradas = [...(p.exploradas ?? []).filter((z) => z.id !== zona.id && z.id !== p.zona.id), p.zona]
+  return { ...p, exploradas, zona }
+}
+
+/** Ir a una sección ya explorada (por una de sus puertas o volviendo por la entrada) */
+export function irA(p: Partida, id: number): Partida {
+  const destino = (p.exploradas ?? []).find((z) => z.id === id)
+  return destino ? cambiarDeZona(p, destino) : p
+}
+
+/** Volver a la sección por la que se entró */
+export const volver = (p: Partida) => (p.zona.padre === undefined ? p : irA(p, p.zona.padre))
+
+const siguienteId = (p: Partida) => Math.max(...secciones(p).map((z) => z.id)) + 1
+
+/** La puerta de la sección actual pasa a llevar a la nueva sección */
+function llevarA(p: Partida, puerta: number | undefined, destino: number, extra: Salida = {}): Partida {
+  const salidas =
+    puerta === undefined ? [...p.zona.salidas, { ...extra, destino }] : p.zona.salidas.map((s, i) => (i === puerta ? { ...s, destino } : s))
+  return { ...p, zona: { ...p.zona, salidas, puertaSecreta: extra.secreta ? false : p.zona.puertaSecreta } }
+}
+
+/** Puertas hacia delante de la sección (sin contar la entrada ni las secretas) */
+export const puertas = (z: Zona) => z.salidas.filter((s) => !s.secreta)
+
+/**
+ * Una regla especial pone una puerta más. Como en una bifurcación, reparte
+ * el mazo de una puerta sin explorar entre las dos; si no queda mazo que
+ * repartir, la nueva comparte camino.
+ */
+export function anadirPuerta(p: Partida): Partida {
+  const libre = p.zona.salidas.find((s) => s.destino === undefined && s.camino !== undefined && (p.caminos[s.camino]?.length ?? 0) > 1)
+  let nueva = p
+  let salida: Salida = { camino: p.zona.salidas.find((s) => s.camino !== undefined)?.camino ?? 0 }
+  if (libre?.camino !== undefined) {
+    const [izquierda, derecha] = repartir(p.caminos[libre.camino])
+    nueva = { ...p, caminos: [...p.caminos.map((c, i) => (i === libre.camino ? izquierda : c)), derecha] }
+    salida = { camino: nueva.caminos.length - 1 }
+  }
+  return { ...nueva, zona: { ...nueva.zona, sinPuertas: undefined, salidas: [...nueva.zona.salidas, salida] } }
+}
+
+/** Una regla especial quita una puerta sin explorar; su mazo se une al de otra puerta */
+export function quitarPuerta(p: Partida): Partida {
+  const i = p.zona.salidas.findLastIndex((s) => s.destino === undefined && !s.secreta)
+  if (i < 0) return p
+  const quitada = p.zona.salidas[i]
+  const salidas = p.zona.salidas.filter((_, j) => j !== i)
+  const otra = salidas.find((s) => s.destino === undefined && s.camino !== undefined)
+  const caminos =
+    quitada.camino !== undefined && otra?.camino !== undefined && otra.camino !== quitada.camino
+      ? p.caminos.map((c, j) => (j === otra.camino ? [...c, ...(p.caminos[quitada.camino ?? -1] ?? [])] : j === quitada.camino ? [] : c))
+      : p.caminos
+  return { ...p, caminos, zona: { ...p.zona, salidas, sinPuertas: puertas({ ...p.zona, salidas }).length ? undefined : true } }
+}
+
+/** Con tablero las puertas las marca el tablero: solo se indica si la sección no tiene */
+export const cambiarSinPuertas = (p: Partida, sin: boolean): Partida => ({ ...p, zona: { ...p.zona, sinPuertas: sin || undefined } })
+
+type Entrada = { puerta?: number; seccion?: 'sala' | 'pasillo'; secreta?: boolean }
+
+/**
+ * Avanza por una puerta. Si ya lleva a una sección explorada, se va a ella.
+ * Si no, con losetas se roba del camino de la puerta; con tablero, del
+ * Mazo de Salas o del de Pasillo según lo que haya tras ella.
+ */
+export function entrar(p: Partida, ctx: Contexto, { puerta, seccion = 'sala', secreta = false }: Entrada): Partida {
+  const salida = puerta === undefined ? undefined : p.zona.salidas[puerta]
+  if (salida?.destino !== undefined) return irA(p, salida.destino)
+
   let nueva = p
   let mazo: IdMazo
   let id: string | undefined
+  const camino = salida?.camino ?? 0
   if (ctx.modo === 'tablero' && seccion === 'pasillo') {
     mazo = 'pasillo'
     ;[id, nueva] = robar(nueva, ctx, 'pasillo')
@@ -278,46 +411,62 @@ export function entrar(p: Partida, ctx: Contexto, { camino = 0, seccion = 'sala'
     ...(tipo === 'objetivo' ? (['objetivo'] as const) : []),
   ]
   const sucesos: Suceso[] = [{ tipo: 'carta', mazo, id }]
+  // con tablero las puertas las pone el tablero: se anotan al cruzarlas
+  let salidas: Salida[] = ctx.modo === 'tablero' || tipo === 'objetivo' ? [] : [{ camino }]
+  let cerrada = sinPuertas(c) || efectosSala(ctx.mision, momentos).some((e) => e.sinPuertas)
 
-  // el camino actual se reparte o se une antes de hacer nada más
+  // el camino se reparte entre las dos puertas o se une a otro antes de hacer nada más
   const actual = nueva.caminos[camino] ?? []
-  if (bifurca(c) && actual.length > 1) {
+  if (ctx.modo === 'losetas' && bifurca(c) && actual.length > 1) {
     const [izquierda, derecha] = repartir(actual)
-    nueva = { ...nueva, caminos: [...nueva.caminos.slice(0, camino), izquierda, derecha, ...nueva.caminos.slice(camino + 1)] }
+    nueva = { ...nueva, caminos: [...nueva.caminos.map((c, i) => (i === camino ? izquierda : c)), derecha] }
+    salidas = [{ camino }, { camino: nueva.caminos.length - 1 }]
     sucesos.push({ tipo: 'caminos', texto: `El mazo se reparte entre las dos puertas: ${izquierda.length} y ${derecha.length} cartas.` })
-  } else if (bifurca(c)) {
+  } else if (ctx.modo === 'losetas' && bifurca(c)) {
     sucesos.push({ tipo: 'caminos', texto: 'Queda una sola carta: resuélvela como si tuviera una sola puerta.' })
-  } else if (une(c)) {
+  } else if (ctx.modo === 'losetas' && une(c)) {
     const otro = nueva.caminos.findIndex((cartas, i) => i !== camino && cartas.length > 0)
-    if (otro < 0) sucesos.push({ tipo: 'caminos', texto: 'Solo hay un Mazo de Mazmorra: coloca 1 puerta en la sala.' })
-    else {
-      const unido = [...nueva.caminos[otro], ...actual]
-      nueva = { ...nueva, caminos: nueva.caminos.flatMap((c, i) => (i === otro ? [unido] : i === camino ? [] : [c])) }
-      sucesos.push({ tipo: 'caminos', texto: 'La sala une los dos caminos: queda un solo Mazo de Mazmorra.' })
+    if (otro < 0) {
+      // la carta lo dice: con un solo Mazo de Mazmorra la sala tiene una puerta para no quedar atrapados
+      cerrada = false
+      sucesos.push({ tipo: 'caminos', texto: 'Solo hay un Mazo de Mazmorra: coloca 1 puerta en la sala.' })
+    } else {
+      nueva = { ...nueva, caminos: nueva.caminos.map((c, i) => (i === otro ? [...c, ...actual] : i === camino ? [] : c)) }
+      salidas = []
+      sucesos.push({ tipo: 'caminos', texto: 'La sala no tiene puertas: su mazo se une al del otro camino.' })
     }
   }
 
-  const entrada: Partida = {
-    ...nueva,
-    salas: nueva.salas + (esSala ? 1 : 0),
-    zona: { tipo, momentos, pendientes: ajustar(secuencia(tipo, c, secreta), ctx.mision, momentos), sucesos },
+  const nuevaId = siguienteId(nueva)
+  const zona: Zona = {
+    id: nuevaId,
+    padre: p.zona.id,
+    salidas: cerrada ? [] : salidas,
+    sinPuertas: cerrada || undefined,
+    tipo,
+    momentos,
+    pendientes: ajustar(secuencia(tipo, c, secreta), ctx.mision, momentos),
+    sucesos,
   }
+  const entrada = { ...cambiarDeZona(llevarA(nueva, puerta, nuevaId, secreta ? { secreta } : {}), zona), salas: nueva.salas + (esSala ? 1 : 0) }
   return tipo === 'objetivo' ? aparecen({ ...entrada, hayMonstruos: true }, ctx, monstruosObjetivo(ctx)) : entrada
 }
 
 /** Con losetas, tras una puerta secreta hay una sala sin puertas y sin carta de mazmorra */
 export function entrarPorPuertaSecreta(p: Partida, ctx: Contexto, seccion: 'sala' | 'pasillo' = 'sala'): Partida {
   if (ctx.modo === 'tablero') return entrar(p, ctx, { seccion, secreta: true })
-  return {
-    ...p,
-    salas: p.salas + 1,
-    zona: {
-      tipo: 'secreta',
-      momentos: [],
-      pendientes: [{ tipo: 'atrezo', robar: 3, elegir: true }, { tipo: 'trampa' }],
-      sucesos: [],
-    },
+  const id = siguienteId(p)
+  const zona: Zona = {
+    id,
+    padre: p.zona.id,
+    salidas: [],
+    sinPuertas: true,
+    tipo: 'secreta',
+    momentos: [],
+    pendientes: [{ tipo: 'atrezo', robar: 3, elegir: true }, { tipo: 'trampa' }],
+    sucesos: [],
   }
+  return { ...cambiarDeZona(llevarA(p, undefined, id, { secreta: true }), zona), salas: p.salas + 1 }
 }
 
 function tirarTrampa(p: Partida, ctx: Contexto, motivo: 'entrar' | 'mover' | 'buscar'): Partida {
@@ -376,11 +525,18 @@ export function avanzar(p: Partida, ctx: Contexto): Partida {
         ...(p.especiales === 0 ? (['primera-especial'] as const) : []),
         ...(c && letraSalaDeMision(c) === 'A' ? (['especial-a'] as const) : []),
       ]
+      const cerrada = efectosSala(ctx.mision, momentos).some((e) => e.sinPuertas)
       const nueva: Partida = {
         ...sigue,
         especiales: p.especiales + 1,
         mazos: { ...p.mazos, 'salas-especiales': resto },
-        zona: { ...sigue.zona, momentos, pendientes: ajustar(pendientes, ctx.mision, momentos) },
+        zona: {
+          ...sigue.zona,
+          momentos,
+          pendientes: ajustar(pendientes, ctx.mision, momentos),
+          // la regla de la misión puede dejar la sala sin puertas
+          ...(cerrada ? { sinPuertas: true, salidas: sigue.zona.salidas.filter((s) => s.destino !== undefined) } : {}),
+        },
       }
       return cambiarPeligro(anotar(nueva, { tipo: 'especial', id }), 1)
     }
@@ -625,4 +781,28 @@ export function aplicarCombate(
     nueva = x.monstruo ? cambiarVidaMonstruo(nueva, x.clave, -x.pc) : cambiarVida(nueva, x.clave, -x.pc, x.cuerpo)
   }
   return nueva
+}
+
+/**
+ * Monstruos de una categoría entre los que se sortea: los de la tabla de
+ * encuentros de la misión («del tipo de monstruos de la Tabla de
+ * Encuentros») o, si no tiene ninguno, los de todo el bestiario
+ */
+export function candidatosDeCategoria(ctx: Contexto, categoria: number): string[] {
+  const tabla = tablaDeMision(ctx.mision)
+  const deCategoria = (ids: string[]) => [...new Set(ids)].filter((id) => ctx.monstruos[id]?.categoria === categoria)
+  const deTabla = deCategoria(tabla ? mazoMonstruos(tabla, ctx.heroes).map((c) => c.monstruo) : [])
+  return deTabla.length ? deTabla : deCategoria(Object.keys(ctx.monstruos))
+}
+
+/** Añade monstruos al azar de una categoría, con una tirada por monstruo */
+export function monstruosAlAzar(p: Partida, ctx: Contexto, categoria: number, cantidad: number): Partida {
+  const candidatos = candidatosDeCategoria(ctx, categoria)
+  if (!candidatos.length || cantidad < 1) return p
+  const valores = Array.from({ length: cantidad }, () => tirar(`1D${candidatos.length}`))
+  return aparecen(
+    anotar(p, { tipo: 'azar', categoria, candidatos, valores }),
+    ctx,
+    valores.map((v) => ({ opciones: [candidatos[v - 1]], avanzado: false, cantidad: 1 })),
+  )
 }

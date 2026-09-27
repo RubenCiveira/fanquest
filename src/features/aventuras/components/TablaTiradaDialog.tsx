@@ -6,7 +6,7 @@ import { ENCUENTRO_SIN_MONSTRUOS, filaErrantes, TABLA_ERRANTES } from '../config
 import { columna, nombreErrante, nombreMonstruo, tablaDeMision } from '../lib/monstruos'
 import { filaEncuentro, type Contexto, type Suceso } from '../lib/partida'
 
-export type TiradaEnTabla = Extract<Suceso, { tipo: 'encuentro' | 'errantes' }>
+export type TiradaEnTabla = Extract<Suceso, { tipo: 'encuentro' | 'errantes' | 'azar' }>
 
 type Props = {
   tirada: TiradaEnTabla
@@ -57,6 +57,18 @@ function filasErrantes(s: Extract<Suceso, { tipo: 'errantes' }>, { mision }: Con
   })
 }
 
+function filasAzar(s: Extract<Suceso, { tipo: 'azar' }>, monstruos: Monstruos): Fila[] {
+  return s.candidatos.map((id, i) => {
+    const veces = s.valores.filter((v) => v === i + 1).length
+    return {
+      resultado: String(i + 1),
+      texto: nombreMonstruo([id], monstruos),
+      nota: veces > 1 ? `Sale ${veces} veces` : undefined,
+      sale: veces > 0,
+    }
+  })
+}
+
 /** La tirada en la tabla de monstruos y la tabla entera, con la fila que sale; se monta abierto */
 export function TablaTiradaDialog({ tirada: s, contexto, monstruos, onCerrar }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -69,10 +81,18 @@ export function TablaTiradaDialog({ tirada: s, contexto, monstruos, onCerrar }: 
 
   const encuentros = s.tipo === 'encuentro'
   const tabla = tablaDeMision(contexto.mision)
-  const filas = encuentros ? filasEncuentros(s, contexto, monstruos) : filasErrantes(s, contexto, monstruos)
-  const titulo = encuentros
-    ? `Tabla de encuentros${tabla ? ` de ${TABLAS_ENCUENTROS[tabla].nombre}` : ''}`
-    : 'Tabla de monstruos errantes'
+  const filas =
+    s.tipo === 'encuentro'
+      ? filasEncuentros(s, contexto, monstruos)
+      : s.tipo === 'errantes'
+        ? filasErrantes(s, contexto, monstruos)
+        : filasAzar(s, monstruos)
+  const titulo =
+    s.tipo === 'encuentro'
+      ? `Tabla de encuentros${tabla ? ` de ${TABLAS_ENCUENTROS[tabla].nombre}` : ''}`
+      : s.tipo === 'errantes'
+        ? 'Tabla de monstruos errantes'
+        : `Monstruos de categoría ${s.categoria}`
 
   return (
     <dialog
@@ -91,10 +111,19 @@ export function TablaTiradaDialog({ tirada: s, contexto, monstruos, onCerrar }: 
         </header>
 
         <p className="tirada-resultado">
-          {encuentros ? (
+          {s.tipo === 'encuentro' ? (
             <>
               1D20 <strong className="dado-valor">{s.dado}</strong> + {s.peligro} de peligro ={' '}
               <strong className="dado-valor">{s.dado + s.peligro}</strong>
+            </>
+          ) : s.tipo === 'azar' ? (
+            <>
+              1D{s.candidatos.length}{' '}
+              {s.valores.map((v, i) => (
+                <strong key={i} className="dado-valor">
+                  {v}
+                </strong>
+              ))}
             </>
           ) : (
             <>
@@ -104,12 +133,13 @@ export function TablaTiradaDialog({ tirada: s, contexto, monstruos, onCerrar }: 
           )}
         </p>
         {encuentros && <p className="nota">Monstruos para {COLUMNA[columna(contexto.heroes)]}.</p>}
+        {s.tipo === 'azar' && <p className="nota">Una tirada por monstruo; la tabla son los de esa categoría.</p>}
 
         <div className="tabla-tirada">
           <table>
             <thead>
               <tr>
-                <th scope="col">{encuentros ? '1D20+NP' : '1D6'}</th>
+                <th scope="col">{s.tipo === 'encuentro' ? '1D20+NP' : s.tipo === 'azar' ? `1D${s.candidatos.length}` : '1D6'}</th>
                 <th scope="col">Monstruos</th>
               </tr>
             </thead>

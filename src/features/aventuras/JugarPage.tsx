@@ -16,6 +16,7 @@ import { CombateDialog, type Participante } from './components/CombateDialog'
 import { perdidas } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
+import { MonstruosAlAzarDialog } from './components/MonstruosAlAzarDialog'
 import { TablaTiradaDialog, type TiradaEnTabla } from './components/TablaTiradaDialog'
 import { SALA_INICIAL } from './config/partida'
 import { opciones, puntosCuerpoJefe } from './lib/monstruos'
@@ -32,6 +33,14 @@ import {
   elegirAtrezo,
   entrar,
   entrarPorPuertaSecreta,
+  monstruosAlAzar,
+  anadirPuerta,
+  cambiarSinPuertas,
+  puertas,
+  quitarPuerta,
+  secciones,
+  volver,
+  type Zona,
   moverse,
   puedeBuscarPuertas,
   puedeCaerEnTrampa,
@@ -135,8 +144,15 @@ export function JugarPage() {
   const [verReglas, setVerReglas] = useState(false)
   const [terminar, setTerminar] = useState<FinPartida | null>(null)
   const [tabla, setTabla] = useState<TiradaEnTabla | null>(null)
+  const [alAzar, setAlAzar] = useState(false)
   const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
   const { zona } = p
+  const mapa = secciones(p)
+  const seccion = (id: number) => mapa.find((z) => z.id === id)
+  const padre = zona.padre === undefined ? undefined : seccion(zona.padre)
+  const nombreZona = (z: Zona) => z.nombre ?? (z.tipo === 'inicial' ? NOMBRE_ZONA.inicial : `${NOMBRE_ZONA[z.tipo]} ${z.id}`)
+  const porExplorar = (z: Zona) =>
+    z.salidas.filter((s) => s.destino === undefined && p.caminos[s.camino ?? -1]?.length).length
   const { movimientoFijo } = reglasPartida(aventura.configuracion)
   const [paso] = zona.pendientes
   const onVerCarta = (mazo: IdMazo, id: string) => setVerCarta({ mazo, id })
@@ -243,7 +259,7 @@ export function JugarPage() {
             </div>
             <div>
               <dt>{modo === 'losetas' ? 'Mazmorra' : 'Salas'}</dt>
-              <dd>{p.caminos.map((c) => c.length).join(' · ')}</dd>
+              <dd>{p.caminos.map((c) => c.length).filter(Boolean).join(' · ') || 0}</dd>
             </div>
             <div>
               <dt>
@@ -272,9 +288,25 @@ export function JugarPage() {
             <p className="aviso-partida">{contador.alCompletar}</p>
           )}
 
+          {mapa.length > 1 && (
+            <details className="mapa">
+              <summary>Mazmorra explorada: {mapa.length} secciones</summary>
+              <ol>
+                {mapa.map((z) => (
+                  <li key={z.id} className={z.id === zona.id ? 'aqui' : undefined}>
+                    {nombreZona(z)}
+                    {z.id === zona.id && ' · estáis aquí'}
+                    {porExplorar(z) > 0 && ` · ${porExplorar(z)} ${porExplorar(z) === 1 ? 'puerta' : 'puertas'} sin explorar`}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
+
           <section className="zona" aria-labelledby="zona-titulo">
             <p className="zona-etiqueta">Dónde estáis</p>
-            <h2 id="zona-titulo">{NOMBRE_ZONA[zona.tipo]}</h2>
+            <h2 id="zona-titulo">{nombreZona(zona)}</h2>
+            {padre && <p className="nota">Entrasteis desde {nombreZona(padre)}.</p>}
 
             {zona.tipo === 'inicial' && (
               <>
@@ -388,15 +420,15 @@ export function JugarPage() {
                 )}
 
                 <div className="grupo-acciones">
-                  <p className="nota">Quien abre una puerta entra de inmediato y se detiene en la primera casilla.</p>
-                  {modo === 'losetas' ? (
-                    p.caminos.map((c, i) => (
-                      <button key={i} type="button" className="button" disabled={!c.length} onClick={() => hacer((a) => entrar(a, contexto, { camino: i }))}>
-                        {p.caminos.length > 1 ? `Abrir la puerta del camino ${i + 1}` : 'Abrir una puerta y entrar'}
-                        {!c.length && ' (sin salida)'}
-                      </button>
-                    ))
-                  ) : (
+                  {!zona.sinPuertas && (
+                    <p className="nota">Quien abre una puerta entra de inmediato y se detiene en la primera casilla.</p>
+                  )}
+                  {zona.sinPuertas && (
+                    <p className="nota">
+                      Sin puertas: solo podéis volver por la entrada{zona.tipo === 'secreta' ? '' : ' o buscar una puerta secreta'}.
+                    </p>
+                  )}
+                  {modo === 'tablero' && !zona.sinPuertas && (
                     <div className="fila-botones">
                       <button
                         type="button"
@@ -404,12 +436,38 @@ export function JugarPage() {
                         disabled={!p.caminos[0]?.length}
                         onClick={() => hacer((a) => entrar(a, contexto, { seccion: 'sala' }))}
                       >
-                        Entrar en una sala
+                        Avanzar a una sala nueva
                       </button>
                       <button type="button" className="button" onClick={() => hacer((a) => entrar(a, contexto, { seccion: 'pasillo' }))}>
-                        Entrar en un pasillo
+                        Avanzar a un pasillo nuevo
                       </button>
                     </div>
+                  )}
+                  {zona.salidas.map((salida, i) => {
+                    const destino = salida.destino === undefined ? undefined : seccion(salida.destino)
+                    const puerta = salida.secreta
+                      ? 'la puerta secreta'
+                      : modo === 'tablero' || zona.salidas.length === 1
+                        ? 'la puerta'
+                        : `la puerta ${i + 1}`
+                    const sinSalida = !destino && !p.caminos[salida.camino ?? -1]?.length
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        className={destino ? 'button secondary' : 'button'}
+                        disabled={sinSalida}
+                        onClick={() => hacer((a) => entrar(a, contexto, { puerta: i }))}
+                      >
+                        Avanzar por {puerta}
+                        {destino ? ` (a ${nombreZona(destino)})` : sinSalida ? ' · sin salida' : ' · sin explorar'}
+                      </button>
+                    )
+                  })}
+                  {padre && (
+                    <button type="button" className="button secondary" onClick={() => hacer(volver)}>
+                      Volver por la entrada (a {nombreZona(padre)})
+                    </button>
                   )}
                   {zona.puertaSecreta &&
                     (modo === 'losetas' ? (
@@ -426,7 +484,38 @@ export function JugarPage() {
                         </button>
                       </div>
                     ))}
-                  {modo === 'losetas' && p.caminos.every((c) => !c.length) && (
+                  {modo === 'losetas' ? (
+                    <div className="editar-puertas">
+                      <span>
+                        Puertas de esta sección
+                        <span className="nota">Ajústalas si una regla especial pone o quita puertas.</span>
+                      </span>
+                      <span className="contador">
+                        <button
+                          type="button"
+                          className="icon-button"
+                          aria-label="Quitar una puerta"
+                          disabled={!zona.salidas.some((s) => s.destino === undefined && !s.secreta)}
+                          onClick={() => hacer(quitarPuerta)}
+                        >
+                          <Icono nombre="menos" />
+                        </button>
+                        <span>{puertas(zona).length}</span>
+                        <button type="button" className="icon-button" aria-label="Añadir una puerta" onClick={() => hacer(anadirPuerta)}>
+                          <Icono nombre="mas" />
+                        </button>
+                      </span>
+                    </div>
+                  ) : (
+                    <label className="editar-puertas">
+                      <span>
+                        Sección sin puertas
+                        <span className="nota">Márcalo si una regla especial quita las puertas.</span>
+                      </span>
+                      <input type="checkbox" checked={Boolean(zona.sinPuertas)} onChange={() => hacer((a) => cambiarSinPuertas(a, !a.zona.sinPuertas))} />
+                    </label>
+                  )}
+                  {modo === 'losetas' && p.caminos.every((c) => !c.length) && !zona.puertaSecreta && (
                     <p className="nota">
                       No quedan cartas de mazmorra: buscad puertas secretas o volved sobre vuestros pasos.
                     </p>
@@ -481,6 +570,16 @@ export function JugarPage() {
                             )
                           })}
                         </div>
+                      </div>
+                    )}
+
+                    {zona.tipo !== 'pasillo' && (
+                      <div className="grupo-acciones">
+                        <p className="nota">Si la sala o una regla especial pide monstruos de una categoría.</p>
+                        <button type="button" className="button secondary" onClick={() => setAlAzar(true)}>
+                          <Icono nombre="dado" />
+                          Añadir monstruos al azar
+                        </button>
                       </div>
                     )}
 
@@ -556,6 +655,18 @@ export function JugarPage() {
             )
           }
           onCerrar={() => setAtaque(null)}
+        />
+      )}
+      {alAzar && (
+        <MonstruosAlAzarDialog
+          contexto={contexto}
+          onTirar={(categoria, cantidad) => {
+            const nueva = monstruosAlAzar(p, contexto, categoria, cantidad)
+            hacer(() => nueva)
+            const tirada = nueva.zona.sucesos.at(-1)
+            if (tirada?.tipo === 'azar') setTabla(tirada)
+          }}
+          onCerrar={() => setAlAzar(false)}
         />
       )}
       {tabla && <TablaTiradaDialog tirada={tabla} contexto={contexto} monstruos={monstruos} onCerrar={() => setTabla(null)} />}

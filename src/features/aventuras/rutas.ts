@@ -22,7 +22,7 @@ import {
 } from '../../lib/personajes'
 import { estadoAventura } from './lib/asistente'
 import { seleccionMonstruos } from './lib/monstruos'
-import { miembrosDelGrupo, nuevaPartida, type Contexto, type Miembro, type Partida } from './lib/partida'
+import { conMapa, miembrosDelGrupo, nuevaPartida, type Contexto, type Miembro, type Partida } from './lib/partida'
 import { nuevaConfiguracion, type Configuracion } from './lib/preparacion'
 
 export async function cargarAventura({ params }: LoaderFunctionArgs) {
@@ -112,7 +112,7 @@ export async function cargarPartida({ params }: LoaderFunctionArgs): Promise<Dat
     monstruos,
     seleccion: seleccionMonstruos(configuracion.monstruos, aventura.mision, heroesEnJuego),
   }
-  let { partida } = aventura
+  let partida = aventura.partida && conMapa(aventura.partida, configuracion.modo)
   if (!partida) {
     partida = nuevaPartida(contexto, configuracion, miembros)
     await actualizarAventura({ ...aventura, estado: estadoAventura(configuracion, partida), partida })

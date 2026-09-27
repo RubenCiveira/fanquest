@@ -176,6 +176,9 @@ export const cartasDeAtrezo = (c: CartaMazo) => (/dos Cartas de Atrezo/i.test(c.
 /** Sala o pasillo con dos puertas que reparte el Mazo de Mazmorra */
 export const bifurca = (c: CartaMazo) => /Reparte este Mazo de Mazmorra/i.test(c.texto ?? '')
 
+/** Sala sin puertas: solo se sale por donde se entró (o por una puerta secreta) */
+export const sinPuertas = (c: CartaMazo) => c.tipo.endsWith('sin-puertas')
+
 /** Sala sin puertas que une su Mazo de Mazmorra con otro */
 export const une = (c: CartaMazo) => /Une este Mazo de Mazmorra/i.test(c.texto ?? '')
 

@@ -2294,3 +2294,84 @@ input[type='checkbox'] {
 .tabla-tirada tr.sale .nota {
   color: rgb(246 238 217 / 0.85);
 }
+
+/* ---------- Mazmorra explorada ---------- */
+.mapa summary {
+  font-family: var(--versalitas);
+  color: var(--grafito);
+  cursor: pointer;
+}
+
+.mapa ol {
+  margin: 6px 0 0;
+  padding-left: 1.4em;
+  font-size: 0.95rem;
+}
+
+.mapa .aqui {
+  font-weight: 700;
+  color: var(--rubrica);
+}
+
+.editar-puertas {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0 8px;
+  padding-top: 6px;
+  font-family: var(--versalitas);
+  font-size: 0.95rem;
+  border-top: 1px dotted var(--trazo-suave);
+}
+
+/* el título junto al contador y, debajo, la nota a todo el ancho */
+.editar-puertas > span:first-child {
+  display: contents;
+}
+
+.editar-puertas > span:first-child .nota {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.editar-puertas .nota {
+  font-size: 0.85rem;
+}
+
+.editar-puertas input {
+  width: 22px;
+  height: 22px;
+}
+
+.dialog .azar-categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.azar-categorias legend {
+  margin-bottom: 6px;
+  font-family: var(--versalitas);
+  color: var(--grafito);
+}
+
+.azar-categorias .chip {
+  justify-content: center;
+  min-width: 44px;
+  padding: 4px 10px;
+  font-family: var(--versalitas);
+  font-weight: 700;
+}
+
+.azar-categorias .chip.elegida {
+  color: var(--vitela);
+  background: var(--tinta);
+}
+
+.azar-categorias .chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
