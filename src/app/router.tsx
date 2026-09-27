@@ -14,7 +14,14 @@ import {
   cargarConfiguracion,
 } from '../features/aventuras/rutas'
 import { CreditosPage } from '../features/creditos/CreditosPage'
+import {
+  FichasAliadosPage,
+  FichasHeroesPage,
+  FichasMonstruosPage,
+} from '../features/imprimir/FichasPages'
 import { ImprimirPage } from '../features/imprimir/ImprimirPage'
+import { cargarFichasHeroes } from '../features/imprimir/rutas'
+import { cargarAliados, cargarBestiario } from '../lib/personajes'
 import { ImprimirTipoPage } from '../features/imprimir/ImprimirTipoPage'
 
 export const router = createBrowserRouter([
@@ -53,6 +60,9 @@ export const router = createBrowserRouter([
       { path: 'aventuras/:id/jugar', element: <JugarPage /> },
       { path: 'creditos', element: <CreditosPage /> },
       { path: 'imprimir', element: <ImprimirPage /> },
+      { path: 'imprimir/heroes', loader: cargarFichasHeroes, element: <FichasHeroesPage /> },
+      { path: 'imprimir/monstruos', loader: () => cargarBestiario(), element: <FichasMonstruosPage /> },
+      { path: 'imprimir/aliados', loader: () => cargarAliados(), element: <FichasAliadosPage /> },
       { path: 'imprimir/:tipo', element: <ImprimirTipoPage /> },
       { path: '*', element: <Navigate to="/generar" replace /> },
     ],

@@ -1579,6 +1579,7 @@ input[type='checkbox'] {
 }
 
 @media print {
+  .no-imprimir,
   .aviso,
   .guardar-aventura,
   .aventura-empezar,
@@ -1603,4 +1604,76 @@ input[type='checkbox'] {
     padding: 0;
   }
 
+  .solo-imprimir {
+    display: grid;
+  }
+
+  .app {
+    display: block;
+    min-height: 0;
+  }
+
+  /* dos fichas por fila, cada una con su alto y sin partirse */
+  .fichas-impresion {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6mm;
+    align-items: start;
+    justify-items: center;
+  }
+
+  .fichas-impresion > div {
+    break-inside: avoid;
+  }
+
+  .fichas-impresion .carta {
+    box-shadow: none;
+  }
+
+  .fichas-impresion .carta img {
+    height: 45mm;
+    object-fit: contain;
+  }
+
+  .fichas-impresion .carta-cuerpo {
+    gap: 4px;
+    font-size: 8.5pt;
+    line-height: 1.3;
+  }
+
+  .fichas-impresion .carta-completa .carta-titulo {
+    font-size: 15pt;
+  }
+}
+/* imprimir fichas: se eligen en pantalla y se imprimen enteras; solo en
+   pantalla para no pisar el bloque de impresión */
+@media screen {
+  .solo-imprimir {
+    display: none;
+  }
+
+  .imprimir-controles {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .imprimir-controles .nota {
+    margin: 0;
+  }
+
+  .enlace {
+    padding: 4px 0;
+    font: inherit;
+    font-family: var(--versalitas);
+    font-size: 0.9rem;
+    color: var(--rubrica);
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .naipe-apagado {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
 }

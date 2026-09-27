@@ -8,7 +8,8 @@ SPA (React + Vite + TypeScript, mobile first) de apoyo para partidas de FanQuest
 - **Aventuras** (`/aventuras`): aventuras guardadas con su estado.
   - `/aventuras/:id`: detalle.
   - `/aventuras/:id/jugar`: utilidades durante la partida.
-- **Imprimir** (`/imprimir/:tipo`): losetas, fichas de monstruos, paperminis.
+- **Imprimir** (`/imprimir/:tipo`): fichas de héroes, monstruos y aliados (se
+  eligen y se imprimen enteras, dos por fila), losetas y paperminis.
 
 ## Créditos y licencia
 
