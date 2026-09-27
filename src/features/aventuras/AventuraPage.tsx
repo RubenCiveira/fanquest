@@ -42,6 +42,10 @@ export function AventuraPage() {
 
       <MisionCard mision={mision} />
 
+      <Link to="editar" className="button secondary aventura-borrar">
+        Editar aventura
+      </Link>
+
       <button
         type="button"
         className="button secondary aventura-borrar"

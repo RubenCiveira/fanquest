@@ -16,6 +16,7 @@ import { CombateDialog, type Participante } from './components/CombateDialog'
 import { perdidas } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
+import { ExportarDialog } from './components/ExportarAventura'
 import { MonstruosAlAzarDialog } from './components/MonstruosAlAzarDialog'
 import { TablaTiradaDialog, type TiradaEnTabla } from './components/TablaTiradaDialog'
 import { SALA_INICIAL } from './config/partida'
@@ -145,6 +146,7 @@ export function JugarPage() {
   const [terminar, setTerminar] = useState<FinPartida | null>(null)
   const [tabla, setTabla] = useState<TiradaEnTabla | null>(null)
   const [alAzar, setAlAzar] = useState(false)
+  const [exportar, setExportar] = useState(false)
   const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
   const { zona } = p
   const mapa = secciones(p)
@@ -217,6 +219,9 @@ export function JugarPage() {
     <>
       <PageHeader title="En juego" backTo={`/aventuras/${aventura.id}`}>
         <span className="partida-cabecera">
+          <button type="button" className="icon-button" onClick={() => setExportar(true)} aria-label="Exportar aventura">
+            <Icono nombre="exportar" />
+          </button>
           <button type="button" className="icon-button" onClick={() => setVerReglas(true)} aria-label="Reglas de la misión">
             <Icono nombre="pergamino" />
           </button>
@@ -657,6 +662,7 @@ export function JugarPage() {
           onCerrar={() => setAtaque(null)}
         />
       )}
+      {exportar && <ExportarDialog mision={mision} onCerrar={() => setExportar(false)} />}
       {alAzar && (
         <MonstruosAlAzarDialog
           contexto={contexto}

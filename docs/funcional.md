@@ -1,12 +1,14 @@
 # Vision funcional
 
 Esta app es una SPA mobile first de ayuda para partidas de FetenQuest. Reúne un
-generador de aventuras, gestion de aventuras guardadas, asistente de partida e
-impresion de fichas.
+editor de aventuras, gestion de aventuras guardadas, asistente de partida e
+impresion de fichas. El generador automatico se conserva en el codigo pero no
+esta visible.
 
 ## Usuarios objetivo
 
-- Jugadores o directores que quieren generar una mision de Aventuras Infinitas.
+- Jugadores o directores que quieren escribir o compartir una mision de
+  Aventuras Infinitas.
 - Grupos que quieren preparar los mazos y jugar con ayuda guiada.
 - Usuarios que quieren imprimir fichas de heroes, monstruos y aliados.
 
@@ -14,8 +16,9 @@ impresion de fichas.
 
 | Ruta | Seccion | Funcion |
 |---|---|---|
-| `/generar` | Generar aventura | Crea una mision aleatoria o de un tipo concreto, permite copiarla, imprimirla y guardarla. |
+| `/aventuras/nueva` | Nueva aventura | Formulario para escribir la mision a mano; importar, exportar o copiar su JSON, imprimirla, copiarla como texto y guardarla. |
 | `/aventuras` | Aventuras | Lista aventuras guardadas en el navegador. |
+| `/aventuras/:id/editar` | Editar aventura | El mismo formulario con una aventura guardada. |
 | `/aventuras/:id` | Detalle | Muestra la mision guardada y permite empezar, continuar o borrar. |
 | `/aventuras/:id/configurar` | Preparacion | Asistente por pasos para reglas, grupo, mazos, monstruos y barajado. |
 | `/aventuras/:id/configurar/:mazo` | Seleccion de mazo | Edicion detallada de un mazo durante la preparacion. |
@@ -28,11 +31,12 @@ impresion de fichas.
 
 ## Flujo funcional principal
 
-1. El usuario entra en `/generar`.
-2. Escoge tipo de mision o deja tirada aleatoria.
-3. La app genera titulo, introduccion, objetivo, preparacion, jefe, faccion,
-   sala objetivo, recompensa, reglas especiales y reglas extras.
-4. El usuario puede copiar, imprimir o guardar la mision.
+1. El usuario entra en `/aventuras/nueva` (o importa el JSON de una aventura
+   compartida).
+2. Escribe titulo, introduccion, preparacion, faccion y jefe, objetivo,
+   reglas extras y epilogo. El tipo de mision pone la regla especial (texto
+   editable) y los efectos que la partida aplica.
+3. Puede imprimir la ficha, copiarla como texto o exportarla como JSON.
 5. Al guardar, la mision se convierte en una aventura persistida en
    `localStorage`.
 6. Desde `/aventuras/:id`, se empieza la preparacion.

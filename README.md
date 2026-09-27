@@ -4,12 +4,20 @@ SPA (React + Vite + TypeScript, mobile first) de apoyo para partidas de FetenQue
 
 ## Secciones
 
-- **Generar** (`/generar`): genera una aventura; si convence, se guarda.
+- **Nueva** (`/aventuras/nueva`): formulario para escribir una aventura a mano
+  (textos, preparación, enemigos, objetivo, regla especial y reglas extras),
+  importarla o exportarla como JSON, imprimirla, copiarla como texto y guardarla.
 - **Aventuras** (`/aventuras`): aventuras guardadas con su estado.
   - `/aventuras/:id`: detalle.
+  - `/aventuras/:id/editar`: el mismo formulario con la aventura guardada.
   - `/aventuras/:id/jugar`: con los mazos barajados, guía de la partida según
     Aventuras Infinitas: el grupo con sus PC, dónde estáis y qué podéis hacer
-    (abrir puertas, trampas, encuentros, turno del Malvado Brujo…).
+    (abrir puertas, trampas, encuentros, turno del Malvado Brujo…). También
+    permite exportar la aventura.
+
+El generador automático de aventuras (`src/features/generar/`) se conserva
+pero no tiene ruta: para volver a mostrarlo basta con añadir su ruta en
+`src/app/router.tsx` y su enlace en `src/app/AppLayout.tsx`.
 - **Imprimir** (`/imprimir/:tipo`): fichas de héroes, monstruos y aliados (se
   eligen y se imprimen enteras, dos por fila), losetas y paperminis.
 
@@ -55,5 +63,6 @@ Track». Solo se activa si hay ID de sitio:
 - GitHub Pages: sitio `2`, fijado en `.github/workflows/deploy-pages.yml`.
 - `VITE_MATOMO_URL` permite apuntar a otra instalación.
 
-Se registra cada cambio de página y el evento `Generador` al generar una
-misión, con el tipo de misión como nombre.
+Se registra cada cambio de página y los eventos de `Aventuras`: crear, editar,
+importar, exportar, empezar, barajar, jugar… (y `Generador` si se vuelve a
+mostrar el generador).

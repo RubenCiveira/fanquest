@@ -44,13 +44,18 @@ public/                Iconos PWA y assets publicos
 
 - `src/main.tsx` inicializa Matomo y monta `RouterProvider`.
 - `src/app/router.tsx` define las rutas y sus loaders/actions.
-- `src/app/AppLayout.tsx` renderiza cabecera, navegacion inferior y `Outlet`.
+- `src/app/AppLayout.tsx` renderiza la barra superior, la navegacion inferior
+  (Aventuras, Imprimir y Creditos) y `Outlet`. Cada pagina pone su titulo,
+  volver y acciones en la barra superior con `PageHeader`, que usa un portal
+  (`CabeceraContext`, en `src/lib/cabecera.ts`).
 
 ## Rutas y loaders
 
 La app usa loaders para cargar datos antes de renderizar:
 
-- `/generar` carga `cargarPlantillaAventuras()`.
+- `/aventuras/nueva` y `/aventuras/:id/editar` cargan la plantilla de
+  aventuras y, al editar, la aventura (`cargarEditor`). El generador
+  (`/generar`) no tiene ruta por ahora.
 - `/aventuras` carga `listarAventuras()`.
 - `/aventuras/:id` carga una aventura o redirige.
 - `/aventuras/:id/configurar` carga aventura, mazos, heroes, habilidades,

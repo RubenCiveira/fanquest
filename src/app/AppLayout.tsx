@@ -1,32 +1,37 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Icono } from '../components/Icono'
+import { CabeceraContext } from '../lib/cabecera'
 import { registrarVisita } from '../lib/matomo'
 import { AvisoActualizacion } from './AvisoActualizacion'
 
 const secciones = [
-  { to: '/generar', label: 'Generar', icono: 'dado' },
   { to: '/aventuras', label: 'Aventuras', icono: 'pergamino' },
   { to: '/imprimir', label: 'Imprimir', icono: 'imprimir' },
+  { to: '/creditos', label: 'Créditos', icono: 'info' },
 ] as const
 
 export function AppLayout() {
   const { pathname } = useLocation()
+  // la barra superior recibe el título de cada página
+  const [cabecera, setCabecera] = useState<HTMLElement | null>(null)
 
   useEffect(() => registrarVisita(), [pathname])
 
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-title">FetenQuest</span>
-        <Link to="/creditos" className="app-creditos">
-          Créditos
+        <Link to="/aventuras" className="app-marca">
+          FetenQuest
         </Link>
+        <div className="app-seccion" ref={setCabecera} />
       </header>
 
-      <main className="app-main">
-        <Outlet />
-      </main>
+      <CabeceraContext value={cabecera}>
+        <main className="app-main">
+          <Outlet />
+        </main>
+      </CabeceraContext>
 
       <nav className="app-nav" aria-label="Secciones">
         {secciones.map(({ to, label, icono }) => (

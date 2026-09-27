@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
+import { CabeceraContext } from '../lib/cabecera'
 import { Icono } from './Icono'
 
 type Props = {
@@ -8,8 +10,12 @@ type Props = {
   children?: ReactNode
 }
 
+/** Título de la página, con volver y acciones, en la barra superior de la app */
 export function PageHeader({ title, backTo, children }: Props) {
-  return (
+  const destino = useContext(CabeceraContext)
+  if (!destino) return null
+
+  return createPortal(
     <div className="page-header">
       {backTo && (
         <Link to={backTo} className="back-link" aria-label="Volver">
@@ -18,6 +24,7 @@ export function PageHeader({ title, backTo, children }: Props) {
       )}
       <h1>{title}</h1>
       {children}
-    </div>
+    </div>,
+    destino,
   )
 }

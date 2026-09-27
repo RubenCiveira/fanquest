@@ -1,5 +1,7 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
 import { registrarEvento } from '../../lib/matomo'
+import { cargarPlantillaAventuras } from '../generar/lib/plantilla'
+import type { PlantillaAventuras } from '../generar/lib/tipos'
 import { MAZOS_POR_MODO } from './config/mazos'
 import {
   actualizarAventura,
@@ -119,4 +121,15 @@ export async function cargarPartida({ params }: LoaderFunctionArgs): Promise<Dat
     registrarEvento('Aventuras', 'Empezar partida', configuracion.modo)
   }
   return { aventura: { ...aventura, configuracion, partida }, contexto, miembros, habilidades, monstruos }
+}
+
+export type DatosEditor = { plantilla: PlantillaAventuras; aventura?: Aventura }
+
+/** Editor de aventuras: una nueva o la guardada con ese id */
+export async function cargarEditor({ params }: LoaderFunctionArgs): Promise<DatosEditor> {
+  const plantilla = await cargarPlantillaAventuras()
+  if (!params.id) return { plantilla }
+  const aventura = await obtenerAventura(params.id)
+  if (!aventura) throw redirect('/aventuras')
+  return { plantilla, aventura }
 }

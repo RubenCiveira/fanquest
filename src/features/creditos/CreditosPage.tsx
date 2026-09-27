@@ -35,10 +35,8 @@ export function CreditosPage() {
           </li>
         </ul>
 
-        <h2>Generador de aventuras</h2>
-        <p>
-          Basado en el <cite>Generador de Aventuras FAI</cite>, autoría original de <strong>Ryback</strong>.
-        </p>
+        {/* el generador de aventuras está oculto: al volver a mostrarlo, recuperar su crédito:
+            «Basado en el Generador de Aventuras FAI, autoría original de Ryback» */}
 
         <h2>HeroQuest</h2>
         <p>

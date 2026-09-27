@@ -127,20 +127,6 @@ a {
   align-items: center;
 }
 
-.app-creditos {
-  margin-left: auto;
-  padding: 10px 0 10px 12px;
-  font-family: var(--versalitas);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--grafito);
-  text-decoration: none;
-}
-
-.app-creditos:hover {
-  color: var(--rubrica);
-}
-
 .creditos {
   display: grid;
   gap: 10px;
@@ -182,14 +168,6 @@ a {
 
 .app-nav::before {
   top: 0;
-}
-
-.app-title {
-  font-family: var(--gotica);
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--rubrica);
 }
 
 .app-main {
@@ -244,29 +222,54 @@ a {
   border-radius: 0 0 60% 40% / 0 0 100% 70%;
 }
 
-/* ---------- Cabecera de página ---------- */
+/* ---------- Barra superior: la app y, más pequeño, la sección ---------- */
+.app-marca {
+  flex: none;
+  margin-right: 10px;
+  font-family: var(--gotica);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--rubrica);
+  text-decoration: none;
+}
+
+.app-seccion {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
 .page-header {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: 4px;
-  margin-bottom: 20px;
+  min-width: 0;
+  height: 100%;
 }
 
 .page-header h1 {
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
   font-family: var(--gotica);
-  font-size: 2.1rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  line-height: 1.1;
-  text-wrap: balance;
+  line-height: 1;
+  color: var(--tinta);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .back-link {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 44px;
+  width: 36px;
   height: 44px;
-  margin-left: -10px;
+  margin-left: -6px;
   color: var(--grafito);
 }
 
@@ -2374,4 +2377,114 @@ input[type='checkbox'] {
 .azar-categorias .chip:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+/* ---------- Editor de aventuras ---------- */
+.editor {
+  display: grid;
+  gap: 16px;
+}
+
+.editor .panel-mazo {
+  margin: 0;
+}
+
+.editor-json {
+  display: grid;
+  gap: 8px;
+}
+
+.editor-json .nota {
+  margin: 0;
+}
+
+.editor-grupo legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.editor-grupo .nota {
+  margin: 0;
+}
+
+.editor-numeros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.campo input[type='text'],
+.campo textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  font: inherit;
+  font-family: var(--texto);
+  font-size: 1rem;
+  color: var(--tinta);
+  background-color: rgb(246 238 217 / 0.7);
+  border: 1.5px solid var(--trazo);
+  border-radius: var(--boceto-2);
+}
+
+.campo textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.campo input[type='text']:hover,
+.campo textarea:hover {
+  border-color: var(--tinta);
+}
+
+.editor-extra {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dotted var(--trazo-suave);
+}
+
+.editor-extra .enlace {
+  justify-self: start;
+}
+
+.editor-acciones {
+  display: grid;
+  gap: 10px;
+}
+
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media print {
+  /* el editor se imprime como la ficha de la misión, sin el formulario */
+  .editor.no-imprimir {
+    display: none;
+  }
+}
+
+/* en móvil, la sección (volver, título y acciones) se alinea a la derecha */
+@media (max-width: 640px) {
+  .page-header {
+    justify-content: flex-end;
+  }
+
+  .page-header .estado,
+  .page-header .aviso-icono,
+  .page-header .partida-cabecera {
+    margin-left: 6px;
+  }
+
+  /* el estado cede sitio al título */
+  .page-header .estado {
+    padding: 0 5px;
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+  }
 }

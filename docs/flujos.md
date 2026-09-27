@@ -1,6 +1,27 @@
 # Flujos internos
 
-## Generacion de una mision
+## Edicion de una mision
+
+Archivos principales:
+
+- `src/features/aventuras/EditarAventuraPage.tsx`
+- `src/features/aventuras/lib/editarMision.ts`
+- `src/features/aventuras/components/ExportarAventura.tsx` e `ImportarDialog.tsx`
+
+Flujo:
+
+1. El loader `cargarEditor` carga la plantilla de aventuras (tipos de mision)
+   y, al editar, la aventura guardada.
+2. Una mision nueva parte de `misionVacia()`: la preparacion estandar y la
+   primera faccion.
+3. `aplicarTipo()` pone la regla especial, sus efectos y el objetivo del tipo
+   de mision; `aplicarFaccion()`, los errantes y un tipo de jefe de la faccion.
+4. `exportarMision()` e `importarMision()` pasan la mision a JSON y de vuelta;
+   lo que falte al importar toma el valor de una mision vacia.
+5. Guardar crea la aventura (`guardarAventura`) o actualiza la mision
+   (`actualizarAventura`).
+
+## Generacion de una mision (sin ruta por ahora)
 
 Archivos principales:
 
@@ -12,7 +33,7 @@ Archivos principales:
 
 Flujo:
 
-1. El loader de `/generar` llama a `cargarPlantillaAventuras()`.
+1. El loader de `/generar` (hoy sin ruta) llama a `cargarPlantillaAventuras()`.
 2. La pagina mantiene en estado la seleccion de regla, configuracion de reglas
    extras y mision actual.
 3. `generarMision()` escoge faccion, tipo de jefe, tipo de mision, lugares,
@@ -96,6 +117,6 @@ Flujo:
 ## Errores esperados
 
 - Si una plantilla no existe o tiene forma invalida, el loader lanza error.
-- `/generar` tiene `GenerarError` para mostrar fallo de plantillas.
+- `GenerarError` muestra el fallo de plantillas del generador si se vuelve a dar ruta a `/generar`.
 - Las rutas de aventura redirigen a `/aventuras` si el id no existe.
 - Si no hay `localStorage`, guardar aventura puede fallar y se avisa al usuario.
