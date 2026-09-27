@@ -28,7 +28,7 @@ export type Aventura = {
   partida?: Partida
 }
 
-const CLAVE = 'fanquest.aventuras.v1'
+const CLAVE = 'fetenquest.aventuras.v1'
 
 function leer(): Aventura[] {
   try {

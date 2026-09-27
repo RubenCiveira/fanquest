@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'FanQuest · Ayuda de juego',
-        short_name: 'FanQuest',
-        description: 'Generador de aventuras y ayudas de juego para FanQuest',
+        name: 'FetenQuest · Ayuda de juego',
+        short_name: 'FetenQuest',
+        description: 'Generador de aventuras y ayudas de juego para FetenQuest',
         lang: 'es',
         theme_color: '#e9dab8',
         background_color: '#e9dab8',
@@ -35,7 +35,7 @@ export default defineConfig({
       },
     }),
   ],
-  // ruta de publicación, p. ej. /fanquest/ en GitHub Pages (ver .github/workflows)
+  // ruta de publicación, p. ej. /fetenquest/ en GitHub Pages (ver .github/workflows)
   base: process.env.BASE_PATH ?? '/',
   // puerto fijo: el depurador de VS Code (.vscode/launch.json) abre esta URL
   server: { port: 5180, strictPort: true },

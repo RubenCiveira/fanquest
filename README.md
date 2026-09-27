@@ -1,6 +1,6 @@
-# FanQuest · Ayuda de juego
+# FetenQuest · Ayuda de juego
 
-SPA (React + Vite + TypeScript, mobile first) de apoyo para partidas de FanQuest.
+SPA (React + Vite + TypeScript, mobile first) de apoyo para partidas de FetenQuest.
 
 ## Secciones
 

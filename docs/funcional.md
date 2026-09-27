@@ -1,6 +1,6 @@
 # Vision funcional
 
-FanQuest es una SPA mobile first de ayuda para partidas de FetenQuest. Reune un
+Esta app es una SPA mobile first de ayuda para partidas de FetenQuest. Reúne un
 generador de aventuras, gestion de aventuras guardadas, asistente de partida e
 impresion de fichas.
 

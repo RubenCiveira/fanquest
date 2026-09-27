@@ -10,7 +10,7 @@ export function CreditosPage() {
 
       <section className="creditos">
         <p>
-          FanQuest es una ayuda de juego no oficial, gratuita y sin ánimo de lucro para{' '}
+          Esta app es una ayuda de juego no oficial, gratuita y sin ánimo de lucro para{' '}
           <strong>FetenQuest</strong>. No está afiliada ni respaldada por su autor.
         </p>
 

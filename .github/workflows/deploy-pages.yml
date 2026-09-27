@@ -42,11 +42,11 @@ jobs:
         run: pnpm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
-          # sitio de FanQuest en matomo.civeira.net
+          # sitio de FetenQuest en matomo.civeira.net
           VITE_MATOMO_SITE_ID: 2
 
       # GitHub Pages sirve 404.html para rutas desconocidas: así una recarga
-      # en /fanquest/generar vuelve a cargar la SPA en lugar de dar error
+      # en /fetenquest/generar vuelve a cargar la SPA en lugar de dar error
       - name: SPA fallback
         run: cp dist/index.html dist/404.html
 

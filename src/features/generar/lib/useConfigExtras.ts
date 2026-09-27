@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { CONFIG_EXTRAS_DEFECTO } from './reglasExtras'
 import type { ConfigExtras } from './tipos'
 
-const CLAVE = 'fanquest.generar.configExtras.v2'
+const CLAVE = 'fetenquest.generar.configExtras.v2'
 
 function leer(): ConfigExtras {
   try {

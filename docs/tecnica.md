@@ -67,7 +67,7 @@ aventura crea la configuracion inicial y borrar elimina el registro local.
 La persistencia actual esta encapsulada en
 `src/features/aventuras/lib/aventuras.ts`.
 
-- Clave de almacenamiento: `fanquest.aventuras.v1`.
+- Clave de almacenamiento: `fetenquest.aventuras.v1`.
 - Medio: `localStorage`.
 - API publica asincrona: `listarAventuras`, `obtenerAventura`,
   `guardarAventura`, `actualizarAventura` y `borrarAventura`.

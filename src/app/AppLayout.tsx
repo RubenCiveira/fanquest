@@ -18,7 +18,7 @@ export function AppLayout() {
   return (
     <div className="app">
       <header className="app-header">
-        <span className="app-title">FanQuest</span>
+        <span className="app-title">FetenQuest</span>
         <Link to="/creditos" className="app-creditos">
           Créditos
         </Link>

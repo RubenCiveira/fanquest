@@ -19,8 +19,8 @@ export function AvisoActualizacion() {
     <div className="aviso boceto" role="status">
       <p>
         {hayVersion
-          ? 'Hay una versión nueva de FanQuest.'
-          : 'FanQuest ya funciona sin conexión.'}
+          ? 'Hay una versión nueva de FetenQuest.'
+          : 'FetenQuest ya funciona sin conexión.'}
       </p>
       <div className="fila-botones">
         {hayVersion && (

@@ -1,6 +1,6 @@
 # Documentacion del proyecto
 
-Este directorio resume el funcionamiento de FanQuest para poder entender el
+Este directorio resume el funcionamiento de la ayuda de juego para poder entender el
 proyecto y desarrollar sobre el con seguridad.
 
 ## Lectura recomendada
