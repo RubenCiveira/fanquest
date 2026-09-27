@@ -1644,6 +1644,69 @@ input[type='checkbox'] {
     font-size: 15pt;
   }
 }
+
+/* aliados: un desplegable por grupo con sus reglas comunes */
+.aliados-grupo summary {
+  padding: 6px 0;
+  font-family: var(--versalitas);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.aliados-reglas {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+
+/* monstruos de la misión: añadir del bestiario y contar miniaturas */
+.anadir-monstruos .nota {
+  margin: 8px 0 4px;
+}
+
+.fila-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 36px;
+  padding: 4px 10px 4px 6px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--tinta);
+  background: var(--vitela);
+  border: 1px solid var(--trazo);
+  border-radius: var(--boceto-2);
+  cursor: pointer;
+}
+
+.chip .icono {
+  width: 18px;
+  height: 18px;
+}
+
+.fila-copias {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-family: var(--versalitas);
+  font-weight: 700;
+  color: var(--vitela);
+}
+
+.fila-copias .icon-button {
+  color: var(--tinta);
+  background: var(--vitela);
+}
+
 /* imprimir fichas: se eligen en pantalla y se imprimen enteras; solo en
    pantalla para no pisar el bloque de impresión */
 @media screen {

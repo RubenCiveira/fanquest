@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { avanzar, estadoAventura, estadoPaso, pasoActual, volverA } from './asistente'
 import { PASOS, type Configuracion, type Paso } from './preparacion'
 
-const BASE: Configuracion = { paso: 'mazos', modo: 'losetas', mazos: {} }
+const BASE: Configuracion = { paso: 'heroes', modo: 'losetas', mazos: {} }
 const BARAJADA: Configuracion = { ...BASE, paso: 'barajar', barajado: { fecha: '2026-09-26T10:00:00.000Z', orden: {} } }
 
 describe('asistente de preparación', () => {
-  it('empieza en el paso de los mazos', () => {
-    expect(PASOS.map((p) => estadoPaso(BASE, p))).toEqual(['actual', 'pendiente'])
+  it('empieza en el paso de los héroes', () => {
+    expect(PASOS.map((p) => estadoPaso(BASE, p))).toEqual(['actual', 'pendiente', 'pendiente', 'pendiente'])
   })
 
   it('avanza paso a paso', () => {
     const c = avanzar(BASE)
-    expect(PASOS.map((p) => estadoPaso(c, p))).toEqual(['completado', 'actual'])
+    expect(PASOS.map((p) => estadoPaso(c, p))).toEqual(['completado', 'actual', 'pendiente', 'pendiente'])
   })
 
   it('no pasa del último paso', () => {
@@ -20,7 +20,7 @@ describe('asistente de preparación', () => {
   })
 
   it('con los mazos barajados todos los pasos están completados', () => {
-    expect(PASOS.map((p) => estadoPaso(BARAJADA, p))).toEqual(['completado', 'completado'])
+    expect(PASOS.map((p) => estadoPaso(BARAJADA, p))).toEqual(['completado', 'completado', 'completado', 'completado'])
   })
 
   it('volver a un paso anula el barajado', () => {

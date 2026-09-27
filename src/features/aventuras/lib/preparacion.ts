@@ -8,6 +8,7 @@ import {
   type Modo,
 } from '../config/mazos'
 import type { CartaMazo, IdMazo, Mazo, Mazos } from '../../../lib/mazos'
+import type { SeleccionMonstruos } from './monstruos'
 
 /** Carta apartada por una regla especial y la que ocupa su lugar */
 export type Reemplazo = { original: string; reemplazo: string }
@@ -16,13 +17,22 @@ export type Reemplazo = { original: string; reemplazo: string }
 export type SeleccionMazo = { cartas: string[]; reemplazos: Reemplazo[] }
 
 /** Pasos del asistente de preparación, en orden */
-export const PASOS = ['mazos', 'barajar'] as const
+export const PASOS = ['heroes', 'mazos', 'monstruos', 'barajar'] as const
 
 export type Paso = (typeof PASOS)[number]
+
+/** Las tablas de encuentros tienen columnas para 1, 2 y 3 o 4 héroes */
+export const MAX_HEROES = 4
 
 export type Configuracion = {
   /** Paso del asistente en curso (las aventuras antiguas no lo tienen) */
   paso?: Paso
+  /** Ids del grupo de héroes (las aventuras antiguas no lo tienen) */
+  heroes?: string[]
+  /** Aliados que acompañan al grupo, con `claveAliado` */
+  aliados?: string[]
+  /** Monstruos elegidos; sin dato, la propuesta de la misión */
+  monstruos?: SeleccionMonstruos
   modo: Modo
   mazos: Partial<Record<IdMazo, SeleccionMazo>>
   /** Orden final tras «barajar y guardar»; se pierde al cambiar la selección */
@@ -176,7 +186,8 @@ export function ordenar(mazo: Mazo, s: SeleccionMazo, modo: Modo): string[] {
 export function nuevaConfiguracion(mazos: Mazos, mision: Mision): Configuracion {
   const ids = [...new Set([...MAZOS_POR_MODO.losetas, ...MAZOS_POR_MODO.tablero])]
   return {
-    paso: 'mazos',
+    paso: 'heroes',
+    heroes: [],
     modo: 'losetas',
     mazos: Object.fromEntries(ids.map((id) => [id, completar(mazos[id], mision, VACIA)])),
   }
@@ -195,3 +206,25 @@ export function barajarYGuardar(mazos: Mazos, c: Configuracion): Configuracion {
 }
 
 export const seleccion = (c: Configuracion, id: IdMazo) => c.mazos[id] ?? VACIA
+
+const alternar = (lista: string[], id: string) =>
+  lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]
+
+/**
+ * Añade o quita un héroe del grupo; con el grupo completo no añade. Los
+ * monstruos vuelven a la propuesta, que depende de cuántos héroes hay.
+ */
+export function alternarHeroe(c: Configuracion, id: string): Configuracion {
+  const grupo = c.heroes ?? []
+  return grupo.includes(id) || grupo.length < MAX_HEROES
+    ? { ...c, heroes: alternar(grupo, id), monstruos: undefined }
+    : c
+}
+
+/** Un aliado se identifica por su grupo (`templates/aliados/<grupo>.json`) y su id */
+export const claveAliado = (grupo: string, id: string) => `${grupo}/${id}`
+
+export const alternarAliado = (c: Configuracion, clave: string): Configuracion => ({
+  ...c,
+  aliados: alternar(c.aliados ?? [], clave),
+})

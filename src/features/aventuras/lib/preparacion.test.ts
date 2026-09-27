@@ -6,6 +6,8 @@ import type { Mision, PlantillaAventuras } from '../../generar/lib/tipos'
 import { MAZOS_POR_MODO, type Modo } from '../config/mazos'
 import { cargarMazos, type IdMazo, type Mazos } from '../../../lib/mazos'
 import {
+  alternarAliado,
+  alternarHeroe,
   avisos,
   barajarYGuardar,
   cartasBase,
@@ -15,6 +17,7 @@ import {
   nuevaConfiguracion,
   ordenar,
   recuento,
+  type Configuracion,
   type SeleccionMazo,
 } from './preparacion'
 
@@ -163,5 +166,35 @@ describe('configuración', () => {
   it('barajar y guardar solo ordena los mazos del modo', () => {
     const c = barajarYGuardar(mazos, { ...nuevaConfiguracion(mazos, mision(0)), modo: 'tablero' })
     expect(Object.keys(c.barajado?.orden ?? {}).sort()).toEqual(['atrezo', 'salas', 'salas-especiales'])
+  })
+})
+
+describe('grupo de héroes', () => {
+  const vacia: Configuracion = { modo: 'losetas', mazos: {} }
+
+  it('añade héroes al grupo', () => {
+    expect(alternarHeroe(alternarHeroe(vacia, 'enano'), 'elfo').heroes).toEqual(['enano', 'elfo'])
+  })
+
+  it('quita un héroe que ya está en el grupo', () => {
+    expect(alternarHeroe({ ...vacia, heroes: ['enano', 'elfo'] }, 'enano').heroes).toEqual(['elfo'])
+  })
+
+  it('cambiar el grupo devuelve los monstruos a la propuesta', () => {
+    expect(alternarHeroe({ ...vacia, monstruos: { orco: 9 } }, 'enano').monstruos).toBeUndefined()
+  })
+
+  it('no pasa de 4 héroes', () => {
+    const completo = { ...vacia, heroes: ['barbaro', 'enano', 'elfo', 'mago'] }
+    expect(alternarHeroe(completo, 'bardo').heroes).toEqual(completo.heroes)
+  })
+})
+
+describe('aliados', () => {
+  const vacia: Configuracion = { modo: 'losetas', mazos: {} }
+
+  it('añade y quita aliados del grupo', () => {
+    const c = alternarAliado(alternarAliado(vacia, 'animales/lobo'), 'mercenarios/ogro')
+    expect(alternarAliado(c, 'animales/lobo').aliados).toEqual(['mercenarios/ogro'])
   })
 })

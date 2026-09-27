@@ -8,6 +8,18 @@ import {
   type Aventura,
 } from './lib/aventuras'
 import { cargarMazos, type IdMazo, type Mazos } from '../../lib/mazos'
+import {
+  cargarAliados,
+  cargarBestiario,
+  cargarHabilidades,
+  cargarHeroes,
+  cargarMonstruos,
+  type Familia,
+  type GrupoAliados,
+  type Habilidades,
+  type Heroe,
+  type Monstruos,
+} from '../../lib/personajes'
 import { nuevaConfiguracion, type Configuracion } from './lib/preparacion'
 
 export async function cargarAventura({ params }: LoaderFunctionArgs) {
@@ -38,10 +50,23 @@ export type DatosConfiguracion = {
   aventura: Aventura
   configuracion: Configuracion
   mazos: Mazos
+  heroes: Heroe[]
+  habilidades: Habilidades
+  monstruos: Monstruos
+  bestiario: Familia[]
+  aliados: GrupoAliados[]
 }
 
 export async function cargarConfiguracion({ params }: LoaderFunctionArgs): Promise<DatosConfiguracion> {
-  const [aventura, mazos] = await Promise.all([obtenerAventura(params.id ?? ''), cargarMazos()])
+  const [aventura, mazos, heroes, habilidades, monstruos, bestiario, aliados] = await Promise.all([
+    obtenerAventura(params.id ?? ''),
+    cargarMazos(),
+    cargarHeroes(),
+    cargarHabilidades(),
+    cargarMonstruos(),
+    cargarBestiario(),
+    cargarAliados(),
+  ])
   if (!aventura) throw redirect('/aventuras')
   const { configuracion } = aventura
   if (!configuracion) throw redirect(`/aventuras/${aventura.id}`)
@@ -50,5 +75,5 @@ export async function cargarConfiguracion({ params }: LoaderFunctionArgs): Promi
   if (params.mazo && !escogible) {
     throw redirect(`/aventuras/${aventura.id}/configurar`)
   }
-  return { aventura, configuracion, mazos }
+  return { aventura, configuracion, mazos, heroes, habilidades, monstruos, bestiario, aliados }
 }

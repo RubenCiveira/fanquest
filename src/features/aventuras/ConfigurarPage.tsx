@@ -4,7 +4,10 @@ import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { registrarEvento } from '../../lib/matomo'
+import { PanelAliados } from './components/PanelAliados'
+import { PanelHeroes } from './components/PanelHeroes'
 import { PanelMazo } from './components/PanelMazo'
+import { PanelMonstruos } from './components/PanelMonstruos'
 import { PasosAsistente } from './components/PasosAsistente'
 import {
   DESCRIPCION_MODO,
@@ -15,7 +18,8 @@ import {
 } from './config/mazos'
 import { anulaBarajado, pasoActual, TITULO_PASO } from './lib/asistente'
 import { urlDorso, type IdMazo } from '../../lib/mazos'
-import { avisos, seleccion, type Paso } from './lib/preparacion'
+import { seleccionMonstruos } from './lib/monstruos'
+import { avisos, claveAliado, seleccion, type Paso } from './lib/preparacion'
 import { useConfiguracion } from './lib/useConfiguracion'
 import type { DatosConfiguracion } from './rutas'
 
@@ -23,7 +27,7 @@ const fecha = new Intl.DateTimeFormat('es', { dateStyle: 'medium', timeStyle: 's
 
 export function ConfigurarPage() {
   const datos = useLoaderData<DatosConfiguracion>()
-  const { aventura, mazos } = datos
+  const { aventura, mazos, heroes, habilidades, monstruos, bestiario, aliados } = datos
   const { mision } = aventura
   const asistente = useConfiguracion(datos)
   const { config } = asistente
@@ -31,6 +35,16 @@ export function ConfigurarPage() {
   const ids = MAZOS_POR_MODO[config.modo]
   const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
   const paso = pasoActual(config)
+  const grupo = config.heroes ?? []
+  const elegidos = config.aliados ?? []
+  const nombresGrupo = [
+    ...heroes.filter((h) => grupo.includes(h.id)).map((h) => h.nombre),
+    ...aliados.flatMap((g) => g.aliados.filter((a) => elegidos.includes(claveAliado(g.id, a.id))).map((a) => a.nombre)),
+  ].join(', ')
+  // en el grupo van PNJ y compañeros animales; los mercenarios solo se imprimen
+  const aliadosDelGrupo = aliados.filter((g) => g.id !== 'mercenarios')
+  const pnj = mision.efectos?.find((e) => e.tipo === 'pnj')
+  const miniaturas = Object.values(seleccionMonstruos(config.monstruos, mision, grupo.length)).reduce((a, b) => a + b, 0)
 
   const pedirVolver = (destino: Paso) =>
     anulaBarajado(config) ? setVolverA(destino) : asistente.volverA(destino)
@@ -70,6 +84,26 @@ export function ConfigurarPage() {
           {conAvisos.length > 0 && (
             <p className="nota mal">Se barajó con avisos en {conAvisos.map((id) => NOMBRE_MAZO[id]).join(', ')}.</p>
           )}
+          {nombresGrupo && <p className="nota">Grupo: {nombresGrupo}.</p>}
+          <p className="nota">Monstruos: {miniaturas} miniaturas.</p>
+        </section>
+      ) : paso === 'heroes' ? (
+        <section className="paso-contenido">
+          <PanelHeroes heroes={heroes} habilidades={habilidades} grupo={grupo} onAlternar={asistente.alternarHeroe} />
+          <PanelAliados
+            grupos={aliadosDelGrupo}
+            elegidos={elegidos}
+            onAlternar={asistente.alternarAliado}
+            nota={
+              pnj &&
+              (pnj.estado === 'acompanante'
+                ? 'El PNJ de esta misión os acompaña desde el principio: añade su perfil.'
+                : 'Esta misión tiene un PNJ que puede unirse al grupo si lo encontráis: añade su perfil entonces.')
+            }
+          />
+          <button type="button" className="button" disabled={!grupo.length} onClick={asistente.avanzar}>
+            Siguiente: {TITULO_PASO.mazos}
+          </button>
         </section>
       ) : paso === 'mazos' ? (
         <section className="paso-contenido">
@@ -99,18 +133,40 @@ export function ConfigurarPage() {
             />
           ))}
           <button type="button" className="button" onClick={asistente.avanzar}>
+            Siguiente: {TITULO_PASO.monstruos}
+          </button>
+        </section>
+      ) : paso === 'monstruos' ? (
+        <section className="paso-contenido">
+          <PanelMonstruos
+            mision={mision}
+            monstruos={monstruos}
+            bestiario={bestiario}
+            heroes={grupo.length}
+            elegidos={config.monstruos}
+            onCambiar={asistente.cambiarMonstruos}
+          />
+          <button type="button" className="button" onClick={asistente.avanzar}>
             Siguiente: {TITULO_PASO.barajar}
           </button>
         </section>
       ) : (
         <section className="paso-contenido">
           <ul className="recuento">
+            <li className={grupo.length ? undefined : 'mal'}>
+              <span>Grupo</span>
+              <span>{nombresGrupo || 'Sin grupo'}</span>
+            </li>
             {ids.map((id) => (
               <li key={id} className={conAvisos.includes(id) ? 'mal' : undefined}>
                 <span>{NOMBRE_MAZO[id as IdMazo]}</span>
                 <span>{seleccion(config, id).cartas.length} cartas</span>
               </li>
             ))}
+            <li className={miniaturas ? undefined : 'mal'}>
+              <span>Monstruos</span>
+              <span>{miniaturas} miniaturas</span>
+            </li>
           </ul>
           {conAvisos.length > 0 && (
             <p className="nota mal">Hay avisos en la selección; puedes barajar igualmente o volver a Mazos.</p>

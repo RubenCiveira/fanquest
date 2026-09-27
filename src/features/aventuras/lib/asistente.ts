@@ -2,7 +2,9 @@ import type { EstadoAventura } from './aventuras'
 import { PASOS, type Configuracion, type Paso } from './preparacion'
 
 export const TITULO_PASO: Record<Paso, string> = {
+  heroes: 'Grupo',
   mazos: 'Mazos',
+  monstruos: 'Monstruos',
   barajar: 'Barajar',
 }
 
