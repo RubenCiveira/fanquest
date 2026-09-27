@@ -1,5 +1,6 @@
 import { redirect, type ActionFunctionArgs, type LoaderFunctionArgs } from 'react-router'
 import { registrarEvento } from '../../lib/matomo'
+import { cargarEquipo, type Equipo } from '../../lib/equipo'
 import { cargarPlantillaAventuras } from '../generar/lib/plantilla'
 import type { PlantillaAventuras } from '../generar/lib/tipos'
 import { MAZOS_POR_MODO } from './config/mazos'
@@ -89,17 +90,19 @@ export type DatosPartida = {
   miembros: Miembro[]
   habilidades: Habilidades
   monstruos: Monstruos
+  equipo: Equipo
 }
 
 /** Con los mazos barajados se juega; la primera vez empieza la partida */
 export async function cargarPartida({ params }: LoaderFunctionArgs): Promise<DatosPartida> {
-  const [aventura, mazos, heroes, habilidades, monstruos, aliados] = await Promise.all([
+  const [aventura, mazos, heroes, habilidades, monstruos, aliados, equipo] = await Promise.all([
     obtenerAventura(params.id ?? ''),
     cargarMazos(),
     cargarHeroes(),
     cargarHabilidades(),
     cargarMonstruos(),
     cargarAliados(),
+    cargarEquipo(),
   ])
   if (!aventura) throw redirect('/aventuras')
   const { configuracion } = aventura
@@ -116,11 +119,11 @@ export async function cargarPartida({ params }: LoaderFunctionArgs): Promise<Dat
   }
   let partida = aventura.partida && conMapa(aventura.partida, configuracion.modo)
   if (!partida) {
-    partida = nuevaPartida(contexto, configuracion, miembros)
+    partida = nuevaPartida(contexto, configuracion, miembros, equipo)
     await actualizarAventura({ ...aventura, estado: estadoAventura(configuracion, partida), partida })
     registrarEvento('Aventuras', 'Empezar partida', configuracion.modo)
   }
-  return { aventura: { ...aventura, configuracion, partida }, contexto, miembros, habilidades, monstruos }
+  return { aventura: { ...aventura, configuracion, partida }, contexto, miembros, habilidades, monstruos, equipo }
 }
 
 export type DatosEditor = { plantilla: PlantillaAventuras; aventura?: Aventura }

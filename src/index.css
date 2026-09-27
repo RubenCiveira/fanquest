@@ -2023,6 +2023,75 @@ input[type='checkbox'] {
   cursor: pointer;
 }
 
+.inventario-panel {
+  padding: 10px 12px;
+  background: rgb(246 238 217 / 0.6);
+  border: 1.5px solid var(--trazo-suave);
+  border-radius: var(--boceto-2);
+}
+
+.inventario-panel summary {
+  font-family: var(--versalitas);
+  font-weight: 700;
+  color: var(--grafito);
+  cursor: pointer;
+}
+
+.inventario-lista {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.inventario-heroe {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  background: var(--vitela);
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.inventario-heroe header,
+.inventario-oro,
+.inventario-bloque li,
+.inventario-anadir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.inventario-heroe header {
+  justify-content: space-between;
+}
+
+.inventario-heroe h3,
+.inventario-bloque p,
+.inventario-bloque ul {
+  margin: 0;
+}
+
+.inventario-bloque ul {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.inventario-bloque li span {
+  min-width: min(16rem, 100%);
+}
+
+.inventario-anadir select {
+  max-width: 100%;
+}
+
+.button.mini {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
 .reglas-mision h3 {
   margin: 0 0 4px;
   font-family: var(--versalitas);

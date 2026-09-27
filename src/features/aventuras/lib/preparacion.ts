@@ -31,9 +31,11 @@ export type Reglas = {
    * Aventuras Infinitas); sin ellos los héroes tiran sus dados cada turno
    */
   movimientoFijo: boolean
+  /** Prepara Mazo de Tesoros equilibrado y Mazo de Sucesos para la partida */
+  tesorosYSucesos: boolean
 }
 
-export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true }
+export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true, tesorosYSucesos: false }
 
 export type Configuracion = {
   /** Paso del asistente en curso (las aventuras antiguas no lo tienen) */
@@ -195,6 +197,26 @@ export function ordenar(mazo: Mazo, s: SeleccionMazo, modo: Modo): string[] {
   return [...resto.slice(0, corte), ...barajar([...resto.slice(corte), ...objetivos])]
 }
 
+const todasLasCopias = (mazo: Mazo) => mazo.cartas.flatMap((carta) => Array<string>(carta.copias).fill(carta.id))
+
+function mazoTesorosEquilibrado(mazo: Mazo): string[] {
+  const copias = todasLasCopias(mazo)
+  const porCategoria = (categoria: CartaMazo['categoria']) =>
+    copias.filter((id) => carta(mazo, id).categoria === categoria)
+  const negativas = porCategoria('negativa')
+  const positivas = porCategoria('positiva')
+  const neutrales = copias.filter((id) => !carta(mazo, id).categoria)
+  const negativasElegidas = barajar(negativas)
+  const positivasElegidas = barajar(positivas).slice(0, negativasElegidas.length * 2)
+  const maxNeutrales = Math.min(neutrales.length, Math.floor(negativasElegidas.length / 2), Math.max(0, 40 - negativasElegidas.length - positivasElegidas.length))
+  return barajar([...positivasElegidas, ...negativasElegidas, ...barajar(neutrales).slice(0, maxNeutrales)])
+}
+
+export const mazosDePartida = (c: Configuracion): IdMazo[] => [
+  ...MAZOS_POR_MODO[c.modo],
+  ...(reglas(c).tesorosYSucesos ? (['tesoros', 'sucesos'] as const) : []),
+]
+
 /** Primera configuración: el motor prepara todos los mazos de ambos modos */
 export function nuevaConfiguracion(mazos: Mazos, mision: Mision): Configuracion {
   const ids = [...new Set([...MAZOS_POR_MODO.losetas, ...MAZOS_POR_MODO.tablero])]
@@ -207,13 +229,16 @@ export function nuevaConfiguracion(mazos: Mazos, mision: Mision): Configuracion 
 }
 
 export function barajarYGuardar(mazos: Mazos, c: Configuracion): Configuracion {
+  const preparar = (id: IdMazo) => {
+    if (id === 'tesoros') return mazoTesorosEquilibrado(mazos.tesoros)
+    if (id === 'sucesos') return barajar(todasLasCopias(mazos.sucesos))
+    return ordenar(mazos[id], c.mazos[id] ?? VACIA, c.modo)
+  }
   return {
     ...c,
     barajado: {
       fecha: new Date().toISOString(),
-      orden: Object.fromEntries(
-        MAZOS_POR_MODO[c.modo].map((id) => [id, ordenar(mazos[id], c.mazos[id] ?? VACIA, c.modo)]),
-      ),
+      orden: Object.fromEntries(mazosDePartida(c).map((id) => [id, preparar(id)])),
     },
   }
 }

@@ -202,6 +202,14 @@ export function SucesoPartida({ suceso: s, contexto, monstruos, onVerCarta, onVe
       )
     }
 
+    case 'inventario':
+      return (
+        <li className="suceso nota">
+          <p className="suceso-titulo">Inventario</p>
+          <p>{s.texto}</p>
+        </li>
+      )
+
     case 'puertas-secretas':
       return (
         <li className="suceso">

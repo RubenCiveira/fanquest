@@ -1,4 +1,5 @@
 import { barajar, caraDC, enResultado, rnd, tirable, tirar } from '../../../lib/dados'
+import { objetoEquipable, type Equipo } from '../../../lib/equipo'
 import type { CartaMazo, IdMazo, Mazo, Mazos, TiradaCarta } from '../../../lib/mazos'
 import { DADOS_MOVIMIENTO, version, type Aliado, type Heroe, type Monstruos } from '../../../lib/personajes'
 import { PREPARACION } from '../../generar/config/preparacion'
@@ -74,6 +75,7 @@ export type Suceso =
   /** Monstruos al azar de una categoría: una tirada por monstruo en la lista de candidatos */
   | { tipo: 'azar'; categoria: number; candidatos: string[]; valores: number[] }
   | { tipo: 'combate'; atacante: string; defensor: string; perdidas: { nombre: string; pc: number }[] }
+  | { tipo: 'inventario'; clave: string; texto: string }
   | { tipo: 'puertas-secretas'; valores: number[] }
   | { tipo: 'brujo'; valor: number; evento?: number; tabla?: number; muerte?: number }
   | { tipo: 'cofre'; nivel: number; anadido: boolean }
@@ -123,6 +125,15 @@ export type MonstruoEnJuego = {
 
 export type FinPartida = 'cumplida' | 'huida' | 'derrota'
 
+export type InventarioHeroe = {
+  oro: number
+  equipo: string[]
+  equipado: string[]
+  pociones: string[]
+  pergaminos: string[]
+  artefactos: string[]
+}
+
 export type Partida = {
   peligro: number
   /** Puede bajar con el evento «Repleta de trampas» */
@@ -132,7 +143,7 @@ export type Partida = {
    * bifurcación. Los índices no cambian: las puertas los guardan
    */
   caminos: string[][]
-  mazos: Record<'pasillo' | 'salas-especiales' | 'atrezo' | 'cofres' | 'trampas', string[]>
+  mazos: Record<'pasillo' | 'salas-especiales' | 'atrezo' | 'cofres' | 'trampas', string[]> & Partial<Record<'tesoros' | 'sucesos', string[]>>
   /** PC de cada miembro del grupo, por `clave` */
   vidas: Record<string, number>
   hayMonstruos: boolean
@@ -148,6 +159,7 @@ export type Partida = {
   cofres: number[]
   /** Contadores de muerte del PNJ (regla especial `contador-muerte`) */
   contadorMuerte: number
+  inventario?: Record<string, InventarioHeroe>
   fin?: FinPartida
 }
 
@@ -167,6 +179,36 @@ export function miembrosDelGrupo(c: Configuracion, heroes: Heroe[], grupos: { id
 
 const copias = (mazo: Mazo) => mazo.cartas.flatMap((c) => Array<string>(c.copias).fill(c.id))
 
+const VACIO_INVENTARIO: InventarioHeroe = { oro: 0, equipo: [], equipado: [], pociones: [], pergaminos: [], artefactos: [] }
+
+const normalizar = (texto: string) =>
+  texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+
+function idsEquipoInicial(m: Miembro, equipo: Equipo): string[] {
+  if (!('heroe' in m)) return []
+  return m.heroe.equipo
+    .split(/,| y /)
+    .map((nombre) => normalizar(nombre))
+    .filter((id) => equipo.equipo.some((item) => item.id === id))
+}
+
+function inventarioInicial(m: Miembro, equipo: Equipo): InventarioHeroe {
+  const ids = idsEquipoInicial(m, equipo)
+  return { ...VACIO_INVENTARIO, equipo: ids, equipado: ids }
+}
+
+const inventarioDe = (p: Partida, clave: string): InventarioHeroe => p.inventario?.[clave] ?? VACIO_INVENTARIO
+
+const guardarInventario = (p: Partida, clave: string, inventario: InventarioHeroe): Partida => ({
+  ...p,
+  inventario: { ...p.inventario, [clave]: inventario },
+})
+
 export function carta(mazo: Mazo, id: string): CartaMazo {
   const c = mazo.cartas.find((c) => c.id === id)
   if (!c) throw new Error(`El mazo ${mazo.id} no tiene la carta ${id}`)
@@ -176,6 +218,20 @@ export function carta(mazo: Mazo, id: string): CartaMazo {
 /** Mazo de la mazmorra según el modo: de él salen salas y, con losetas, pasillos */
 export const mazoMazmorra = (modo: Modo): IdMazo => (modo === 'losetas' ? 'mazmorra' : 'salas')
 
+export function estadisticasMiembro(m: Miembro, inventario: InventarioHeroe | undefined, equipo: Equipo) {
+  const base = 'heroe' in m ? m.heroe : m.aliado
+  const equipados = inventario?.equipado ?? []
+  const objetos = equipados.flatMap((id) => {
+    const item = objetoEquipable(equipo, id)
+    return item ? [item] : []
+  })
+  const armas = objetos.flatMap((item) => ('ataque' in item && item.ataque ? [item.ataque] : []))
+  const defensaInicial = idsEquipoInicial(m, equipo).reduce((total, id) => total + (objetoEquipable(equipo, id)?.defensa ?? 0), 0)
+  const defensaBase = Math.max(0, base.defensa - defensaInicial)
+  const defensa = objetos.reduce((total, item) => total + (('defensa' in item && item.defensa) || 0), defensaBase)
+  return { ataque: armas.length ? Math.max(...armas) : base.ataque, defensa }
+}
+
 const quitar = (lista: string[], ids: string[]) =>
   ids.reduce((resto, id) => {
     const i = resto.indexOf(id)
@@ -183,7 +239,7 @@ const quitar = (lista: string[], ids: string[]) =>
   }, lista)
 
 /** Empieza la partida con los mazos en el orden barajado en la preparación */
-export function nuevaPartida(ctx: Contexto, c: Configuracion, miembros: Miembro[]): Partida {
+export function nuevaPartida(ctx: Contexto, c: Configuracion, miembros: Miembro[], equipo: Equipo = { equipo: [], pociones: [], pergaminos: [], artefactos: [] }): Partida {
   const orden = c.barajado?.orden ?? {}
   const atrezo = orden.atrezo ?? []
   const cofres = ctx.mazos.atrezo.cartas.filter((carta) => carta.tipo === 'cofre')
@@ -198,6 +254,8 @@ export function nuevaPartida(ctx: Contexto, c: Configuracion, miembros: Miembro[
       // el Mazo de Cofres: los que no están ya en el de atrezo
       cofres: barajar(quitar(cofres.flatMap((carta) => Array<string>(carta.copias).fill(carta.id)), atrezo)),
       trampas: barajar(copias(ctx.mazos.trampas)),
+      tesoros: orden.tesoros,
+      sucesos: orden.sucesos,
     },
     vidas: Object.fromEntries(miembros.map((m) => [m.clave, m.cuerpo])),
     hayMonstruos: false,
@@ -209,6 +267,7 @@ export function nuevaPartida(ctx: Contexto, c: Configuracion, miembros: Miembro[
     especiales: 0,
     cofres: [],
     contadorMuerte: 0,
+    inventario: Object.fromEntries(miembros.map((m) => [m.clave, inventarioInicial(m, equipo)])),
   }
 }
 
@@ -239,6 +298,79 @@ function robar(p: Partida, ctx: Contexto, mazo: 'pasillo' | 'trampas'): [string,
   const lista = p.mazos[mazo].length ? p.mazos[mazo] : barajar(copias(ctx.mazos[mazo]))
   const [id, ...resto] = lista
   return [id, { ...p, mazos: { ...p.mazos, [mazo]: resto } }]
+}
+
+function robarPreparado(p: Partida, mazo: 'tesoros' | 'sucesos'): [string | undefined, Partida] {
+  const lista = p.mazos[mazo] ?? []
+  const [id, ...resto] = lista
+  return [id, { ...p, mazos: { ...p.mazos, [mazo]: resto } }]
+}
+
+const quitarUna = (lista: string[], id: string) => {
+  const i = lista.indexOf(id)
+  return i < 0 ? lista : [...lista.slice(0, i), ...lista.slice(i + 1)]
+}
+
+function conNotaInventario(p: Partida, clave: string, texto: string): Partida {
+  return anotar(p, { tipo: 'inventario', clave, texto })
+}
+
+function clasificarItem(id: string): keyof Omit<InventarioHeroe, 'oro' | 'equipado'> {
+  if (id.startsWith('pergamino-')) return 'pergaminos'
+  if (id.startsWith('pocima-') || id.startsWith('agua-') || id === 'antidoto') return 'pociones'
+  return 'equipo'
+}
+
+export function cambiarOro(p: Partida, clave: string, delta: number): Partida {
+  const inventario = inventarioDe(p, clave)
+  return guardarInventario(p, clave, { ...inventario, oro: Math.max(0, inventario.oro + delta) })
+}
+
+export function anadirItem(p: Partida, clave: string, id: string, tipo = clasificarItem(id)): Partida {
+  const inventario = inventarioDe(p, clave)
+  const lista = inventario[tipo]
+  return guardarInventario(p, clave, { ...inventario, [tipo]: [...lista, id] })
+}
+
+export function usarPocion(p: Partida, clave: string, id: string): Partida {
+  const inventario = inventarioDe(p, clave)
+  return guardarInventario(p, clave, { ...inventario, pociones: quitarUna(inventario.pociones, id) })
+}
+
+export function gastarPergamino(p: Partida, clave: string, id: string): Partida {
+  const inventario = inventarioDe(p, clave)
+  return guardarInventario(p, clave, { ...inventario, pergaminos: quitarUna(inventario.pergaminos, id) })
+}
+
+export function perderEquipo(p: Partida, clave: string, id: string): Partida {
+  const inventario = inventarioDe(p, clave)
+  return guardarInventario(p, clave, {
+    ...inventario,
+    equipo: quitarUna(inventario.equipo, id),
+    artefactos: quitarUna(inventario.artefactos, id),
+    equipado: quitarUna(inventario.equipado, id),
+  })
+}
+
+export function alternarEquipado(p: Partida, clave: string, id: string): Partida {
+  const inventario = inventarioDe(p, clave)
+  const equipado = inventario.equipado.includes(id) ? quitarUna(inventario.equipado, id) : [...inventario.equipado, id]
+  return guardarInventario(p, clave, { ...inventario, equipado })
+}
+
+export function robarTesoro(p: Partida, ctx: Contexto, clave: string): Partida {
+  let [id, nueva] = robarPreparado(p, 'tesoros')
+  if (!id) return conNotaInventario(p, clave, 'No quedan cartas en el Mazo de Tesoros.')
+  const c = carta(ctx.mazos.tesoros, id)
+  if (c.reciclar) nueva = { ...nueva, mazos: { ...nueva.mazos, tesoros: barajar([...(nueva.mazos.tesoros ?? []), id]) } }
+  nueva = anotar(nueva, { tipo: 'carta', mazo: 'tesoros', id })
+  if (c.oro) nueva = cambiarOro(nueva, clave, c.oro)
+  if (c.equipoId) nueva = anadirItem(nueva, clave, c.equipoId)
+  if (c.suceso) {
+    const [suceso, trasSuceso] = robarPreparado(nueva, 'sucesos')
+    nueva = suceso ? anotar(trasSuceso, { tipo: 'carta', mazo: 'sucesos', id: suceso }) : conNotaInventario(trasSuceso, clave, 'No quedan cartas en el Mazo de Sucesos.')
+  }
+  return nueva
 }
 
 /** Secuencia de exploración de lo que indica la carta */

@@ -20,7 +20,7 @@ import {
 import { anulaBarajado, pasoActual, TITULO_PASO } from './lib/asistente'
 import { urlDorso, type IdMazo } from '../../lib/mazos'
 import { seleccionMonstruos } from './lib/monstruos'
-import { avisos, claveAliado, reglas, seleccion, type Paso } from './lib/preparacion'
+import { avisos, claveAliado, mazosDePartida, reglas, seleccion, type Paso } from './lib/preparacion'
 import { useConfiguracion } from './lib/useConfiguracion'
 import type { DatosConfiguracion } from './rutas'
 
@@ -34,9 +34,10 @@ export function ConfigurarPage() {
   const { config } = asistente
   const [volverA, setVolverA] = useState<Paso | null>(null)
   const ids = MAZOS_POR_MODO[config.modo]
+  const idsBarajados = mazosDePartida(config)
   const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
   const paso = pasoActual(config)
-  const { movimientoFijo } = reglas(config)
+  const { movimientoFijo, tesorosYSucesos } = reglas(config)
   const grupo = config.heroes ?? []
   const elegidos = config.aliados ?? []
   const nombresGrupo = [
@@ -72,7 +73,7 @@ export function ConfigurarPage() {
             guardado para la partida.
           </p>
           <ul className="barajado-mazos">
-            {ids.map((id) => {
+            {idsBarajados.map((id) => {
               const dorso = urlDorso(mazos[id])
               return (
                 <li key={id}>
@@ -111,6 +112,20 @@ export function ConfigurarPage() {
                   {movimientoFijo
                     ? 'Cada héroe tiene Puntos de Movimiento fijos según su perfil (nuevas reglas de Aventuras Infinitas).'
                     : `Los héroes tiran ${DADOS_MOVIMIENTO} de movimiento cada turno, como en FetenQuest.`}
+                </span>
+              </span>
+            </label>
+            <label className="regla-opcion">
+              <input
+                type="checkbox"
+                checked={tesorosYSucesos}
+                onChange={() => asistente.cambiarReglas({ ...reglas(config), tesorosYSucesos: !tesorosYSucesos })}
+              />
+              <span>
+                <strong>Usar mazo de tesoros y sucesos equilibrado</strong>
+                <span className="nota">
+                  Prepara automáticamente un mazo con proporción 2:1 de cartas positivas y negativas, y baraja el Mazo
+                  de Sucesos para las cartas que lo pidan.
                 </span>
               </span>
             </label>
@@ -205,6 +220,12 @@ export function ConfigurarPage() {
                 <span>{seleccion(config, id).cartas.length} cartas</span>
               </li>
             ))}
+            {tesorosYSucesos && (
+              <li>
+                <span>Tesoros y sucesos</span>
+                <span>Equilibrado automático</span>
+              </li>
+            )}
             <li className={miniaturas ? undefined : 'mal'}>
               <span>Monstruos</span>
               <span>{miniaturas} miniaturas</span>
