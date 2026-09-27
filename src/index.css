@@ -1740,3 +1740,315 @@ input[type='checkbox'] {
     filter: grayscale(1);
   }
 }
+
+/* ---------- Partida: el grupo a la izquierda, los monstruos a la derecha
+   y, en el centro, la guía ---------- */
+.partida-cabecera {
+  display: flex;
+  margin-left: auto;
+}
+
+.partida {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.partida.con-monstruos {
+  grid-template-columns: 58px minmax(0, 1fr) 58px;
+}
+
+.partida-fichas {
+  position: sticky;
+  top: calc(var(--header-h) + env(safe-area-inset-top) + 12px);
+  display: grid;
+  gap: 12px;
+}
+
+/* muchos monstruos: la barra se desplaza sin tapar la navegación */
+.partida-monstruos {
+  max-height: calc(100dvh - var(--header-h) - var(--nav-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.miembro {
+  position: relative;
+}
+
+.miembro-marca {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  font-family: var(--versalitas);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 22px;
+  color: var(--vitela);
+  background: var(--tinta);
+  border-radius: 50% 46% 52% 48% / 48% 52% 46% 50%;
+}
+
+.partida-monstruos .miembro-vida {
+  color: var(--tinta);
+}
+
+.miembro {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 0;
+  font: inherit;
+  color: var(--tinta);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.miembro img,
+.miembro-iniciales {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  object-position: top;
+  background: var(--vitela);
+  border: 1.5px solid var(--trazo);
+  border-radius: var(--boceto-2);
+  transition: border-color 200ms var(--ease);
+}
+
+.miembro-iniciales {
+  display: grid;
+  place-items: center;
+  font-family: var(--versalitas);
+  font-weight: 700;
+}
+
+.miembro:hover img,
+.miembro:hover .miembro-iniciales {
+  border-color: var(--rubrica);
+}
+
+.miembro-vida {
+  font-family: var(--versalitas);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
+  color: var(--rubrica);
+}
+
+.miembro.caido img,
+.miembro.caido .miembro-iniciales {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.partida-centro {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.marcador {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0;
+  padding: 8px 14px;
+  background: rgb(246 238 217 / 0.6);
+}
+
+.marcador dt {
+  font-family: var(--versalitas);
+  font-size: 0.8rem;
+  color: var(--grafito);
+}
+
+.marcador dd {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  margin: 0;
+  font-family: var(--versalitas);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.marcador .contador span {
+  min-width: 1.6em;
+}
+
+.marcador .contador .icon-button {
+  width: 36px;
+  height: 36px;
+}
+
+.zona,
+.acciones,
+.grupo-acciones,
+.objetivo {
+  display: grid;
+  gap: 10px;
+}
+
+.acciones {
+  gap: 16px;
+}
+
+.zona p,
+.acciones p {
+  margin: 0;
+}
+
+.zona h2,
+.acciones h2 {
+  margin: 0;
+  font-family: var(--gotica);
+  font-size: 1.8rem;
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--rubrica);
+}
+
+.acciones h2 {
+  font-size: 1.45rem;
+  color: var(--tinta);
+}
+
+.zona-etiqueta {
+  margin-bottom: -8px !important;
+  font-family: var(--versalitas);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--grafito);
+}
+
+.regla-mision,
+.aviso-partida {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1.5px solid var(--rubrica);
+  border-radius: var(--boceto-2);
+}
+
+.aviso-partida {
+  color: var(--rubrica);
+}
+
+.sucesos {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suceso {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgb(246 238 217 / 0.6);
+  border-left: 3px solid var(--trazo-suave);
+  border-radius: 2px 10px 10px 2px;
+}
+
+.suceso.nota {
+  background: none;
+}
+
+.suceso-alerta {
+  background: var(--rubrica-velo);
+  border-left-color: var(--rubrica);
+}
+
+.suceso-titulo {
+  font-family: var(--versalitas);
+  font-size: 0.95rem;
+  color: var(--grafito);
+}
+
+.carta-juego {
+  width: 100%;
+  padding: 6px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: var(--vitela);
+  cursor: pointer;
+  opacity: 1;
+}
+
+.carta-juego:hover {
+  border-color: var(--rubrica);
+}
+
+/* en la partida la carta dice qué hacer: se lee entera */
+.carta-juego .carta-info .carta-texto {
+  white-space: pre-line;
+}
+
+.descartada {
+  opacity: 0.4;
+}
+
+.apariciones {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.paso-siguiente {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1.5px dashed var(--rubrica);
+  border-radius: var(--boceto-amplio);
+}
+
+.terminar summary {
+  padding: 8px 0;
+  font-family: var(--versalitas);
+  color: var(--grafito);
+  cursor: pointer;
+}
+
+.reglas-mision h3 {
+  margin: 0 0 4px;
+  font-family: var(--versalitas);
+  font-size: 1rem;
+}
+
+.reglas-mision section p {
+  margin: 0 0 6px;
+}
+
+/* ---------- Reglas de la partida ---------- */
+.reglas-partida legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+
+.regla-opcion {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.regla-opcion input {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+}
+
+.regla-opcion > span {
+  display: grid;
+  gap: 2px;
+}

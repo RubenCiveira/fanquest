@@ -1,7 +1,9 @@
 import type { EstadoAventura } from './aventuras'
+import type { Partida } from './partida'
 import { PASOS, type Configuracion, type Paso } from './preparacion'
 
 export const TITULO_PASO: Record<Paso, string> = {
+  reglas: 'Reglas',
   heroes: 'Grupo',
   mazos: 'Mazos',
   monstruos: 'Monstruos',
@@ -35,7 +37,8 @@ export function volverA(c: Configuracion, paso: Paso): Configuracion {
 /** Volver a ese paso descarta un orden ya barajado */
 export const anulaBarajado = (c: Configuracion) => Boolean(c.barajado)
 
-/** El estado de la aventura se deriva de su configuración */
-export function estadoAventura(c: Configuracion): EstadoAventura {
-  return c.barajado ? 'mazo-barajado' : 'configurando'
+/** El estado de la aventura se deriva de su configuración y de su partida */
+export function estadoAventura(c: Configuracion, partida?: Partida): EstadoAventura {
+  if (!c.barajado) return 'configurando'
+  return partida?.fin ? 'terminada' : partida ? 'en-juego' : 'mazo-barajado'
 }

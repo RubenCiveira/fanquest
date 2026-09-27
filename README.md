@@ -7,7 +7,9 @@ SPA (React + Vite + TypeScript, mobile first) de apoyo para partidas de FanQuest
 - **Generar** (`/generar`): genera una aventura; si convence, se guarda.
 - **Aventuras** (`/aventuras`): aventuras guardadas con su estado.
   - `/aventuras/:id`: detalle.
-  - `/aventuras/:id/jugar`: utilidades durante la partida.
+  - `/aventuras/:id/jugar`: con los mazos barajados, guía de la partida según
+    Aventuras Infinitas: el grupo con sus PC, dónde estáis y qué podéis hacer
+    (abrir puertas, trampas, encuentros, turno del Malvado Brujo…).
 - **Imprimir** (`/imprimir/:tipo`): fichas de héroes, monstruos y aliados (se
   eligen y se imprimen enteras, dos por fila), losetas y paperminis.
 

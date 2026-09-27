@@ -37,6 +37,12 @@ const trazos = {
     </>
   ),
   hecho: <path d="M5 12.6 9.8 17.4 19.2 6.8" />,
+  deshacer: (
+    <>
+      <path d="M8.6 6.4 4.6 10.4l4 4" />
+      <path d="M4.8 10.4h9.4c2.9 0 5.2 2.2 5.2 5s-2.3 5-5.2 5h-2.6" />
+    </>
+  ),
 }
 
 export type NombreIcono = keyof typeof trazos

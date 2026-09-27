@@ -4,7 +4,8 @@ import type { Estadisticas } from '../lib/personajes'
 type Props = {
   titulo: string
   imagen?: string
-  estadisticas: Estadisticas
+  /** El movimiento puede ser una tirada, p. ej. «2D6» */
+  estadisticas: Omit<Estadisticas, 'movimiento'> & { movimiento: number | string }
   /** Igual que en `Carta`: naipe pequeño o la carta entera */
   variante?: 'mini' | 'completa'
   copias?: number

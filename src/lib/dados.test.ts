@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barajar, d6, entre } from './dados'
+import { barajar, d6, enResultado, entre, tirar } from './dados'
 
 describe('dados', () => {
   it('entre respeta los límites incluidos', () => {
@@ -16,5 +16,15 @@ describe('dados', () => {
     const original = ['a', 'b', 'c', 'd', 'e']
     const barajada = barajar(original)
     expect([...barajada].sort()).toEqual(original)
+  })
+
+  it('tirar entiende la notación de los libros', () => {
+    const tiradas = new Set(Array.from({ length: 300 }, () => [tirar('D8'), tirar('2D6'), tirar('1DC')]).flat())
+    expect([Math.min(...tiradas), Math.max(...tiradas)]).toEqual([1, 12])
+  })
+
+  it('enResultado reconoce rangos, mínimos, alternativas y caras del dado de combate', () => {
+    const casos: [string, number][] = [['1-4', 4], ['5', 5], ['4+', 6], ['5 ó 6', 6], ['Escudo negro', 6], ['Calavera', 2]]
+    expect(casos.every(([r, v]) => enResultado(r, v)) && !enResultado('1-4', 5) && !enResultado('Escudo blanco', 6)).toBe(true)
   })
 })

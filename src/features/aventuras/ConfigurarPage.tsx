@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useLoaderData } from 'react-router'
+import { Link, useLoaderData } from 'react-router'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import { registrarEvento } from '../../lib/matomo'
+import { DADOS_MOVIMIENTO } from '../../lib/personajes'
 import { PanelAliados } from './components/PanelAliados'
 import { PanelHeroes } from './components/PanelHeroes'
 import { PanelMazo } from './components/PanelMazo'
@@ -19,7 +20,7 @@ import {
 import { anulaBarajado, pasoActual, TITULO_PASO } from './lib/asistente'
 import { urlDorso, type IdMazo } from '../../lib/mazos'
 import { seleccionMonstruos } from './lib/monstruos'
-import { avisos, claveAliado, seleccion, type Paso } from './lib/preparacion'
+import { avisos, claveAliado, reglas, seleccion, type Paso } from './lib/preparacion'
 import { useConfiguracion } from './lib/useConfiguracion'
 import type { DatosConfiguracion } from './rutas'
 
@@ -35,6 +36,7 @@ export function ConfigurarPage() {
   const ids = MAZOS_POR_MODO[config.modo]
   const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
   const paso = pasoActual(config)
+  const { movimientoFijo } = reglas(config)
   const grupo = config.heroes ?? []
   const elegidos = config.aliados ?? []
   const nombresGrupo = [
@@ -86,10 +88,46 @@ export function ConfigurarPage() {
           )}
           {nombresGrupo && <p className="nota">Grupo: {nombresGrupo}.</p>}
           <p className="nota">Monstruos: {miniaturas} miniaturas.</p>
+          <Link to={`/aventuras/${aventura.id}/jugar`} className="button">
+            <Icono nombre="dado" />
+            {aventura.partida ? 'Continuar partida' : 'Empezar partida'}
+          </Link>
+        </section>
+      ) : paso === 'reglas' ? (
+        <section className="paso-contenido">
+          <fieldset className="panel-mazo boceto reglas-partida">
+            <legend className="panel-cabecera">
+              <h2>Reglas de la partida</h2>
+            </legend>
+            <label className="regla-opcion">
+              <input
+                type="checkbox"
+                checked={movimientoFijo}
+                onChange={() => asistente.cambiarReglas({ ...reglas(config), movimientoFijo: !movimientoFijo })}
+              />
+              <span>
+                <strong>Usar atributo de movimiento</strong>
+                <span className="nota">
+                  {movimientoFijo
+                    ? 'Cada héroe tiene Puntos de Movimiento fijos según su perfil (nuevas reglas de Aventuras Infinitas).'
+                    : `Los héroes tiran ${DADOS_MOVIMIENTO} de movimiento cada turno, como en FetenQuest.`}
+                </span>
+              </span>
+            </label>
+          </fieldset>
+          <button type="button" className="button" onClick={asistente.avanzar}>
+            Siguiente: {TITULO_PASO.heroes}
+          </button>
         </section>
       ) : paso === 'heroes' ? (
         <section className="paso-contenido">
-          <PanelHeroes heroes={heroes} habilidades={habilidades} grupo={grupo} onAlternar={asistente.alternarHeroe} />
+          <PanelHeroes
+            heroes={heroes}
+            habilidades={habilidades}
+            grupo={grupo}
+            onAlternar={asistente.alternarHeroe}
+            movimientoFijo={movimientoFijo}
+          />
           <PanelAliados
             grupos={aliadosDelGrupo}
             elegidos={elegidos}
@@ -153,6 +191,10 @@ export function ConfigurarPage() {
       ) : (
         <section className="paso-contenido">
           <ul className="recuento">
+            <li>
+              <span>Movimiento</span>
+              <span>{movimientoFijo ? 'Atributo de cada héroe' : `${DADOS_MOVIMIENTO} por turno`}</span>
+            </li>
             <li className={grupo.length ? undefined : 'mal'}>
               <span>Grupo</span>
               <span>{nombresGrupo || 'Sin grupo'}</span>
@@ -192,7 +234,8 @@ export function ConfigurarPage() {
           onConfirmar={() => asistente.volverA(volverA)}
           onCerrar={() => setVolverA(null)}
         >
-          Se anulará el barajado y tendrás que volver a barajar los mazos. La selección de cartas se conserva.
+          Se anulará el barajado{aventura.partida && ' y se perderá la partida en curso'} y tendrás que volver a barajar
+          los mazos. La selección de cartas se conserva.
         </ConfirmarDialog>
       )}
     </>

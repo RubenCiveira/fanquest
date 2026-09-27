@@ -27,7 +27,7 @@ export function desdeClave(clave: string): Omit<CartaMonstruo, 'copias'> {
 }
 
 /** Columna de la tabla según los héroes en juego; sin grupo, la de 3 o 4 */
-const columna = (heroes: number) => (heroes === 1 ? 2 : heroes === 2 ? 1 : 0)
+export const columna = (heroes: number) => (heroes === 1 ? 2 : heroes === 2 ? 1 : 0)
 
 /**
  * Mazo temático de una tabla de encuentros: cada monstruo que puede salir,

@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { avanzar, estadoAventura, estadoPaso, pasoActual, volverA } from './asistente'
+import type { Partida } from './partida'
 import { PASOS, type Configuracion, type Paso } from './preparacion'
 
-const BASE: Configuracion = { paso: 'heroes', modo: 'losetas', mazos: {} }
+const BASE: Configuracion = { paso: 'reglas', modo: 'losetas', mazos: {} }
 const BARAJADA: Configuracion = { ...BASE, paso: 'barajar', barajado: { fecha: '2026-09-26T10:00:00.000Z', orden: {} } }
 
 describe('asistente de preparación', () => {
-  it('empieza en el paso de los héroes', () => {
-    expect(PASOS.map((p) => estadoPaso(BASE, p))).toEqual(['actual', 'pendiente', 'pendiente', 'pendiente'])
+  it('empieza en el paso de las reglas', () => {
+    expect(PASOS.map((p) => estadoPaso(BASE, p))).toEqual(['actual', 'pendiente', 'pendiente', 'pendiente', 'pendiente'])
   })
 
   it('avanza paso a paso', () => {
     const c = avanzar(BASE)
-    expect(PASOS.map((p) => estadoPaso(c, p))).toEqual(['completado', 'actual', 'pendiente', 'pendiente'])
+    expect(PASOS.map((p) => estadoPaso(c, p))).toEqual(['completado', 'actual', 'pendiente', 'pendiente', 'pendiente'])
   })
 
   it('no pasa del último paso', () => {
@@ -20,7 +21,7 @@ describe('asistente de preparación', () => {
   })
 
   it('con los mazos barajados todos los pasos están completados', () => {
-    expect(PASOS.map((p) => estadoPaso(BARAJADA, p))).toEqual(['completado', 'completado', 'completado', 'completado'])
+    expect(PASOS.map((p) => estadoPaso(BARAJADA, p))).toEqual(['completado', 'completado', 'completado', 'completado', 'completado'])
   })
 
   it('volver a un paso anula el barajado', () => {
@@ -36,6 +37,15 @@ describe('asistente de preparación', () => {
 
   it('el estado de la aventura sigue al barajado', () => {
     expect([estadoAventura(BASE), estadoAventura(BARAJADA)]).toEqual(['configurando', 'mazo-barajado'])
+  })
+
+  it('las aventuras de antes del paso de reglas lo tienen completado', () => {
+    expect(estadoPaso({ ...BASE, paso: 'heroes' }, 'reglas')).toBe('completado')
+  })
+
+  it('con partida la aventura está en juego y, al acabarla, terminada', () => {
+    const p = {} as Partida
+    expect([estadoAventura(BARAJADA, p), estadoAventura(BARAJADA, { ...p, fin: 'cumplida' })]).toEqual(['en-juego', 'terminada'])
   })
 
   it('las configuraciones sin paso retoman donde se quedaron', () => {

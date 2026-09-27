@@ -11,6 +11,7 @@ import {
   barajarYGuardar,
   type Configuracion,
   type Paso,
+  type Reglas,
   type SeleccionMazo,
 } from './preparacion'
 
@@ -20,7 +21,9 @@ export function useConfiguracion({ aventura, configuracion, mazos }: DatosConfig
 
   const guardar = (nueva: Configuracion) => {
     setConfig(nueva)
-    void actualizarAventura({ ...aventura, estado: estadoAventura(nueva), configuracion: nueva })
+    // sin barajado no hay partida: volver a preparar la descarta
+    const partida = nueva.barajado ? aventura.partida : undefined
+    void actualizarAventura({ ...aventura, estado: estadoAventura(nueva, partida), configuracion: nueva, partida })
   }
 
   return {
@@ -29,6 +32,7 @@ export function useConfiguracion({ aventura, configuracion, mazos }: DatosConfig
     cambiarMazo: (id: IdMazo, seleccion: SeleccionMazo) =>
       guardar({ ...config, mazos: { ...config.mazos, [id]: seleccion }, barajado: undefined }),
     cambiarModo: (modo: Modo) => guardar({ ...config, modo, barajado: undefined }),
+    cambiarReglas: (reglas: Reglas) => guardar({ ...config, reglas }),
     alternarHeroe: (id: string) => guardar(alternarHeroe(config, id)),
     alternarAliado: (clave: string) => guardar(alternarAliado(config, clave)),
     /** Sin selección se vuelve a la propuesta de la misión */

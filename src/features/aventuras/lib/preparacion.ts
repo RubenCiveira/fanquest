@@ -17,16 +17,29 @@ export type Reemplazo = { original: string; reemplazo: string }
 export type SeleccionMazo = { cartas: string[]; reemplazos: Reemplazo[] }
 
 /** Pasos del asistente de preparación, en orden */
-export const PASOS = ['heroes', 'mazos', 'monstruos', 'barajar'] as const
+export const PASOS = ['reglas', 'heroes', 'mazos', 'monstruos', 'barajar'] as const
 
 export type Paso = (typeof PASOS)[number]
 
 /** Las tablas de encuentros tienen columnas para 1, 2 y 3 o 4 héroes */
 export const MAX_HEROES = 4
 
+/** Reglas opcionales con las que se juega la partida */
+export type Reglas = {
+  /**
+   * Puntos de Movimiento fijos por perfil («Nuevas reglas de movimiento» de
+   * Aventuras Infinitas); sin ellos los héroes tiran sus dados cada turno
+   */
+  movimientoFijo: boolean
+}
+
+export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true }
+
 export type Configuracion = {
   /** Paso del asistente en curso (las aventuras antiguas no lo tienen) */
   paso?: Paso
+  /** Sin dato (aventuras antiguas), las reglas por defecto */
+  reglas?: Reglas
   /** Ids del grupo de héroes (las aventuras antiguas no lo tienen) */
   heroes?: string[]
   /** Aliados que acompañan al grupo, con `claveAliado` */
@@ -186,7 +199,7 @@ export function ordenar(mazo: Mazo, s: SeleccionMazo, modo: Modo): string[] {
 export function nuevaConfiguracion(mazos: Mazos, mision: Mision): Configuracion {
   const ids = [...new Set([...MAZOS_POR_MODO.losetas, ...MAZOS_POR_MODO.tablero])]
   return {
-    paso: 'heroes',
+    paso: 'reglas',
     heroes: [],
     modo: 'losetas',
     mazos: Object.fromEntries(ids.map((id) => [id, completar(mazos[id], mision, VACIA)])),
@@ -206,6 +219,8 @@ export function barajarYGuardar(mazos: Mazos, c: Configuracion): Configuracion {
 }
 
 export const seleccion = (c: Configuracion, id: IdMazo) => c.mazos[id] ?? VACIA
+
+export const reglas = (c: Configuracion): Reglas => ({ ...REGLAS_POR_DEFECTO, ...c.reglas })
 
 const alternar = (lista: string[], id: string) =>
   lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]

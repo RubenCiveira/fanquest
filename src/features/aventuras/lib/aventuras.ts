@@ -1,12 +1,15 @@
 import type { Mision } from '../../generar/lib/tipos'
+import type { Partida } from './partida'
 import type { Configuracion } from './preparacion'
 
-export type EstadoAventura = 'sin-empezar' | 'configurando' | 'mazo-barajado'
+export type EstadoAventura = 'sin-empezar' | 'configurando' | 'mazo-barajado' | 'en-juego' | 'terminada'
 
 export const ETIQUETA_ESTADO: Record<EstadoAventura, string> = {
   'sin-empezar': 'Sin empezar',
   configurando: 'Configurando',
   'mazo-barajado': 'Mazo barajado',
+  'en-juego': 'En juego',
+  terminada: 'Terminada',
 }
 
 /**
@@ -21,6 +24,8 @@ export type Aventura = {
   mision: Mision
   /** Mazos preparados para la misión (desde «configurando») */
   configuracion?: Configuracion
+  /** Partida en curso o terminada (desde «en-juego») */
+  partida?: Partida
 }
 
 const CLAVE = 'fanquest.aventuras.v1'

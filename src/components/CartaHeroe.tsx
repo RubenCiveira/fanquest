@@ -1,4 +1,5 @@
 import {
+  DADOS_MOVIMIENTO,
   PERFILES_MOVIMIENTO,
   puntosMovimiento,
   urlRetrato,
@@ -15,6 +16,8 @@ type Props = {
   habilidades?: Habilidades
   variante?: 'mini' | 'completa'
   sello?: string
+  /** Con Puntos de Movimiento fijos según su perfil; sin ellos tira dados */
+  movimientoFijo?: boolean
 }
 
 function TextoHabilidad({ habilidad, nota }: { habilidad: Habilidad; nota?: string }) {
@@ -30,7 +33,7 @@ function TextoHabilidad({ habilidad, nota }: { habilidad: Habilidad; nota?: stri
 }
 
 /** Ficha de héroe dibujada como un naipe */
-export function CartaHeroe({ heroe, habilidades = {}, variante, sello }: Props) {
+export function CartaHeroe({ heroe, habilidades = {}, variante, sello, movimientoFijo = true }: Props) {
   const propias = heroe.habilidades.flatMap((id) => habilidades[id] ?? [])
   const aElegir = (heroe.eligeUna ?? []).flatMap((id) => habilidades[id] ?? [])
 
@@ -38,7 +41,7 @@ export function CartaHeroe({ heroe, habilidades = {}, variante, sello }: Props) 
     <CartaPersonaje
       titulo={heroe.nombre}
       imagen={urlRetrato('heroes', heroe)}
-      estadisticas={{ ...heroe, movimiento: puntosMovimiento(heroe) }}
+      estadisticas={{ ...heroe, movimiento: movimientoFijo ? puntosMovimiento(heroe) : DADOS_MOVIMIENTO }}
       variante={variante}
       sello={sello}
       resumen={heroe.equipo}
@@ -46,7 +49,10 @@ export function CartaHeroe({ heroe, habilidades = {}, variante, sello }: Props) 
       <p className="carta-cita">«{heroe.cita}»</p>
       <p className="carta-reglas">{heroe.descripcion}</p>
       <p className="carta-reglas">
-        <strong>Movimiento:</strong> {PERFILES_MOVIMIENTO[heroe.movimiento].descripcion.toLowerCase()}.
+        <strong>Movimiento:</strong>{' '}
+        {movimientoFijo
+          ? `${PERFILES_MOVIMIENTO[heroe.movimiento].descripcion.toLowerCase()}.`
+          : `tira ${DADOS_MOVIMIENTO} cada turno.`}
       </p>
       <p className="carta-reglas">
         <strong>Equipo inicial:</strong> {heroe.equipo}.

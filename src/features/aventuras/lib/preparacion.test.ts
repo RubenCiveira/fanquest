@@ -8,6 +8,7 @@ import { cargarMazos, type IdMazo, type Mazos } from '../../../lib/mazos'
 import {
   alternarAliado,
   alternarHeroe,
+  reglas,
   avisos,
   barajarYGuardar,
   cartasBase,
@@ -196,5 +197,15 @@ describe('aliados', () => {
   it('añade y quita aliados del grupo', () => {
     const c = alternarAliado(alternarAliado(vacia, 'animales/lobo'), 'mercenarios/ogro')
     expect(alternarAliado(c, 'animales/lobo').aliados).toEqual(['mercenarios/ogro'])
+  })
+})
+
+describe('reglas de la partida', () => {
+  it('por defecto se usa el atributo de movimiento, también en las aventuras antiguas', () => {
+    expect([reglas(nuevaConfiguracion(mazos, mision(0))).movimientoFijo, reglas({ modo: 'losetas', mazos: {} }).movimientoFijo]).toEqual([true, true])
+  })
+
+  it('una configuración nueva empieza por el paso de reglas', () => {
+    expect(nuevaConfiguracion(mazos, mision(0)).paso).toBe('reglas')
   })
 })

@@ -23,11 +23,21 @@ export function AventuraPage() {
             Empezar aventura
           </button>
         </Form>
-      ) : (
+      ) : estado === 'configurando' ? (
         <Link to="configurar" className="button aventura-empezar">
           <Icono nombre="dado" />
           Continuar preparación
         </Link>
+      ) : (
+        <div className="aventura-empezar fila-botones">
+          <Link to="jugar" className="button">
+            <Icono nombre="dado" />
+            {estado === 'mazo-barajado' ? 'Empezar partida' : estado === 'en-juego' ? 'Continuar partida' : 'Ver partida'}
+          </Link>
+          <Link to="configurar" className="button secondary">
+            Ver preparación
+          </Link>
+        </div>
       )}
 
       <MisionCard mision={mision} />

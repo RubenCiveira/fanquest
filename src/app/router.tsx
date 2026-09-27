@@ -12,6 +12,7 @@ import {
   accionAventura,
   cargarAventura,
   cargarConfiguracion,
+  cargarPartida,
 } from '../features/aventuras/rutas'
 import { CreditosPage } from '../features/creditos/CreditosPage'
 import {
@@ -57,7 +58,11 @@ export const router = createBrowserRouter([
         loader: cargarConfiguracion,
         element: <MazoPage />,
       },
-      { path: 'aventuras/:id/jugar', element: <JugarPage /> },
+      {
+        path: 'aventuras/:id/jugar',
+        loader: cargarPartida,
+        element: <JugarPage />,
+      },
       { path: 'creditos', element: <CreditosPage /> },
       { path: 'imprimir', element: <ImprimirPage /> },
       { path: 'imprimir/heroes', loader: cargarFichasHeroes, element: <FichasHeroesPage /> },

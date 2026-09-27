@@ -20,6 +20,9 @@ import {
   type Heroe,
   type Monstruos,
 } from '../../lib/personajes'
+import { estadoAventura } from './lib/asistente'
+import { seleccionMonstruos } from './lib/monstruos'
+import { miembrosDelGrupo, nuevaPartida, type Contexto, type Miembro, type Partida } from './lib/partida'
 import { nuevaConfiguracion, type Configuracion } from './lib/preparacion'
 
 export async function cargarAventura({ params }: LoaderFunctionArgs) {
@@ -76,4 +79,44 @@ export async function cargarConfiguracion({ params }: LoaderFunctionArgs): Promi
     throw redirect(`/aventuras/${aventura.id}/configurar`)
   }
   return { aventura, configuracion, mazos, heroes, habilidades, monstruos, bestiario, aliados }
+}
+
+export type DatosPartida = {
+  aventura: Aventura & { configuracion: Configuracion; partida: Partida }
+  contexto: Contexto
+  miembros: Miembro[]
+  habilidades: Habilidades
+  monstruos: Monstruos
+}
+
+/** Con los mazos barajados se juega; la primera vez empieza la partida */
+export async function cargarPartida({ params }: LoaderFunctionArgs): Promise<DatosPartida> {
+  const [aventura, mazos, heroes, habilidades, monstruos, aliados] = await Promise.all([
+    obtenerAventura(params.id ?? ''),
+    cargarMazos(),
+    cargarHeroes(),
+    cargarHabilidades(),
+    cargarMonstruos(),
+    cargarAliados(),
+  ])
+  if (!aventura) throw redirect('/aventuras')
+  const { configuracion } = aventura
+  if (!configuracion?.barajado) throw redirect(`/aventuras/${aventura.id}`)
+  const miembros = miembrosDelGrupo(configuracion, heroes, aliados)
+  const heroesEnJuego = configuracion.heroes?.length ?? 0
+  const contexto: Contexto = {
+    mazos,
+    mision: aventura.mision,
+    modo: configuracion.modo,
+    heroes: heroesEnJuego,
+    monstruos,
+    seleccion: seleccionMonstruos(configuracion.monstruos, aventura.mision, heroesEnJuego),
+  }
+  let { partida } = aventura
+  if (!partida) {
+    partida = nuevaPartida(contexto, configuracion, miembros)
+    await actualizarAventura({ ...aventura, estado: estadoAventura(configuracion, partida), partida })
+    registrarEvento('Aventuras', 'Empezar partida', configuracion.modo)
+  }
+  return { aventura: { ...aventura, configuracion, partida }, contexto, miembros, habilidades, monstruos }
 }

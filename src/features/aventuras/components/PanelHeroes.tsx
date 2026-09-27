@@ -10,10 +10,11 @@ type Props = {
   /** Ids del grupo */
   grupo: string[]
   onAlternar: (id: string) => void
+  movimientoFijo: boolean
 }
 
 /** Elegir el grupo de héroes: al tocar una ficha se abre con la acción */
-export function PanelHeroes({ heroes, habilidades, grupo, onAlternar }: Props) {
+export function PanelHeroes({ heroes, habilidades, grupo, onAlternar, movimientoFijo }: Props) {
   const [abierto, setAbierto] = useState<Heroe | null>(null)
   const completo = grupo.length >= MAX_HEROES
   const enGrupo = abierto && grupo.includes(abierto.id)
@@ -42,7 +43,7 @@ export function PanelHeroes({ heroes, habilidades, grupo, onAlternar }: Props) {
             aria-label={`Ver ${heroe.nombre}`}
             aria-pressed={grupo.includes(heroe.id)}
           >
-            <CartaHeroe heroe={heroe} sello={grupo.includes(heroe.id) ? 'En el grupo' : undefined} />
+            <CartaHeroe heroe={heroe} sello={grupo.includes(heroe.id) ? 'En el grupo' : undefined} movimientoFijo={movimientoFijo} />
           </button>
         ))}
       </div>
@@ -68,7 +69,7 @@ export function PanelHeroes({ heroes, habilidades, grupo, onAlternar }: Props) {
             </>
           }
         >
-          <CartaHeroe heroe={abierto} habilidades={habilidades} variante="completa" />
+          <CartaHeroe heroe={abierto} habilidades={habilidades} variante="completa" movimientoFijo={movimientoFijo} />
         </NaipeDialog>
       )}
     </section>

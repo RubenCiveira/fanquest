@@ -26,6 +26,9 @@ export const PERFILES_MOVIMIENTO = {
 
 export type PerfilMovimiento = keyof typeof PERFILES_MOVIMIENTO
 
+/** Sin Puntos de Movimiento fijos, los héroes tiran estos dados cada turno (FetenQuest) */
+export const DADOS_MOVIMIENTO = '2D6'
+
 /** Dados de ataque: un número o, p. ej., «2+1» o «5/4» (dos ataques) */
 type Dados = number | string
 
