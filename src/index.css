@@ -127,6 +127,43 @@ a {
   align-items: center;
 }
 
+.app-creditos {
+  margin-left: auto;
+  padding: 10px 0 10px 12px;
+  font-family: var(--versalitas);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--grafito);
+  text-decoration: none;
+}
+
+.app-creditos:hover {
+  color: var(--rubrica);
+}
+
+.creditos {
+  display: grid;
+  gap: 10px;
+  max-width: 65ch;
+}
+
+.creditos h2 {
+  margin: 14px 0 0;
+  font-family: var(--gotica);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--rubrica);
+}
+
+.creditos p,
+.creditos ul {
+  margin: 0;
+}
+
+.creditos a {
+  color: var(--rubrica);
+}
+
 /* doble pautado, como en los márgenes de un códice */
 .app-header::after,
 .app-nav::before {

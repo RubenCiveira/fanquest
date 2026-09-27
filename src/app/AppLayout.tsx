@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { Icono } from '../components/Icono'
 import { registrarVisita } from '../lib/matomo'
 import { AvisoActualizacion } from './AvisoActualizacion'
@@ -19,6 +19,9 @@ export function AppLayout() {
     <div className="app">
       <header className="app-header">
         <span className="app-title">FanQuest</span>
+        <Link to="/creditos" className="app-creditos">
+          Créditos
+        </Link>
       </header>
 
       <main className="app-main">

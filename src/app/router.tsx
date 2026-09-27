@@ -13,6 +13,7 @@ import {
   cargarAventura,
   cargarConfiguracion,
 } from '../features/aventuras/rutas'
+import { CreditosPage } from '../features/creditos/CreditosPage'
 import { ImprimirPage } from '../features/imprimir/ImprimirPage'
 import { ImprimirTipoPage } from '../features/imprimir/ImprimirTipoPage'
 
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
         element: <MazoPage />,
       },
       { path: 'aventuras/:id/jugar', element: <JugarPage /> },
+      { path: 'creditos', element: <CreditosPage /> },
       { path: 'imprimir', element: <ImprimirPage /> },
       { path: 'imprimir/:tipo', element: <ImprimirTipoPage /> },
       { path: '*', element: <Navigate to="/generar" replace /> },

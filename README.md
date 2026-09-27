@@ -10,6 +10,20 @@ SPA (React + Vite + TypeScript, mobile first) de apoyo para partidas de FanQuest
   - `/aventuras/:id/jugar`: utilidades durante la partida.
 - **Imprimir** (`/imprimir/:tipo`): losetas, fichas de monstruos, paperminis.
 
+## Créditos y licencia
+
+Ayuda de juego no oficial y sin ánimo de lucro para FetenQuest.
+
+- *FetenQuest 4.1 Legacy* y *FetenQuest, Aventuras Infinitas* © 2026 por
+  @SrMiyagi, bajo licencia
+  [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+  Las reglas, los textos y las cartas (con sus ilustraciones) proceden de
+  estas obras. Comunidad: <https://t.me/Fetenquest>.
+- *Generador de Aventuras FAI*, autoría original de Ryback.
+- HeroQuest es una marca de Hasbro, sin relación con esta app.
+
+La app muestra estos créditos en `/creditos`.
+
 ## Plantillas
 
 El contenido editable (tablas, textos y reglas) está en
