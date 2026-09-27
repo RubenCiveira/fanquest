@@ -75,7 +75,7 @@ desconocido hace fallar la carga de la plantilla.
 Un directorio por mazo con:
 
 - `base.json`: el mazo base.
-- `dorso.webp`: el dorso, común a todas las cartas del mazo.
+- `dorso.webp`: el dorso, común a todas las cartas del mazo, salvo mazos de texto.
 - `imagenes/`: la ilustración de cabecera de cada carta.
 
 | Mazo | Cartas |
@@ -88,6 +88,7 @@ Un directorio por mazo con:
 | `pasillo` (tablero) | 12 |
 | `tesoros` | 36 |
 | `sucesos` | 100 |
+| `hechizos` | 92 |
 
 Cada carta tiene:
 
@@ -111,7 +112,9 @@ y el dorso de cada mazo. Los tesoros llevan `categoria` (`positiva`, el sol, o
 conceden una pócima de `equipo/base.json`, `reciclar` en las negativas, que
 vuelven al mazo, y `suceso` en «Suceso Inesperado», que roba del Mazo de
 Sucesos. Las tiradas de los sucesos pueden tener un `dado` descriptivo («D6
-por cada Punto de Mente») que se tira a mano.
+por cada Punto de Mente») que se tira a mano. `hechizos` sale de la sección
+Hechizos de `FetenQuest_4_1_Legacy.pdf` y añade `grupo`, `nivel` y `saber` para
+clasificar cada carta.
 
 ## `equipo/`: armería, pociones, pergaminos y artefactos
 

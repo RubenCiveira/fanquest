@@ -67,6 +67,9 @@ Mazos existentes:
 - `salas`
 - `mazmorra`
 - `pasillo`
+- `tesoros`
+- `sucesos`
+- `hechizos`
 
 Cada mazo tiene `base.json`, `dorso.webp` e imagenes en `imagenes/`. Las cartas
 incluyen `id`, `tipo`, `titulo`, `copias` y opcionalmente imagen, cita, texto,

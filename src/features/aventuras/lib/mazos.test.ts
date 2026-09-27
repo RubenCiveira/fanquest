@@ -16,8 +16,12 @@ beforeAll(async () => {
 describe('mazos de templates/mazos', () => {
   it('tienen las cartas de sus PDF: 147 de Aventuras Infinitas, 36 de tesoros y 100 de sucesos', () => {
     const copias = (ids: readonly (keyof Mazos)[]) => ids.reduce((n, id) => n + mazos[id].cartas.reduce((m, c) => m + c.copias, 0), 0)
-    const fai = MAZOS.filter((id) => id !== 'tesoros' && id !== 'sucesos')
+    const fai = MAZOS.filter((id) => !['tesoros', 'sucesos', 'hechizos'].includes(id))
     expect([copias(fai), copias(['tesoros']), copias(['sucesos'])]).toEqual([147, 36, 100])
+  })
+
+  it('el mazo de hechizos contiene la lista del manual', () => {
+    expect(mazos.hechizos.cartas.reduce((n, c) => n + c.copias, 0)).toBe(92)
   })
 
   it('cada tesoro es positivo o negativo y los negativos vuelven al mazo', () => {

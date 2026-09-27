@@ -26,6 +26,12 @@ export type CartaMazo = {
   reciclar?: boolean
   /** Roba una carta del Mazo de Sucesos */
   suceso?: boolean
+  /** Solo hechizos: grupo o escuela a la que pertenece */
+  grupo?: string
+  /** Solo hechizos: nivel de lanzamiento */
+  nivel?: number
+  /** Solo hechizos: saber usado en Vientos de la Magia */
+  saber?: 'arcano' | 'divino' | 'runico' | 'pergamino'
 }
 
 export type TiradaCarta = {
@@ -37,7 +43,7 @@ export type TiradaCarta = {
 export type Mazo = {
   id: string
   nombre: string
-  dorso: string
+  dorso?: string
   cartas: CartaMazo[]
 }
 
@@ -50,6 +56,7 @@ export const MAZOS = [
   'pasillo',
   'tesoros',
   'sucesos',
+  'hechizos',
 ] as const
 
 export type IdMazo = (typeof MAZOS)[number]
@@ -80,5 +87,5 @@ export function urlImagen(
 }
 
 export function urlDorso(mazo: Mazo, fuente: FuentePlantillas = fuenteLocal): string | undefined {
-  return fuente.url('mazos', `${mazo.id}/${mazo.dorso}`)
+  return mazo.dorso && fuente.url('mazos', `${mazo.id}/${mazo.dorso}`)
 }
