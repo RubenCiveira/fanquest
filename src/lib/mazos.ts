@@ -16,6 +16,16 @@ export type CartaMazo = {
   /** Solo trampas */
   activada?: { sinMonstruos: string; conMonstruos: string }
   encontrada?: string
+  /** Solo tesoros: sol (`positiva`) o calavera (`negativa`) */
+  categoria?: 'positiva' | 'negativa'
+  /** Monedas de oro que concede */
+  oro?: number
+  /** Pócima de `templates/equipo/` que concede */
+  equipoId?: string
+  /** Vuelve al mazo, que se baraja, tras resolverse */
+  reciclar?: boolean
+  /** Roba una carta del Mazo de Sucesos */
+  suceso?: boolean
 }
 
 export type TiradaCarta = {
@@ -38,6 +48,8 @@ export const MAZOS = [
   'salas',
   'mazmorra',
   'pasillo',
+  'tesoros',
+  'sucesos',
 ] as const
 
 export type IdMazo = (typeof MAZOS)[number]

@@ -86,6 +86,8 @@ Un directorio por mazo con:
 | `salas` (tablero) | 21 |
 | `mazmorra` (losetas) | 32 |
 | `pasillo` (tablero) | 12 |
+| `tesoros` | 36 |
+| `sucesos` | 100 |
 
 Cada carta tiene:
 
@@ -101,6 +103,32 @@ Cada carta tiene:
 - `tirada`: `accion`, `dado` y `resultados` (`resultado` + `texto`, o una
   `tirada` anidada), para que las ayudas de juego puedan resolverla.
 - Trampas: `activada.sinMonstruos`, `activada.conMonstruos` y `encontrada`.
+
+`tesoros` y `sucesos` salen de `MazoTesoros_FQL_FAI.pdf` y
+`MazoSucesos_FQL_FAI.pdf`: ilustraciones recortadas del recuadro de cada carta
+y el dorso de cada mazo. Los tesoros llevan `categoria` (`positiva`, el sol, o
+`negativa`, la calavera), `oro` cuando conceden monedas, `equipoId` cuando
+conceden una pócima de `equipo/base.json`, `reciclar` en las negativas, que
+vuelven al mazo, y `suceso` en «Suceso Inesperado», que roba del Mazo de
+Sucesos. Las tiradas de los sucesos pueden tener un `dado` descriptivo («D6
+por cada Punto de Mente») que se tira a mano.
+
+## `equipo/`: armería, pociones, pergaminos y artefactos
+
+`base.json` recoge el equipo de FetenQuest en cuatro listas:
+
+- `equipo`: armería, armas, armaduras y objetos de apoyo con `precio`,
+  modificadores simples (`ataque`, `defensa`), `rasgos`, `restricciones`,
+  `consumible`, `usos` y reglas textuales.
+- `pociones`: pociones comunes e infrecuentes con `rareza`, `precio`,
+  `comprable` opcional y `efecto`.
+- `pergaminos`: tabla 1D20 de pergaminos mágicos con el hechizo y saber que
+  contienen.
+- `artefactos`: artefactos conocidos por reglas del manual, como el Brazal
+  sanador y los Artefactos del Caos.
+
+`tablas` permite generar pociones comunes, pociones infrecuentes y pergaminos al
+azar con los ids de las listas anteriores.
 
 ## `heroes/`: fichas de héroes
 

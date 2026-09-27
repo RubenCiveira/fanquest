@@ -25,6 +25,8 @@ export const NOMBRE_MAZO: Partial<Record<IdMazo, string>> = {
   salas: 'Mazo de Salas',
   'salas-especiales': 'Mazo de Salas Especiales',
   atrezo: 'Mazo de Atrezo',
+  tesoros: 'Mazo de Tesoros',
+  sucesos: 'Mazo de Sucesos',
 }
 
 /** Cartas que se barajan con la Sala Objetivo al final del mazo */

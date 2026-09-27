@@ -1,0 +1,326 @@
+{
+  "id": "tesoros",
+  "nombre": "Tesoros",
+  "fuente": "Mazo de Tesoros FQL/FAI (MazoTesoros_FQL_FAI.pdf)",
+  "notas": [
+    "Las cartas marcadas con el sol (categoría positiva) no vuelven al mazo hasta el final del reto.",
+    "Las marcadas con la calavera (categoría negativa, «reciclar») vuelven al mazo y éste se baraja tras resolverse.",
+    "Suceso Inesperado roba una carta del Mazo de Sucesos."
+  ],
+  "dorso": "dorso.webp",
+  "totalCartas": 36,
+  "cartas": [
+    {
+      "id": "pequena-bolsa-de-oro-1",
+      "tipo": "pequena-bolsa-de-oro",
+      "titulo": "Pequeña Bolsa De Oro",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pequena-bolsa-de-oro-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 25,
+      "texto": "Entre unos harapos mugrientos, encuentras una pequeña bolsa de tela rota. En su interior hay 25 monedas de oro."
+    },
+    {
+      "id": "monedas-1",
+      "tipo": "monedas",
+      "titulo": "Monedas",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/monedas-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 25,
+      "texto": "En una esquina de la sala encuentras tirado en el suelo un pequeño montón de 25 monedas de oro."
+    },
+    {
+      "id": "anforas-1",
+      "tipo": "anforas",
+      "titulo": "Ánforas",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/anforas-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 25,
+      "texto": "En una esquina de la sala encuentras unas viejas ánforas. En su interior hallas 25 monedas de oro."
+    },
+    {
+      "id": "anillo-enjoyado-1",
+      "tipo": "anillo-enjoyado",
+      "titulo": "Anillo Enjoyado",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/anillo-enjoyado-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 50,
+      "texto": "Observas bajo tu bota un objeto brillante. Es un hermoso anillo con un valor de 50 monedas de oro."
+    },
+    {
+      "id": "monton-de-oro-1",
+      "tipo": "monton-de-oro",
+      "titulo": "Montón De Oro",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/monton-de-oro-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 50,
+      "texto": "En una zona sombría de la sala encuentras un montón de 50 monedas de oro."
+    },
+    {
+      "id": "oro-escondido-1",
+      "tipo": "oro-escondido",
+      "titulo": "Oro Escondido",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/oro-escondido-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 50,
+      "texto": "Bajo una baldosa suelta encuentras un escondrijo con un montón de 50 monedas de oro."
+    },
+    {
+      "id": "cajas-de-madera-1",
+      "tipo": "cajas-de-madera",
+      "titulo": "Cajas De Madera",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/cajas-de-madera-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 50,
+      "texto": "Divisas unas polvorientas y mohosas cajas de madera que quizá contuvieran algo. Al romperlas de un golpazo hallas en su interior 50 mo."
+    },
+    {
+      "id": "oro-1",
+      "tipo": "oro",
+      "titulo": "¡Oro!",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/oro-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 75,
+      "texto": "Encuentras algunas pertenencias de un desafortunado aventurero por un valor de 75 monedas de oro."
+    },
+    {
+      "id": "oro-2",
+      "tipo": "oro",
+      "titulo": "¡Oro!",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/oro-2.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 75,
+      "texto": "Encuentras una bolsa de piel repleta de oro. Anota 75 monedas de oro."
+    },
+    {
+      "id": "rubi-1",
+      "tipo": "rubi",
+      "titulo": "Rubí",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/rubi-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 100,
+      "texto": "Reparas en una antigua bota tirada en el suelo. Al mirar en su interior descubres un rubí de gran tamaño valorado en 100 monedas de oro."
+    },
+    {
+      "id": "pequeno-cofre-1",
+      "tipo": "pequeno-cofre",
+      "titulo": "Pequeño Cofre",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/pequeno-cofre-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 100,
+      "texto": "Tras unas cajas de madera rotas y mohosas, descubres un pequeño y polvoriento cofre. En su interior hallas 100 monedas de oro."
+    },
+    {
+      "id": "piedras-preciosas-1",
+      "tipo": "piedras-preciosas",
+      "titulo": "Piedras Preciosas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/piedras-preciosas-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "oro": 125,
+      "texto": "Descubres un pequeño y viejo cofre ¡Contiene gran cantidad de joyas y piedras preciosas valoradas en 125 monedas de oro!"
+    },
+    {
+      "id": "brebaje-de-heroes-1",
+      "tipo": "brebaje-de-heroes",
+      "titulo": "Brebaje De Héroes",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/brebaje-de-heroes-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "equipoId": "pocima-de-heroes",
+      "texto": "Te encuentras por sorpresa una bolsa de cuero negro colgando en la pared. Dentro hay una botella de gran tamaño que contiene un brebaje. Esta pócima permitirá al héroe que la tome atacar dos veces en el mismo turno. El héroe puede realizar el movimiento entre ambos ataques. Después el efecto desaparece."
+    },
+    {
+      "id": "foso-profundo-1",
+      "tipo": "foso-profundo",
+      "titulo": "Foso Profundo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/foso-profundo-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "El suelo cede a tus pies y caes en un sombrío pozo. Coloca bajo el héroe el marcador de Trampa de Foso de Oscuridad y aplica las reglas de dicha trampa sobre el héroe."
+    },
+    {
+      "id": "monstruo-errante-1",
+      "tipo": "monstruo-errante",
+      "titulo": "Monstruo Errante",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/monstruo-errante-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "Mientras buscas en la habitación, un monstruo te sorprende por la espalda y te ataca. Coloca la criatura indicada en la Misión en una casilla libre adyacente al héroe que buscó. La criatura ataca en el momento de ser colocada y el héroe pierde su turno. Tras ello se establece la Iniciativa si fuera necesario. En caso de que no haya ninguna casilla libre, se colocará en la más cercana posible pero no atacará."
+    },
+    {
+      "id": "monstruo-errante-2",
+      "tipo": "monstruo-errante",
+      "titulo": "Monstruo Errante",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/monstruo-errante-2.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "Mientras buscas en la habitación, un monstruo te sorprende por la espalda y te ataca. Coloca la criatura indicada en la Misión en una casilla libre adyacente al héroe que buscó. La criatura ataca en el momento de ser colocada y el héroe pierde su turno. Tras ello se establece la Iniciativa si fuera necesario. En caso de que no haya ninguna casilla libre, se colocará en la más cercana posible pero no atacará."
+    },
+    {
+      "id": "nada-1",
+      "tipo": "nada",
+      "titulo": "Nada",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/nada-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "A pesar de tu minuciosa búsqueda no encuentras nada."
+    },
+    {
+      "id": "pocima-de-agilidad-1",
+      "tipo": "pocima-de-agilidad",
+      "titulo": "Pócima de Agilidad",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/pocima-de-agilidad-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "equipoId": "pocima-de-agilidad",
+      "texto": "En una estantería llena de polvo encuentras una pequeña y sucia botella. Puedes beberla para añadir 5 Puntos de Movimiento durante tu turno, o para saltar un Foso o Marcador de Trampa sin necesidad de realizar tiradas."
+    },
+    {
+      "id": "pocima-curativa-1",
+      "tipo": "pocima-curativa",
+      "titulo": "Pócima Curativa",
+      "copias": 4,
+      "imagen": {
+        "archivo": "imagenes/pocima-curativa-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "equipoId": "pocima-de-curacion",
+      "texto": "Envuelta entre un montón de trapos viejos encuentras una pócima curativa. Podrás beberla en cualquier momento para recuperar hasta 4 Puntos de Cuerpo previamente perdidos."
+    },
+    {
+      "id": "pocima-envenenada-1",
+      "tipo": "pocima-envenenada",
+      "titulo": "Pócima Envenenada",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/pocima-envenenada-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "Descubres un vial lleno de un líquido que no consigues identificar. Tu garganta reseca hace que lo pruebes, pero al hacerlo empiezas a sentir un gran dolor y quemazón en la garganta. Lanza un Dado de Combate: si obtienes Calavera pierdes 1 Punto de Cuerpo."
+    },
+    {
+      "id": "suceso-inesperado-1",
+      "tipo": "suceso-inesperado",
+      "titulo": "Suceso Inesperado",
+      "copias": 5,
+      "imagen": {
+        "archivo": "imagenes/suceso-inesperado-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "positiva",
+      "suceso": true,
+      "texto": "Roba una carta del Mazo de Sucesos y resuélvela."
+    },
+    {
+      "id": "suelo-falso-1",
+      "tipo": "suelo-falso",
+      "titulo": "Suelo Falso",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/suelo-falso-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "El suelo cede a tus pies y caes en un foso. Coloca bajo el héroe el marcador de Trampa de Foso y aplica las reglas de dicha trampa sobre el héroe."
+    },
+    {
+      "id": "trampa-de-flecha-1",
+      "tipo": "trampa-de-flecha",
+      "titulo": "Trampa De Flecha",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/trampa-de-flecha-1.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "Notas en la pierna el roce de un alambre que activa una trampa. Una flecha sale despedida de un agujero en la pared, impactándote directamente. Pierdes 1 Punto de Cuerpo y finaliza tu turno."
+    },
+    {
+      "id": "trampa-de-flecha-2",
+      "tipo": "trampa-de-flecha",
+      "titulo": "Trampa De Flecha",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/trampa-de-flecha-2.webp",
+        "tamano": "pequeña"
+      },
+      "categoria": "negativa",
+      "reciclar": true,
+      "texto": "Notas en la pierna el roce de un alambre que activa una trampa. Una flecha sale despedida de un agujero en la pared, impactándote directamente. Pierdes 1 Punto de Cuerpo y finaliza tu turno."
+    }
+  ]
+}

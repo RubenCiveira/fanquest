@@ -1,0 +1,1883 @@
+{
+  "id": "sucesos",
+  "nombre": "Sucesos",
+  "fuente": "Mazo de Sucesos FQL/FAI (MazoSucesos_FQL_FAI.pdf)",
+  "notas": [
+    "La carta Suceso Inesperado del mazo de tesoros roba una carta de este mazo.",
+    "No es recomendable abusar de los sucesos porque aumentan la duración y complejidad de la partida."
+  ],
+  "dorso": "dorso.webp",
+  "totalCartas": 100,
+  "cartas": [
+    {
+      "id": "agua-bendita-1",
+      "tipo": "agua-bendita",
+      "titulo": "Agua Bendita",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/agua-bendita-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Tirado en el fondo de la sala, descubres un frasco con agua bendecida. En tu turno podrás usar el frasco como ataque cuerpo a cuerpo a una casilla adyacente o diagonal a cualquier criatura no muerta. Causará automáticamente 2 heridas a dicha criatura sin posibilidad de defenderse. Tras ello se descarta."
+    },
+    {
+      "id": "agujero-en-el-zurron-1",
+      "tipo": "agujero-en-el-zurron",
+      "titulo": "Agujero En El Zurrón",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/agujero-en-el-zurron-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "¡Acabas de darte cuenta de que tu zurrón tiene un agujero! Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Has perdido 2D6×10 mo."
+          },
+          {
+            "resultado": "4-5",
+            "texto": "Has perdido 1 pócima. Si no tuvieras, pierdes 2D6×10 mo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Has perdido un objeto de la armería que no lleves equipado. Si no tuvieras, pierdes una poción y si tampoco tuvieras, 2D6×10 mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "alfombra-tejida-1",
+      "tipo": "alfombra-tejida",
+      "titulo": "Alfombra Tejida",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/alfombra-tejida-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Al abrir una ornamentada caja de madera encuentras una pesada alfombra. Cuando la desenrollas, puedes observar que está bellamente tejida. Tiene un valor de 50 monedas de oro. Sin embargo, esta alfombra es tan voluminosa que deberá transportarse como si fuera un escudo (sin la bonificación de defensa). Si al final del reto el héroe no dejó caer la alfombra, podrá anotar su valor."
+    },
+    {
+      "id": "alimanas-venenosas-1",
+      "tipo": "alimanas-venenosas",
+      "titulo": "Alimañas Venenosas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/alimanas-venenosas-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Mientras buscas por la pared algún hueco o ladrillo suelto, metes la mano en un recoveco que resulta ser un nido de insectos venenosos. En ese momento sientes un dolor punzante en la mano. Tira un dado de combate, si sale calavera resultas envenenado. Si estás envenenado tira 1D6 cuando comience tu turno:",
+      "tirada": {
+        "accion": "Envenenado, al comenzar tu turno",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1, 2 ó 3",
+            "texto": "Pierdes 1 Punto de Cuerpo."
+          },
+          {
+            "resultado": "4, 5 ó 6",
+            "texto": "Dejas de estar envenenado."
+          }
+        ]
+      },
+      "notas": "Cualquier antídoto o efecto de curación acabará con el estado envenenado."
+    },
+    {
+      "id": "altar-de-solarion-1",
+      "tipo": "altar-de-solarion",
+      "titulo": "Altar de Solarion",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-de-solarion-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar al Dios de la Luz. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Sacerdote o Paladín):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Una voz profunda retumba en la sala: «Vuestra alma está sucia y debe ser purificada». Cada héroe en la sala debe lanzar 1D6: 1-3 pierde 1 PC, 4+ pierde 1 PM."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Solarion está complacido. Todos los héroes en la sala recuperan 2 PCs. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Blanco! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-de-solarion-2",
+      "tipo": "altar-de-solarion",
+      "titulo": "Altar de Solarion",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-de-solarion-2.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar al Dios de la Luz. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Sacerdote o Paladín):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Sientes el juicio de Solarion atravesar tu alma: «No eres digno de blandir la justicia, antes debes purgar tus pecados». Pierde 1 PC."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Encuentras oculta en el altar una Pócima Curativa. Anótala y descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Blanco! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-de-xhar-zuul-1",
+      "tipo": "altar-de-xhar-zuul",
+      "titulo": "Altar de Xhar'Zuul",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-de-xhar-zuul-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar al Gran Desolador, dios primigenio de la Oscuridad. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Elegido o Brujo):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Tus sentidos se nublan y comienzas a cortarte el brazo con tu arma para ofrecer tu sangre al Dios. Pierdes 1 PC y 1 PM."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Caes en gracia al Dios Oscuro. Recupera 2 PCs y 1 PM. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Negro! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-de-xhar-zuul-2",
+      "tipo": "altar-de-xhar-zuul",
+      "titulo": "Altar de Xhar'Zuul",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-de-xhar-zuul-2.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar al Gran Desolador, dios primigenio de la Oscuridad. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Elegido o Brujo):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Visualizas por unos segundos el incomprensible y horrendo rostro de Xar'Zuul. Pierdes 1 PM."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Encuentras una rarísima pócima de Sabiduría Ancestral escondida en el altar. Anótala y descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Negro! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-primigenio-1",
+      "tipo": "altar-primigenio",
+      "titulo": "Altar Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-primigenio-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar de un antiguo dios primigenio de la magia. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Elementalista o Hechicero):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Vientos de magia oscura emanan del altar. Haz una tirada de Vientos Oscuros con 2D6-2."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Caes en gracia al Dios. Recarga uno de tus hechizos por completo o recupera 2 PMs. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Azul! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-primigenio-2",
+      "tipo": "altar-primigenio",
+      "titulo": "Altar Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-primigenio-2.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar de un antiguo dios primigenio de la magia. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Elementalista o Hechicero):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "La magia del Dios distorsiona tus sentidos y nublan tu mente. Pierde un uso de un hechizo. Si no tuvieras, pierde 1 PM."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Encuentras un pergamino mágico oculto en el altar. Recibes un pergamino mágico al azar. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Azul! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-primigenio-3",
+      "tipo": "altar-primigenio",
+      "titulo": "Altar Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-primigenio-3.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar de un antiguo dios primigenio de la guerra. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Bárbaro o Elegido):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Sientes una ira irrefrenable. Mueve y ataca al héroe que tengas más cercano."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Caes en gracia al Dios. Recupera 3 PCs. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Rojo! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-primigenio-4",
+      "tipo": "altar-primigenio",
+      "titulo": "Altar Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-primigenio-4.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar de un antiguo dios primigenio de la guerra. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Bárbaro o Elegido):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Una fuerza invisible te desgarra la piel. La sangre brota sin aviso: el Dios de la Guerra exige tributo. Pierdes 1 PC."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Encuentras una rarísima pócima oculta en el altar. Anota una Pócima de Fuerza Gélida. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Rojo! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-primigenio-5",
+      "tipo": "altar-primigenio",
+      "titulo": "Altar Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-primigenio-5.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar de un antiguo dios primigenio de la muerte. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Nigromante o Brujo):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "La sala se llena de un miasma irrespirable. Todo héroe en la sala lanza 1D6: si obtiene 4+ pierde 1 PC."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Caes en gracia al Dios. Todos los héroes en la sala recuperan 2 PCs. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Verde! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "altar-primigenio-6",
+      "tipo": "altar-primigenio",
+      "titulo": "Altar Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/altar-primigenio-6.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Excavado en una de las paredes de la sala encuentras un pequeño altar de un antiguo dios primigenio de la muerte. Deja la carta en la sala. Cualquier héroe en la sala podrá venerarlo mediante una acción lanzando 1D6 (+1 si eres Nigromante o Brujo):",
+      "tirada": {
+        "accion": "Venerar el altar",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Un hedor nauseabundo a putrefacción impregna la sala. Cada héroe en ella lanza 1D6. Con 4+ pierden 1 PM."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Elige una de estas dos recompensas: a) Encuentras una rarísima pócima oculta en el altar. Anota una Pócima de Resistencia Congelada. Descarta el altar. b) ¡Bajo el ídolo del altar descubres un Arcano Mágico Verde! Anótalo. Descarta el altar."
+          }
+        ]
+      }
+    },
+    {
+      "id": "aparicion-fantasmal-1",
+      "tipo": "aparicion-fantasmal",
+      "titulo": "Aparición Fantasmal",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/aparicion-fantasmal-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Mientras buscas algo valioso, un siniestro espectro aparece. Tira 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "El fantasma te señala con su mano huesuda mientras profiere un lánguido llanto. Caes preso de «La Maldición del Triste» y pierdes 1 PM. Antes de cualquier tirada de ataque, lanza un 1D6: con 4 ó más dejarás de estar maldito. Si no, lanzarás un dado menos en este combate. Devuelve la aparición a su mazo."
+          },
+          {
+            "resultado": "3 ó 4",
+            "texto": "El fantasma susurra oscuros secretos. Coloca una Puerta Secreta en la ubicación que desees (o el MB revela una si juegas en Modo Director de Juego). Devuelve la carta a su mazo."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "El fantasma señala una ubicación de la sala. Roba 3 cartas de tesoro y resuelve una de ellas a tu elección. Las otras vuelven al mazo y se baraja. Descarta la aparición."
+          }
+        ]
+      }
+    },
+    {
+      "id": "arcano-magico-azul-1",
+      "tipo": "arcano-magico-azul",
+      "titulo": "Arcano Mágico Azul",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/arcano-magico-azul-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina polvorienta descubres tirado en el suelo uno de los legendarios Arcanos Mágicos Azules. Cada héroe puede tener uno o más del mismo color y podrá intercambiarlos con otros héroes u otros personajes, o venderlos en la Ciudad por 50 mo cada uno. Si algún héroe reúne un Arcano de cada uno de los 5 colores, en ese momento se consumirán y resolverá uno de los siguientes efectos: resucita a un héroe caído en cualquier momento sin cicatrices y con todos sus objetos, PCs y PMs; obtiene un Punto de Destino adicional; o aumenta un Punto de Cuerpo o de Mente a su elección de forma permanente.",
+      "notas": "En el Modo Director de juego, el jugador MB decidirá lo que ocurre al reunir los 5 Arcanos, ya sea cualquiera de los efectos anteriores o cualquier otra cosa que crea conveniente para la partida o campaña que esté jugando."
+    },
+    {
+      "id": "arcano-magico-blanco-1",
+      "tipo": "arcano-magico-blanco",
+      "titulo": "Arcano Mágico Blanco",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/arcano-magico-blanco-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina polvorienta descubres tirado en el suelo uno de los legendarios Arcanos Mágicos Blancos. Cada héroe puede tener uno o más del mismo color y podrá intercambiarlos con otros héroes u otros personajes, o venderlos en la Ciudad por 50 mo cada uno. Si algún héroe reúne un Arcano de cada uno de los 5 colores, en ese momento se consumirán y resolverá uno de los siguientes efectos: resucita a un héroe caído en cualquier momento sin cicatrices y con todos sus objetos, PCs y PMs; obtiene un Punto de Destino adicional; o aumenta un Punto de Cuerpo o de Mente a su elección de forma permanente.",
+      "notas": "En el Modo Director de juego, el jugador MB decidirá lo que ocurre al reunir los 5 Arcanos, ya sea cualquiera de los efectos anteriores o cualquier otra cosa que crea conveniente para la partida o campaña que esté jugando."
+    },
+    {
+      "id": "arcano-magico-negro-1",
+      "tipo": "arcano-magico-negro",
+      "titulo": "Arcano Mágico Negro",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/arcano-magico-negro-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina polvorienta descubres tirado en el suelo uno de los legendarios Arcanos Mágicos Negros. Cada héroe puede tener uno o más del mismo color y podrá intercambiarlos con otros héroes u otros personajes, o venderlos en la Ciudad por 50 mo cada uno. Si algún héroe reúne un Arcano de cada uno de los 5 colores, en ese momento se consumirán y resolverá uno de los siguientes efectos: resucita a un héroe caído en cualquier momento sin cicatrices y con todos sus objetos, PCs y PMs; obtiene un Punto de Destino adicional; o aumenta un Punto de Cuerpo o de Mente a su elección de forma permanente.",
+      "notas": "En el Modo Director de juego, el jugador MB decidirá lo que ocurre al reunir los 5 Arcanos, ya sea cualquiera de los efectos anteriores o cualquier otra cosa que crea conveniente para la partida o campaña que esté jugando."
+    },
+    {
+      "id": "arcano-magico-rojo-1",
+      "tipo": "arcano-magico-rojo",
+      "titulo": "Arcano Mágico Rojo",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/arcano-magico-rojo-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina polvorienta descubres tirado en el suelo uno de los legendarios Arcanos Mágicos Rojos. Cada héroe puede tener uno o más del mismo color y podrá intercambiarlos con otros héroes u otros personajes, o venderlos en la Ciudad por 50 mo cada uno. Si algún héroe reúne un Arcano de cada uno de los 5 colores, en ese momento se consumirán y resolverá uno de los siguientes efectos: resucita a un héroe caído en cualquier momento sin cicatrices y con todos sus objetos, PCs y PMs; obtiene un Punto de Destino adicional; o aumenta un Punto de Cuerpo o de Mente a su elección de forma permanente.",
+      "notas": "En el Modo Director de juego, el jugador MB decidirá lo que ocurre al reunir los 5 Arcanos, ya sea cualquiera de los efectos anteriores o cualquier otra cosa que crea conveniente para la partida o campaña que esté jugando."
+    },
+    {
+      "id": "arcano-magico-verde-1",
+      "tipo": "arcano-magico-verde",
+      "titulo": "Arcano Mágico Verde",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/arcano-magico-verde-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina polvorienta descubres tirado en el suelo uno de los legendarios Arcanos Mágicos Verdes. Cada héroe puede tener uno o más del mismo color y podrá intercambiarlos con otros héroes u otros personajes, o venderlos en la Ciudad por 50 mo cada uno. Si algún héroe reúne un Arcano de cada uno de los 5 colores, en ese momento se consumirán y resolverá uno de los siguientes efectos: resucita a un héroe caído en cualquier momento sin cicatrices y con todos sus objetos, PCs y PMs; obtiene un Punto de Destino adicional; o aumenta un Punto de Cuerpo o de Mente a su elección de forma permanente.",
+      "notas": "En el Modo Director de juego, el jugador MB decidirá lo que ocurre al reunir los 5 Arcanos, ya sea cualquiera de los efectos anteriores o cualquier otra cosa que crea conveniente para la partida o campaña que esté jugando."
+    },
+    {
+      "id": "aventurero-extraviado-1",
+      "tipo": "aventurero-extraviado",
+      "titulo": "Aventurero Extraviado",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/aventurero-extraviado-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Encuentras un aventurero vagando por la mazmorra. Cuando os detecta, se sobresalta y se lanza al ataque. Lanza tantos D6 como Puntos de Mente:",
+      "tirada": {
+        "dado": "D6 por cada Punto de Mente",
+        "resultados": [
+          {
+            "resultado": "Algún 6",
+            "texto": "Logras convencerlo de que sois héroes al servicio del Emperador. El aventurero se une a vosotros como un mercenario del tipo explorador (defiende con escudos blancos)."
+          },
+          {
+            "resultado": "Ningún 6",
+            "texto": "Tu turno termina y te ataca. Tiene los atributos de un mercenario explorador (defiende con escudos negros). Tras ello establece Iniciativas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "aventurero-muerto-1",
+      "tipo": "aventurero-muerto",
+      "titulo": "Aventurero Muerto",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/aventurero-muerto-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Ves un bulto al fondo de la sala. Al acercarte, descubres el cadáver reciente de un aventurero. Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Al ver el cadáver, sientes que podrías ser tú la siguiente víctima de esta maldita mazmorra. Pierdes 1 Punto de Mente."
+          },
+          {
+            "resultado": "2",
+            "texto": "Al acercarte, el cadáver cobra vida. Coloca un zombi en una casilla adyacente a la tuya. Te ataca y pierdes tu turno. Tras ello establece Iniciativas."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "Registras el cadáver y consigues 70 mo."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "En uno de sus bolsillos hallas un Arcano Mágico Rojo. Anótalo en tu ficha."
+          }
+        ]
+      }
+    },
+    {
+      "id": "caballero-herido-1",
+      "tipo": "caballero-herido",
+      "titulo": "Caballero Herido",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/caballero-herido-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Encuentras los cadáveres de 5 orcos y a un caballero imperial malherido. Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "¡Renegado!: mientras le curas, el falso caballero te ataca con 3 dados de combate defendibles y huye."
+          },
+          {
+            "resultado": "2-3",
+            "texto": "¡Ladrón!: el caballero fue apuñalado por un orco moribundo mientras saqueaba sus cuerpos. Te roba 2D6×10 mo y huye."
+          },
+          {
+            "resultado": "4+",
+            "texto": "¡Héroe!: el caballero mató a los orcos. Te da un tesoro agradecido por tu ayuda y abandona la mazmorra. Obtienes 2D6×10 mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "caballero-imperial-1",
+      "tipo": "caballero-imperial",
+      "titulo": "Caballero Imperial",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/caballero-imperial-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Entra en la sala un caballero imperial de la Orden de la Llama Eterna que se halla en una cruzada personal. Os advierte de algunos monstruos y peligros que acechan cerca, tras lo cual se marcha. Ahora podréis tomar por sorpresa a vuestros enemigos. La próxima vez que se establezca la Iniciativa los héroes podrán elegir el orden de los turnos."
+    },
+    {
+      "id": "cadaver-devorado-1",
+      "tipo": "cadaver-devorado",
+      "titulo": "Cadáver Devorado",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/cadaver-devorado-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Un insoportable olor a podrido inunda tus pulmones cuando descubres en un oscuro rincón lo que posiblemente fue un aventurero. Ahora es una masa informe de vísceras y huesos devorados por alguna bestia. Pierdes 1 Punto de Mente."
+    },
+    {
+      "id": "calavera-encantada-1",
+      "tipo": "calavera-encantada",
+      "titulo": "Calavera Encantada",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/calavera-encantada-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En un pequeño pedestal observas una extraña calavera cuyas cuencas vacías relucen. Tira 1D6 y tras aplicar el efecto, descártala:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Surgen multitud de serpientes de las cuencas del cráneo. Todos los héroes en la sala reciben un ataque de 2 dados de combate defendible."
+          },
+          {
+            "resultado": "2 ó 3",
+            "texto": "Al acercarte sientes una presencia perturbadora. Pierdes un Punto de Mente."
+          },
+          {
+            "resultado": "4",
+            "texto": "Sientes un gran poder mágico. Recarga un uso de un hechizo que poseas o gana 1 Punto de Mente."
+          },
+          {
+            "resultado": "5",
+            "texto": "Al abrir la mandíbula del cráneo descubres una piedra preciosa por un valor de 45 mo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Al tocarla sientes el poder de la magia negra. Obtienes un hechizo de oscuridad al azar que podrás usarlo durante este reto. Si ya lo tuvieras, recárgalo completamente."
+          }
+        ]
+      }
+    },
+    {
+      "id": "camara-clandestina-1",
+      "tipo": "camara-clandestina",
+      "titulo": "Cámara Clandestina",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/camara-clandestina-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En el subsuelo, bajo una baldosa suelta descubres una pequeña bodega que parece fue utilizada por ladrones para guardar su botín. Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Parece que el escondrijo ha sido saqueado. No encuentras nada de valor."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "Encuentras diferentes abalorios y objetos antiguos por un valor de 50 mo."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "¡Menudo botín! Encuentras objetos y joyas por valor de 100 mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "circulo-de-invocacion-1",
+      "tipo": "circulo-de-invocacion",
+      "titulo": "Círculo de Invocación",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/circulo-de-invocacion-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres en el suelo unas extrañas inscripciones que forman un círculo de invocación. Cualquier héroe podrá usarlo tantas veces como desee hasta que se desvanezca, estando en esta sala y gastando una acción. Si es así, lanza 1D6:",
+      "tirada": {
+        "accion": "Usar el círculo (acción)",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "Invocas un monstruo errante que te ataca y pierdes tu turno."
+          },
+          {
+            "resultado": "3",
+            "texto": "Haz una tirada en la tabla Vientos Oscuros y aplica sus efectos."
+          },
+          {
+            "resultado": "4",
+            "texto": "Haz una tirada en la tabla Vientos Oscuros +1 y aplica sus efectos. El Círculo se desvanece."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "Recarga todos los usos de uno de tus hechizos, o bien recupera 2 PCs y 1 PM. El Círculo se desvanece."
+          }
+        ]
+      }
+    },
+    {
+      "id": "cofre-del-tesoro-1",
+      "tipo": "cofre-del-tesoro",
+      "titulo": "Cofre Del Tesoro",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/cofre-del-tesoro-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "¡La suerte está contigo! Debajo de una vieja piel que hay sobre el suelo de la habitación, hallas una pequeña trampilla donde se esconde un cofre que contiene monedas y joyas por un valor de 150 monedas de oro."
+    },
+    {
+      "id": "colgante-esmeralda-1",
+      "tipo": "colgante-esmeralda",
+      "titulo": "Colgante Esmeralda",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/colgante-esmeralda-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina oscura, descubres una pequeña caja de madera cubierta de polvo. Al abrirla encuentras un precioso colgante con una resplandeciente esmeralda engarzada. Quédate la carta. En cualquier momento, si aún conservas el colgante, podrás anular todo el daño de un ataque que recibas. Después el colgante pierde su poder mágico, descártalo y anota 40 mo. Al finalizar el reto si aún lo conservas, anota 80 mo y descártalo."
+    },
+    {
+      "id": "cripta-maldita-1",
+      "tipo": "cripta-maldita",
+      "titulo": "Cripta Maldita",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/cripta-maldita-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Al registrar la sala te das cuenta de que está repleta de nichos y huesos polvorientos ¡Es una cripta! Roba 1 carta de tesoro por héroe en juego más una y apártalas. Por cada carta negativa robada, lanza un dado de combate:",
+      "tirada": {
+        "accion": "Por cada carta negativa",
+        "dado": "1DC",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Aparece una momia."
+          },
+          {
+            "resultado": "2-3",
+            "texto": "Aparece un zombi."
+          },
+          {
+            "resultado": "4+",
+            "texto": "Aparece un esqueleto."
+          }
+        ]
+      },
+      "notas": "Coloca los monstruos en la misma sala lo más próximos posibles a las paredes. Si los héroes consiguen acabar con todos estos monstruos, podrán quedarse con una carta positiva de las robadas si es que la hubiera. Si no salió ningún monstruo no podrá quedarse con ninguna carta. Devuelve el resto de cartas al mazo y barájalo."
+    },
+    {
+      "id": "cuerda-con-gancho-1",
+      "tipo": "cuerda-con-gancho",
+      "titulo": "Cuerda Con Gancho",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/cuerda-con-gancho-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina de la sala hallas una cuerda en buen estado con un útil gancho. Anota en tu hoja de personaje el objeto de apoyo de la Armería Cuerda con Gancho."
+    },
+    {
+      "id": "derrumbamiento-1",
+      "tipo": "derrumbamiento",
+      "titulo": "Derrumbamiento",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/derrumbamiento-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En tu afán de exploración en busca de algo valioso tocas una viga que parece podrida. Acto seguido parte del techo de la habitación se derrumba. Tira un dado de combate por cada héroe en la sala. Con resultado de calavera resta 1 Punto de Cuerpo al héroe correspondiente."
+    },
+    {
+      "id": "descanso-1",
+      "tipo": "descanso",
+      "titulo": "Descanso",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/descanso-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Tras registrar la zona, parece lo bastante segura como para tomar un respiro y comer algo al calor de una hoguera. Tú y todos los héroes que se encuentren en la misma sala recuperáis 1 Punto de Cuerpo y otro de Mente."
+    },
+    {
+      "id": "doncella-encadenada-1",
+      "tipo": "doncella-encadenada",
+      "titulo": "Doncella Encadenada",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/doncella-encadenada-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Escuchas el llanto de una joven mujer, que proviene de detrás de una falsa pared. Tras acceder a ella, descubres a una harapienta doncella encadenada. Dice haber sido secuestrada por las huestes de esta mazmorra. Puedes abandonarla a su suerte, o bien romper sus cadenas y tratar de sacarla de este infierno. Si lo haces, deberás escoltarla hasta la salida de la mazmorra con vida. Al conseguirlo, recibirás una recompensa de 130 mo. Si al hacerlo además conservas la carta de «Joyas robadas», descártala y recibirás una recompensa adicional de 70 mo.",
+      "notas": "Doncella: At. 0, Def. 1 (escudo blanco), Movimiento 6, Cuerpo 3, Mente 4. Sólo puede mover o defender. Si la Doncella queda en una sección de pasillo o habitación sin héroes y fuera de la línea de visión de éstos, se considerará muerta."
+    },
+    {
+      "id": "duelo-de-magia-1",
+      "tipo": "duelo-de-magia",
+      "titulo": "¡Duelo de Magia!",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/duelo-de-magia-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Encima de una vieja balda, encuentras un antiguo juego de cartas llamado «Duelo de Magia» ¿Jugamos una partida? Lanza 1D6 (+1 por cada Arcano Mágico que tengas):",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Mala interpretación de las reglas. Si hay dos o más héroes en la sala, terminan en una pelea perdiendo 1 Punto de Cuerpo cada uno."
+          },
+          {
+            "resultado": "2 ó 3",
+            "texto": "¡Eso es mío! Aparece un monstruo errante a tu lado, pierdes tu turno y te ataca. Tras ello establece Iniciativas."
+          },
+          {
+            "resultado": "4 ó 5",
+            "texto": "Pasáis un buen rato. Todos los héroes de la sala recuperan 2 PCs y 2 PMs pero el MB juega dos turnos seguidos sin monstruos a continuación. Si sólo estás tú no ocurre nada."
+          },
+          {
+            "resultado": "6+",
+            "texto": "¡No lo puedes creer! El mazo contiene uno de los 5 Arcanos Mágicos legendarios a tu elección. Anótalo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "el-maestro-cugan-1",
+      "tipo": "el-maestro-cugan",
+      "titulo": "El Maestro Cugan",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/el-maestro-cugan-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Cugan, el imponente y vetusto maestro bárbaro, irrumpe con paso lento en la sala. Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "«Os estoy vigilando, novatos». Cugan cura 2 Puntos de Cuerpo al héroe que desees. Tras ello desaparece. Devuelve a Cugan a su mazo."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "«¿Qué hacéis aquí? Tenéis mucho que aprender». Os advierte de los peligros de esta mazmorra. Hasta que se acabe el reto, podréis repetir cualquier resultado de escudo negro."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Cugan te reta a un combate. Haz una tirada de ataque, si consigues herir a Cugan (defiende con 5 dados y con Escudos Blancos), serás digno de su entrenamiento. Al acabar esta Misión obtienes un Punto Heroico adicional."
+          }
+        ]
+      }
+    },
+    {
+      "id": "el-viejo-jimmy-1",
+      "tipo": "el-viejo-jimmy",
+      "titulo": "El Viejo Jimmy",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/el-viejo-jimmy-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Entre las sombras, vislumbras una pequeña silueta humanoide. Al acercarte, descubres un andrajoso y desnutrido enano que parece haberos estado siguiendo. Se hace llamar Jimmy y si alguien consiguió la Carta de Tesoro de Rubí, podrá entregárselo (borra 100 mo) a cambio de un Arcano Mágico de cualquiera de los 5 colores o bien por una Pócima Curativa. Si no lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Has caído bien a Jimmy y decide hacerte de guía: quédate con la carta. La próxima vez que robes una carta de tesoro negativa, anula su efecto y descarta al viejo."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "El viejo se escabulle entre las sombras. Cuando te quieres dar cuenta descubres que te ha robado 1D6×10 mo. Devuelve a Jimmy a su mazo."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Le descubres intentando robaros, podrás tratar de derrotarlo. Lanza tus dados de ataque, el viejo se defiende con 3 dados y escudos blancos. Si consigues herirle se rendirá y luchará como un mercenario tuyo durante esta Misión, si no devuélvelo a su mazo. Si es derrotado como mercenario, devuélvelo a su mazo."
+          }
+        ]
+      },
+      "notas": "Jimmy: At. 2 (diagonal), Def. 3, PC 2, PM 2, Mov. 7."
+    },
+    {
+      "id": "falsa-pared-1",
+      "tipo": "falsa-pared",
+      "titulo": "Falsa Pared",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/falsa-pared-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una zona de la pared parece que los sillares están algo sueltos. Comienzas a apartarlos. Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "Sólo hay polvo y ratas."
+          },
+          {
+            "resultado": "3 ó 4",
+            "texto": "Encuentras una obra de arte pictórica valorada en 90 mo. Si decides llevártela, ocupará una de tus manos como si llevaras un escudo."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "Es un pasadizo a una sala secreta. Coloca una Puerta Secreta donde desees si es posible. En el Modo Director de Juego encuentras un alijo de gemas por valor de 50 mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "famosa-reliquia-1",
+      "tipo": "famosa-reliquia",
+      "titulo": "Famosa Reliquia",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/famosa-reliquia-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Tras investigar la habitación descubres una losa suelta ¡Al abrirla observas lo que pudiera ser una afamada reliquia! Quédate la carta. Cuando acabe la Misión, si aún conservas la carta, visitarás un anticuario y lanzarás 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "Te has dejado llevar por la emoción, el tesoro resulta ser un objeto sin valor."
+          },
+          {
+            "resultado": "3 ó 4",
+            "texto": "No es la auténtica reliquia, pero es una muy buena recreación. Anota 60 mo."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "¡Se trata de la auténtica y famosa reliquia que imaginabas! Anota 120 mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "figura-de-porcelana-1",
+      "tipo": "figura-de-porcelana",
+      "titulo": "Figura De Porcelana",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/figura-de-porcelana-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una pared de la estancia encuentras una hornacina con una pequeña figura. Lanza tantos D6 como Puntos de Mente máximos tengas:",
+      "tirada": {
+        "dado": "D6 por cada PM máximo",
+        "resultados": [
+          {
+            "resultado": "Al menos un 6",
+            "texto": "Se trata de una delicada porcelana de magnífica factura con un valor de 50 mo."
+          },
+          {
+            "resultado": "Ningún 6",
+            "texto": "¡Qué figura más fea! La destrozas contra el suelo con desprecio."
+          }
+        ]
+      }
+    },
+    {
+      "id": "filemon-el-ladron-1",
+      "tipo": "filemon-el-ladron",
+      "titulo": "Filemón El Ladrón",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/filemon-el-ladron-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "No te has dado cuenta, pero desde hace un rato una sombra os sigue. Filemón es un famoso ladrón, que aprovechará cualquier descuido para robarte algo y escapar, el muy burlón. Tira 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Filemón te roba 2D6×10 mo y se escabulle entre las sombras. Devuélvelo a su mazo."
+          },
+          {
+            "resultado": "4-5",
+            "texto": "Filemón no consigue robarte y en su huida deja caer 1D6×10 mo o un Arcano Mágico Azul (a tu elección). Anótalo y devuelve a Filemón a su mazo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Pillas a Filemón «in fraganti» cuando te intenta robar ¡Ahora puedes enfrentarte a él! Haz una tirada de combate, el ágil Filemón defiende con 4 dados y con escudos blancos. Si en dicha tirada consigues herir a Filemón, le capturaréis: quédate con su carta. Cuando acabe el reto podréis cobrar una recompensa de 120 mo por él. Sin embargo, si Filemón consigue defenderse de tu ataque, éste escapa: devuélvelo a su mazo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "filo-demoniaco-1",
+      "tipo": "filo-demoniaco",
+      "titulo": "Filo Demoníaco",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/filo-demoniaco-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina de la habitación vislumbras algo que emana siniestros y retorcidos haces de energía. Al acercarte, descubres una espada a dos manos cuya hoja ha sido grabada con runas oscuras. Hasta que finalice el reto sólo podrás atacar con este arma lanzando 4 dados de ataque (impactas con calaveras y escudos negros), pero perderás 1 PC por cada escudo negro obtenido en el ataque. Además obtienes la habilidad «Sucumbir a la Oscuridad»: úsala como una acción gratuita antes de hacer una tirada de ataque. Obtienes X dados adicionales en esta tirada, pero por cada escudo negro obtenido perderás X PCs adicionales. X es un número de 1 a 4 a tu elección.",
+      "notas": "Como acción, podrás tratar de deshacerte de la espada. Lanza tantos dados de combate como Puntos de Mente máximos tengas. Si obtienes al menos un escudo negro podrás descartar el filo."
+    },
+    {
+      "id": "fuente-de-agua-1",
+      "tipo": "fuente-de-agua",
+      "titulo": "Fuente de Agua",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/fuente-de-agua-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "El rumor del agua atrae tu atención. En un rincón de la sala descubres una figura de piedra de cuya boca brota un caño de agua. Como acción, cualquier héroe que se encuentre en esta sala puede beber una única vez por Misión. El primer héroe que beba lanza 1D6 determinando la naturaleza del agua:",
+      "tirada": {
+        "accion": "Beber (acción)",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "¡Agua envenenada! Pierdes 1 Punto de Mente."
+          },
+          {
+            "resultado": "3 ó 4",
+            "texto": "No ocurre nada."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "Te sientes revitalizado. Cura 1 Punto de Cuerpo y 1 de Mente."
+          }
+        ]
+      },
+      "notas": "Los siguientes héroes que beban también sufrirán el mismo efecto (no se vuelve a tirar)."
+    },
+    {
+      "id": "gas-venenoso-1",
+      "tipo": "gas-venenoso",
+      "titulo": "Gas Venenoso",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/gas-venenoso-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Las puertas de la estancia se cierran de forma inesperada. ¡Es una trampa! La sala empieza a llenarse de un gas venenoso. Al principio del turno del Malvado Brujo, se deberá tirar un dado de combate por cada héroe que haya dentro de la sala: por cada calavera obtenida el héroe correspondiente perderá 1 Punto de Cuerpo. Los héroes podrán salir de la sala destruyendo al menos una de las puertas, atacándolas. Las puertas tienen 3 Puntos de Cuerpo y no tiran por defensa. Una vez destruida una de las puertas, el gas se disipa. No se podrán realizar búsquedas mientras la trampa esté activa."
+    },
+    {
+      "id": "gema-cautivadora-1",
+      "tipo": "gema-cautivadora",
+      "titulo": "Gema Cautivadora",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/gema-cautivadora-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina olvidada encuentras una deslumbrante y enorme joya valorada en 120 monedas de oro. Su perturbadora belleza parece hipnótica. Antes de realizar cualquier acción el portador deberá lanzar tantos D6 como PMs máximos tenga:",
+      "tirada": {
+        "dado": "D6 por cada PM máximo",
+        "resultados": [
+          {
+            "resultado": "Uno o más seises",
+            "texto": "Consigues resistirte y actúas con normalidad. Puedes descartar la gema (renunciando a su valor) o pasársela a otro héroe adyacente este turno."
+          },
+          {
+            "resultado": "Ningún seis",
+            "texto": "La perturbadora belleza de la gema nubla tus sentidos. Hasta el final de tu turno estás en Estado de Shock."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grimorio-antiguo-1",
+      "tipo": "grimorio-antiguo",
+      "titulo": "Grimorio Antiguo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/grimorio-antiguo-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Bajo una baldosa suelta descubres un polvoriento grimorio. Quédate con la carta. Mientras poseas el Grimorio podrás leerlo siempre que no haya monstruos en tu línea de visión y usando tu acción. Lanza 1D6 y suma tus Puntos de Mente máximos:",
+      "tirada": {
+        "accion": "Leer el grimorio (acción)",
+        "dado": "1D6 + PM máximos",
+        "resultados": [
+          {
+            "resultado": "2-4",
+            "texto": "Atroces visiones atormentan tu cuerpo y tu espíritu. Pierde 1 PC y 1 PM."
+          },
+          {
+            "resultado": "5-7",
+            "texto": "Tu razón comienza a nublarse. Pierde 1 PM. Si es la primera vez que obtuviste este resultado no pierdas ningún punto."
+          },
+          {
+            "resultado": "8+",
+            "texto": "Descarta el Grimorio. Obtienes un hechizo del caos al azar que podrás usarlo una vez en este reto."
+          }
+        ]
+      },
+      "notas": "Si aún posees el Grimorio al acabar la Misión, descártalo."
+    },
+    {
+      "id": "grito-en-la-oscuridad-1",
+      "tipo": "grito-en-la-oscuridad",
+      "titulo": "Grito En La Oscuridad",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/grito-en-la-oscuridad-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Un terrorífico alarido que no conseguís identificar retumba por los oscuros pasillos. Lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "Un escalofrío de miedo recorre vuestro cuerpo. Todos los héroes en la sala pierden 1 Punto de Mente."
+          },
+          {
+            "resultado": "3 ó 4",
+            "texto": "Te sorprende un enemigo por la espalda. Coloca un Monstruo Errante a tu lado que te ataca inmediatamente. Tras ello resuelve Iniciativa."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "El eco del grito retumba en las paredes de forma inesperada, permitiéndote descubrir un pasadizo secreto. Coloca una Puerta Secreta lo más cercana posible. En Modo Director de Juego el MB revela la Puerta Secreta más cercana."
+          }
+        ]
+      }
+    },
+    {
+      "id": "hongo-exotico-1",
+      "tipo": "hongo-exotico",
+      "titulo": "Hongo Exótico",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/hongo-exotico-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En un recoveco húmedo crecen setas que tratas de reconocer. Lanza tantos D6 como Puntos de Mente máximos tengas:",
+      "tirada": {
+        "dado": "D6 por cada PM máximo",
+        "resultados": [
+          {
+            "resultado": "Ningún seis",
+            "texto": "Crees que son las setas con las que tu abuela te hacía una rica sopa. Animas a todos a comerlas. Cada héroe en la sala pierde 1 Punto de Cuerpo debido a vómitos y diarrea."
+          },
+          {
+            "resultado": "Un seis",
+            "texto": "Son curativas. Cada héroe en la sala recupera 1 Punto de Cuerpo y de Mente."
+          },
+          {
+            "resultado": "Dos seises o más",
+            "texto": "¡Es una seta rarísima! Decides comértela a escondidas. Mientras lo haces, escuchas una extraña melodía y notas cómo te haces más grande. Durante este reto, tienes 1 Punto de Cuerpo máximo adicional, atacas con 1 dado adicional y serás considerado una miniatura de tamaño grande a efectos de línea de visión."
+          }
+        ]
+      }
+    },
+    {
+      "id": "horda-de-murcielagos-1",
+      "tipo": "horda-de-murcielagos",
+      "titulo": "Horda De Murciélagos",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/horda-de-murcielagos-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Al mirar al techo observas cómo una nube de murciélagos que parece no tener fin, avanza aleteando hacia vosotros. Tira 1D6 por cada héroe en la sala:",
+      "tirada": {
+        "accion": "Por cada héroe en la sala",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "6",
+            "texto": "Resta 1 Punto de Cuerpo al héroe correspondiente y vuelve a tirar el dado para ese héroe."
+          }
+        ]
+      }
+    },
+    {
+      "id": "idolo-orco-1",
+      "tipo": "idolo-orco",
+      "titulo": "Ídolo Orco",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/idolo-orco-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En un nicho en la pared hallas una pequeña estatua de oro de aspecto feroz. Se trata de una deidad orca. Si decides cogerla lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Al cogerla, oyes en tu mente una voz orca muy enojada diciendo «¡Kabezazo!». Te han maldecido con una horrible jaqueca y pierdes 1 Punto de Cuerpo. La estatua vuelve misteriosamente a su sitio."
+          },
+          {
+            "resultado": "4-6",
+            "texto": "La estatua es de oro y vale 100 mo. Pero hasta el final de la Misión, todos los pieles verdes que puedan atacarte, lo harán. Además lanzarán 1 dado más al atacarte. Si sueltas la estatua o mueres, ésta desaparecerá."
+          }
+        ]
+      },
+      "notas": "Si la estatua sigue en su sitio, cualquier héroe en la habitación puede gastar una acción para tratar de cogerla."
+    },
+    {
+      "id": "idolo-primigenio-1",
+      "tipo": "idolo-primigenio",
+      "titulo": "Ídolo Primigenio",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/idolo-primigenio-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una zona sombría de la sala encuentras un extraño ídolo de una antigua deidad. Tiene un valor de 100 monedas de oro. Si decides llevarlo deberás hacer una tirada de Vientos Oscuros con 2D6-2 y aplicar sus efectos. Tras ello descarta el ídolo y anota su valor. Puede recogerlo otro héroe que esté en la sala pero deberá realizar la misma tirada."
+    },
+    {
+      "id": "joyas-robadas-1",
+      "tipo": "joyas-robadas",
+      "titulo": "Joyas Robadas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/joyas-robadas-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Bajo unos harapos, descubres un bonito joyero que debió pertenecer a una noble mujer, ya que hay una heráldica grabada en la tapa. Puedes quedártelas por un valor de 50 mo (descártala) o puedes tratar de devolvérselas a su familia. Si decides esto último, quédate con la carta. Cuando acabe el reto lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Parece que no queda nadie vivo de la casa nobiliaria que buscas. Finalmente consigues malvenderlas por 25 mo."
+          },
+          {
+            "resultado": "3-5",
+            "texto": "Encuentras a un superviviente de la casa nobiliaria, y con lágrimas en los ojos, te entrega 70 mo por devolverle tan preciado tesoro."
+          },
+          {
+            "resultado": "6",
+            "texto": "Mientras buscas información, un famoso ladrón llamado Filemón te roba las joyas."
+          }
+        ]
+      }
+    },
+    {
+      "id": "la-bruja-valindra-1",
+      "tipo": "la-bruja-valindra",
+      "titulo": "La Bruja Valindra",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/la-bruja-valindra-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Valindra, la bruja coleccionista, se encuentra en esta mazmorra buscando artefactos arcanos. Colócala en una casilla libre de la sala. Permanecerá aquí el resto de la partida y otorgará premios a cambio de ciertos objetos: Gema Cautivadora: Valindra luchará como mercenario hasta que se esfume (pierda todos sus Puntos de Cuerpo). Espada Demoníaca: 100 mo. Grimorio Antiguo: 100 mo. Un Arcano Mágico: Arcano Negro ó 100 mo. 5 Arcanos Mágicos diferentes: 1000 mo. Cualquier pócima (incluso las del Mazo de Tesoros o de Sucesos): 50 mo por pócima. Cualquier otro objeto obtenido del Mazo de Sucesos: una pócima infrecuente al azar.",
+      "notas": "Valindra: At. 2, Def. 2, Mov. 7, PC 2, PM 7. Conoce 4 hechizos de oscuridad al azar."
+    },
+    {
+      "id": "lampara-magica-1",
+      "tipo": "lampara-magica",
+      "titulo": "Lámpara Mágica",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/lampara-magica-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Entre unos harapos viejos encuentras una bolsa de cuero que parece contener algo metálico. Al abrirla descubres una antigua lámpara mágica. Podrá usarse como acción para ejecutar el hechizo de aire Genio. Al hacerlo se descarta. Cuando acabe el reto, si no usaste la lámpara, descártala y anota 25 monedas de oro."
+    },
+    {
+      "id": "lobo-errante-1",
+      "tipo": "lobo-errante",
+      "titulo": "Lobo Errante",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/lobo-errante-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Escuchas el gruñir de una bestia y observas cómo unos ojos se acercan a ti desde las sombras. Es un lobo y parece tener hambre. Lanza 1D6, si eres Druida o Montaraz obtienes automáticamente un 6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1 ó 2",
+            "texto": "El animal es hostil. Te ataca como monstruo y pierdes tu turno."
+          },
+          {
+            "resultado": "3 ó 4",
+            "texto": "Tras mirarte, el lobo se marcha. Devuélvelo a su mazo."
+          },
+          {
+            "resultado": "5 ó 6",
+            "texto": "Recuerdas que tenías algo de comida en tu bolsillo y se la ofreces al can. Actuará como tu compañero hasta el final de la Misión."
+          }
+        ]
+      },
+      "notas": "Lobo: Mov. 10, At. 2, Def. 1, C 3, M 1. Puede atacar en diagonal y salta trampas automáticamente."
+    },
+    {
+      "id": "losa-de-piedra-1",
+      "tipo": "losa-de-piedra",
+      "titulo": "Losa De Piedra",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/losa-de-piedra-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres una pesada losa en el suelo que debajo parece esconder algo de valor. Puedes tratar de levantarla. Lanza tantos D6 como Puntos de Cuerpo máximos tengas:",
+      "tirada": {
+        "dado": "D6 por cada PC máximo",
+        "resultados": [
+          {
+            "resultado": "Al menos un 6",
+            "texto": "Consigues levantarla. Lanza 1D6:",
+            "tirada": {
+              "dado": "1D6",
+              "resultados": [
+                {
+                  "resultado": "1-5",
+                  "texto": "Descubres un alijo de gemas y oro por valor de 75 mo."
+                },
+                {
+                  "resultado": "6",
+                  "texto": "Es un pasadizo secreto. Busca y resuelve, si es posible, la carta «Sala secreta del trono»."
+                }
+              ]
+            }
+          },
+          {
+            "resultado": "Ningún 6",
+            "texto": "La losa se hunde y se pierde el tesoro para siempre."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mimico-1",
+      "tipo": "mimico",
+      "titulo": "Mímico",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mimico-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Al final de la sala, en una zona sombría, encuentras un enorme cofre. No puedes contenerte y lo abres sin más. Al hacerlo éste cobra vida y te ataca ferozmente. Recibe un ataque de 3 dados de combate sin posibilidad de defenderte. Finalmente consigues destruir al mímico."
+    },
+    {
+      "id": "mina-abandonada-1",
+      "tipo": "mina-abandonada",
+      "titulo": "Mina Abandonada",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/mina-abandonada-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una falsa pared de la sala descubres la entrada a una antigua y peligrosa mina abandonada. Deja la carta en la sala. Cualquier héroe en dicha sala puede hacer una Acción de Explorar Mina: lanza 1D6 (si eres enano suma 1 al resultado):",
+      "tirada": {
+        "accion": "Explorar Mina (acción)",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "La mina colapsa. Pierdes 1 PC pero consigues escapar. Descarta Mina Abandonada."
+          },
+          {
+            "resultado": "3-5",
+            "texto": "Encuentras piedras preciosas por un valor de 1D6×10 mo."
+          },
+          {
+            "resultado": "6+",
+            "texto": "Encuentras piedras preciosas por un valor de 1D6×10 mo. Al salir, la mina colapsa. Descarta Mina Abandonada."
+          }
+        ]
+      }
+    },
+    {
+      "id": "minero-enano-1",
+      "tipo": "minero-enano",
+      "titulo": "Minero Enano",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/minero-enano-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Mientras buscas algo valioso en la sala, parte de una pared se desploma y de una nube de polvo emerge un minero enano. Parece amistoso y dispuesto a conversar. Lanza 1D6 por cada Punto de Mente máximo que tengas (si eres enano, obtienes un 6 automáticamente, además de los de tu tirada):",
+      "tirada": {
+        "dado": "D6 por cada PM máximo",
+        "resultados": [
+          {
+            "resultado": "Ningún seis",
+            "texto": "«¡Estás interrumpiendo mi trabajo!» El enano se marcha refunfuñando."
+          },
+          {
+            "resultado": "Un seis",
+            "texto": "El enano os muestra algunos secretos de la mazmorra y se marcha. El MB revela la puerta secreta más cercana."
+          },
+          {
+            "resultado": "Dos o más seises",
+            "texto": "Le has caído bien. El enano te obsequia con una piedra preciosa con un valor de 100 mo y se marcha."
+          }
+        ]
+      }
+    },
+    {
+      "id": "monton-de-escombros-1",
+      "tipo": "monton-de-escombros",
+      "titulo": "Montón De Escombros",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/monton-de-escombros-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina de la sala encuentras un montón de objetos rotos, telas, muebles destrozados, trastos… Lanza tantos D6 como Puntos de Mente máximos tengas:",
+      "tirada": {
+        "dado": "D6 por cada PM máximo",
+        "resultados": [
+          {
+            "resultado": "Al menos un 6",
+            "texto": "Consigues encontrar algunas baratijas y abalorios por un valor de 50 mo."
+          },
+          {
+            "resultado": "2 seises",
+            "texto": "Entre telas ajadas y maderos viejos hallas un extraño papiro. Obtienes un Pergamino Mágico al azar o bien un Arcano Mágico Verde (a tu elección)."
+          },
+          {
+            "resultado": "3 o más seises",
+            "texto": "No lo puedes creer ¡Bajo el montón de escombros había un enorme cofre de oro con 200 monedas!"
+          }
+        ]
+      }
+    },
+    {
+      "id": "niebla-de-muerte-1",
+      "tipo": "niebla-de-muerte",
+      "titulo": "Niebla De Muerte",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/niebla-de-muerte-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "El suelo de la habitación se inunda de una siniestra niebla que se retuerce entre vuestros pies. Tira 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "La siniestra niebla comienza a introducirse inevitablemente por tu garganta ante tu mirada de terror. Haz una tirada de Vientos Oscuros con 2D6-2."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "Del suelo comienzan a emerger brazos esqueléticos que tratan de agarraros para luego dar paso a cuerpos completos. Coloca tantos esqueletos como héroes haya en la sala adyacentes a cada uno de ellos. Los esqueletos atacan en el momento. Tras ello se establece la Iniciativa."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "La niebla se disipa."
+          }
+        ]
+      }
+    },
+    {
+      "id": "peligro-en-la-oscuridad-1",
+      "tipo": "peligro-en-la-oscuridad",
+      "titulo": "Peligro En La Oscuridad",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/peligro-en-la-oscuridad-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Mientras buscas algo de valor, tienes el presentimiento de que esta mazmorra es más peligrosa y amenazante de lo que esperabas. Roba 5 cartas de tesoro y descarta todas las que sean positivas salvo las de Suceso Inesperado. El resto devuélvelas al mazo y barájalo. Tras ello descarta «Peligro en la oscuridad»."
+    },
+    {
+      "id": "penasco-sospechoso-1",
+      "tipo": "penasco-sospechoso",
+      "titulo": "Peñasco Sospechoso",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/penasco-sospechoso-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una esquina de la sala hay una roca de grandes dimensiones que intuyes podría esconder algo. Lanza tantos D6 como Puntos de Cuerpo máximos tengas para intentar moverla:",
+      "tirada": {
+        "dado": "D6 por cada PC máximo",
+        "resultados": [
+          {
+            "resultado": "Al menos un 6",
+            "texto": "Consigues desplazarla. Detrás encuentras (lanza 1D6):",
+            "tirada": {
+              "dado": "1D6",
+              "resultados": [
+                {
+                  "resultado": "1-2",
+                  "texto": "El cadáver saqueado de un pobre aventurero que murió aplastado por la roca. Pierdes 1 PM ante la horrible visión."
+                },
+                {
+                  "resultado": "3-4",
+                  "texto": "Un alijo de gemas con valor de 80 mo."
+                },
+                {
+                  "resultado": "5-6",
+                  "texto": "Un Arcano Mágico del color que desees."
+                }
+              ]
+            }
+          },
+          {
+            "resultado": "Ningún 6",
+            "texto": "Al tratar de desplazarlo el peñasco queda encajado en el suelo, haciendo imposible su desplazamiento. Si alguien tuviera un hechizo de Atravesar Roca puede utilizarlo para obtener el botín. Deberá lanzar el D6 anteriormente indicado."
+          }
+        ]
+      }
+    },
+    {
+      "id": "pergamino-magico-1",
+      "tipo": "pergamino-magico",
+      "titulo": "Pergamino Mágico",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/pergamino-magico-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Hallas un fardo de pergaminos amarillentos y quebradizos anudados con un cordel. La mayoría sólo contienen garabatos escritos en lenguas extrañas, pero uno de ellos alberga poderosos símbolos mágicos. Obtienes un pergamino mágico al azar."
+    },
+    {
+      "id": "aptitudes-magicas-1",
+      "tipo": "aptitudes-magicas",
+      "titulo": "Aptitudes Mágicas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/aptitudes-magicas-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres una pequeña botella de color plateado debajo de una losa. Podrá ser bebida al comienzo del turno del héroe y éste podrá lanzar 2 hechizos en vez de 1 en el mismo turno. Tras ello el efecto desaparece."
+    },
+    {
+      "id": "pocima-de-fuerza-1",
+      "tipo": "pocima-de-fuerza",
+      "titulo": "Pócima De Fuerza",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pocima-de-fuerza-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres un pequeño frasco de color morado que reconoces como una pócima de fuerza. Podrás beberla en cualquier momento permitiéndote lanzar 2 Dados de Combate adicionales en tu próximo ataque. Después los efectos desaparecen."
+    },
+    {
+      "id": "pocima-de-resistencia-1",
+      "tipo": "pocima-de-resistencia",
+      "titulo": "Pócima De Resistencia",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pocima-de-resistencia-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres un pequeño tubo de cristal que contiene un líquido azulado. Podrás beberte este vial en cualquier momento para lanzar 2 dados adicionales en tu próxima tirada de defensa."
+    },
+    {
+      "id": "resistencia-magica-1",
+      "tipo": "resistencia-magica",
+      "titulo": "Resistencia Mágica",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/resistencia-magica-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Encuentras una pequeña botella escondida detrás de un viejo escudo oxidado. Podrá ser ingerida de inmediato por el héroe en el momento que sea objetivo de un hechizo. El hechizo quedará anulado y no tendrá ningún efecto."
+    },
+    {
+      "id": "pocima-inesperada-1",
+      "tipo": "pocima-inesperada",
+      "titulo": "Pócima Inesperada",
+      "copias": 3,
+      "imagen": {
+        "archivo": "imagenes/pocima-inesperada-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Envuelta entre un montón de trapos viejos encuentras una pócima curativa. Podrás beberla en cualquier momento para recuperar 1D6 Puntos de Cuerpo previamente perdidos."
+    },
+    {
+      "id": "pocima-rota-1",
+      "tipo": "pocima-rota",
+      "titulo": "Pócima Rota",
+      "copias": 2,
+      "imagen": {
+        "archivo": "imagenes/pocima-rota-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En un descuido, una de las pociones que llevas colgadas del cinturón se quiebra. Descarta una poción a tu elección, mientras tratas de disimular la bochornosa mancha de tu pantalón."
+    },
+    {
+      "id": "antiguo-pozo-1",
+      "tipo": "antiguo-pozo",
+      "titulo": "Antiguo Pozo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/antiguo-pozo-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Una zona del suelo de la sala parece algo diferente. Al acercarte, descubres una serie de adoquines que tapan un antiguo y profundo pozo. Deja la carta en la sala. Un héroe que posea el objeto de la Armería Cuerda con Gancho podrá explorar las profundidades del pozo gastando una acción. Si es así, el héroe roba 3 cartas de tesoro y resuelve la que desee, devolviendo las demás al mazo y barajándolo. Acto seguido, descarta Antiguo pozo."
+    },
+    {
+      "id": "prensa-siniestra-1",
+      "tipo": "prensa-siniestra",
+      "titulo": "Prensa Siniestra",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/prensa-siniestra-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "¡Las paredes de la habitación comienzan a deslizarse una contra otra para tratar de aplastaros! Los héroes en la sala han de cooperar tanto con su fuerza como con su ingenio, para no morir aplastados. La prensa causará tantos puntos de daño como héroes en juego. Tendrán que elegir si tirar tantos D6 como Puntos de Cuerpo o como Puntos de Mente máximos tengan. Cada seis anulará 1 punto de daño. Todos los puntos de daño que no se hayan anulado, serán repartidos entre los héroes de la sala de la forma que deseen."
+    },
+    {
+      "id": "putrefaccion-oscura-1",
+      "tipo": "putrefaccion-oscura",
+      "titulo": "Putrefacción Oscura",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/putrefaccion-oscura-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Te encuentras con una figura que se arrastra hacia ti pidiendo ayuda con voz patética. Al auxiliarla, se desploma muerta sobre tus brazos, revelando un hedor insoportable y un rostro repleto de llagas, ampollas y pus. Tira tantos D6 como PCs máximos tengas. Si no sacas ningún 6, contraes la Putrefacción Oscura y tirarás un dado de defensa menos. Además, cualquier héroe que comience su turno adyacente a ti deberá resolver nuevamente esta carta sobre sí mismo. Cualquier poción o hechizo curativo elimina la enfermedad, pero no te devuelve puntos de Cuerpo. Si eres no-muerto o vampiro, eres inmune a esta carta."
+    },
+    {
+      "id": "ratas-enfermizas-1",
+      "tipo": "ratas-enfermizas",
+      "titulo": "Ratas Enfermizas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/ratas-enfermizas-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Encuentras un cadáver que decides registrar en busca de algo de valor. Mientras lo haces, una rata enfermiza surge de los restos y muerde tu mano. Contraes una extraña enfermedad que provocará que lances 1D6 al comienzo de cada uno de tus turnos:",
+      "tirada": {
+        "accion": "Enfermo, al comenzar tu turno",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Pierdes 1 Punto de Cuerpo."
+          },
+          {
+            "resultado": "5+",
+            "texto": "Dejas de estar enfermo."
+          }
+        ]
+      },
+      "notas": "Contagio: un héroe que acabe su turno adyacente a otro enfermo, o bien esté adyacente a él al comenzar su turno, lanza 1D6: si obtiene 4+ el héroe se verá afectado por la enfermedad."
+    },
+    {
+      "id": "repleta-de-riquezas-1",
+      "tipo": "repleta-de-riquezas",
+      "titulo": "Repleta De Riquezas",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/repleta-de-riquezas-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Con el paso del tiempo esta mazmorra parece haber acumulado más tesoros de lo habitual. Devuelve hasta 5 cartas de tesoro al azar descartadas al mazo y barájalo. A continuación roba una carta de tesoro. Una vez hecho esto descarta «¡Repleta de riquezas!»."
+    },
+    {
+      "id": "reptil-venenoso-1",
+      "tipo": "reptil-venenoso",
+      "titulo": "Reptil Venenoso",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/reptil-venenoso-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Encuentras en una estantería un pequeño cofre de piel. Al abrirlo una serpiente se abalanza sobre ti. Tras un corto forcejeo, el reptil alcanza a morderte y quedas gravemente envenenado. Si estás envenenado, al principio de tu turno lanza 1D6:",
+      "tirada": {
+        "accion": "Envenenado, al comenzar tu turno",
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Pierdes 2 Puntos de Cuerpo."
+          },
+          {
+            "resultado": "2-3",
+            "texto": "Pierdes 1 Punto de Cuerpo."
+          },
+          {
+            "resultado": "4+",
+            "texto": "Dejas de estar envenenado."
+          }
+        ]
+      },
+      "notas": "Cualquier antídoto o efecto curativo provocará que dejes de estar envenenado."
+    },
+    {
+      "id": "ron-orco-1",
+      "tipo": "ron-orco",
+      "titulo": "Ron Orco",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/ron-orco-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En un recoveco vislumbras una polvorienta botella de un antiguo ron. Tiene 3 usos (3 largos tragos). Mediante una acción gratuita antes de atacar o de defender, el héroe podrá dar un trago a la botella y lanzará tantos D6 como PCs máximos tenga:",
+      "tirada": {
+        "accion": "Dar un trago",
+        "dado": "D6 por cada PC máximo",
+        "resultados": [
+          {
+            "resultado": "Por cada seis",
+            "texto": "El héroe podrá lanzar 1DC adicional en su próximo ataque o defensa."
+          },
+          {
+            "resultado": "Ningún seis",
+            "texto": "Si es la primera vez no ocurre nada. Si no, el héroe cae inconsciente."
+          }
+        ]
+      },
+      "notas": "Un héroe inconsciente no puede atacar, hechizar, mover o defender. Cualquier efecto curativo anulará este estado. Un héroe inconsciente podrá ser portado por otro, atendiendo a las reglas de «Portar héroe»."
+    },
+    {
+      "id": "rubi-embrujado-1",
+      "tipo": "rubi-embrujado",
+      "titulo": "Rubí Embrujado",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/rubi-embrujado-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En una zona sombría, encuentras una horrenda estatua de un demonio con un rubí engarzado en uno de sus ojos. Si arrancas la gema: obtienes un rubí valorado en 100 mo. La estatua cobra vida, tu turno acaba y te ataca. Tras ello establece Iniciativas. Si dejas el rubí: coloca la carta al lado de la habitación. Un héroe que haya obtenido la Carta de Tesoro Rubí, mediante una acción podrá colocar la gema en el otro ojo de la estatua (borra las 100 mo del rubí). Al hacerlo una pequeña compuerta en la pared se abre. En su interior hay un Cofre que además de su contenido habitual tiene 100 mo.",
+      "notas": "Demonio pétreo: At. 3, Def. 3, Mov. 8, PC 1 +1 por héroe, PM 2. Si juegas en Modo Director de Juego el cofre contiene 250 mo."
+    },
+    {
+      "id": "sala-secreta-del-trono-1",
+      "tipo": "sala-secreta-del-trono",
+      "titulo": "Sala Secreta Del Trono",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/sala-secreta-del-trono-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres una trampilla que lleva a la sala secreta del que fuera un antiguo rey, cuyos restos yacen en su trono. Coloca al héroe, el mueble de «trono», una ficha de trampilla en tu sala y otra en la sala disponible más cercana (coloca una loseta si fuera necesario). El primero que busque tesoro encuentra objetos por valor de 50 monedas de oro y tira 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "El rey empuña con firmeza una espada mágica. Busca la Carta de Suceso «Filo Demoníaco» si es posible y resuélvela."
+          },
+          {
+            "resultado": "2-3",
+            "texto": "Observas cómo el cadáver clava su vacía mirada en una joya que sostiene. Busca la Carta de Suceso «Gema Cautivadora» y resuélvela si es posible."
+          },
+          {
+            "resultado": "4-5",
+            "texto": "Un antiguo libro reposa sobre sus piernas. Busca la Carta de Suceso «Grimorio Antiguo» si es posible y resuélvela."
+          },
+          {
+            "resultado": "6",
+            "texto": "Murió rodeado de riquezas. Anota 150 mo."
+          }
+        ]
+      },
+      "notas": "Cualquier héroe podrá entrar o salir de la sala a través de las trampillas."
+    },
+    {
+      "id": "saqueador-herido-1",
+      "tipo": "saqueador-herido",
+      "titulo": "Saqueador Herido",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/saqueador-herido-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "En el suelo yace un saqueador herido de gravedad que llegó a esta mazmorra en busca de oro. Cualquier héroe en la sala podrá gastar una poción de curación o gastar un uso de un hechizo que restaure Puntos de Cuerpo. Si así lo hacéis, el saqueador os acompaña hasta el final de la misión (es un mercenario de tipo explorador). Si no, lanza 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "El saqueador estaba actuando. Te roba 2D6×10 mo y escapa."
+          },
+          {
+            "resultado": "4-6",
+            "texto": "Muere desangrado."
+          }
+        ]
+      }
+    },
+    {
+      "id": "sin-nocion-del-tiempo-1",
+      "tipo": "sin-nocion-del-tiempo",
+      "titulo": "Sin Noción Del Tiempo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/sin-nocion-del-tiempo-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Mientras buscas, comienzas a encontrar pequeñas cantidades de monedas de oro escondidas en diferentes recovecos repartidos por la sala. Sin darte cuenta y sumido en la diligente labor de búsqueda, pierdes la noción del tiempo. Tu turno acaba y lanzas 1D6:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-3",
+            "texto": "Encuentras 25 mo."
+          },
+          {
+            "resultado": "4-5",
+            "texto": "Encuentras 50 mo."
+          },
+          {
+            "resultado": "6",
+            "texto": "Encuentras 75 mo."
+          }
+        ]
+      }
+    },
+    {
+      "id": "tobias-el-mendigo-1",
+      "tipo": "tobias-el-mendigo",
+      "titulo": "Tobías El Mendigo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/tobias-el-mendigo-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Un pobre anciano ciego y perdido irrumpe en la sala pidiendo limosna. Podrás darle 1D6×10 mo y el anciano os revelará una puerta secreta. Coloca una Puerta Secreta en tu sala o en la más cercana posible con acceso a otra (o bien revela una Puerta Secreta de la misión que estéis jugando en Modo Director de Juego). Si no, lanza tantos D6 como Puntos de Mente máximos tengas:",
+      "tirada": {
+        "dado": "D6 por cada PM máximo",
+        "resultados": [
+          {
+            "resultado": "Ningún seis",
+            "texto": "«¡Morirás como una rata!» El anciano te maldice mientras se aleja en la oscuridad. Durante este reto, la siguiente vez que seas objetivo de un efecto curativo, en vez de curarte, eliminará la maldición."
+          },
+          {
+            "resultado": "1 seis",
+            "texto": "El anciano se marcha murmurando."
+          },
+          {
+            "resultado": "2 ó más seises",
+            "texto": "Has caído bien a Tobías, el cual te revela que es un poderoso mago. El anciano recarga por completo un hechizo de cualquier héroe que se encuentre en la sala o bien te obsequia con un Arcano Mágico Blanco que anotarás en tu ficha."
+          }
+        ]
+      }
+    },
+    {
+      "id": "trampa-de-cepo-1",
+      "tipo": "trampa-de-cepo",
+      "titulo": "Trampa de Cepo",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/trampa-de-cepo-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Das un paso hacia delante y escuchas el chirrido de una bisagra oxidada. Acto seguido, un dolor intenso sube por tu pierna mientras profieres un grito. Tu pie ha quedado atrapado en un cepo. Pierdes 1 Punto de Cuerpo y no podrás mover hasta liberarte. Para ello puedes usar tu acción y lanzar tantos D6 como Puntos de Cuerpo máximos tengas. Si obtienes al menos un 6 te habrás liberado y podrás continuar tu turno. Cualquier otro jugador adyacente puede gastar su acción en liberarte siguiendo la misma mecánica anterior."
+    },
+    {
+      "id": "veta-de-mineral-1",
+      "tipo": "veta-de-mineral",
+      "titulo": "Veta De Mineral",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/veta-de-mineral-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres cómo de una pared sobresale una formación cristalizada de un valioso mineral. Si posees un arma cuerpo a cuerpo podrás intentar extraer una porción. Lanza 1D6 y tras aplicar el efecto, descarta la Veta:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1",
+            "texto": "Consigues un pedazo con valor de 25 mo, pero mellas tu arma al intentar obtener el preciado mineral. Durante este reto, cada vez que ataques con ella, tendrás que repetir 1 dado con calavera y aceptar el segundo resultado."
+          },
+          {
+            "resultado": "2-4",
+            "texto": "Extraes un trozo con valor de 45 mo."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "Consigues extraer un enorme trozo por un valor de 90 mo. Es tan voluminoso que deberá transportarse como si fuera un escudo (sin la bonificación de defensa). Si el héroe no dejó caer el mineral hasta el final del reto, anotará su valor."
+          }
+        ]
+      }
+    },
+    {
+      "id": "viejos-papiros-1",
+      "tipo": "viejos-papiros",
+      "titulo": "Viejos Papiros",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/viejos-papiros-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Descubres un montón de papiros viejos en el suelo. Lanza 1D6 para inspeccionarlos:",
+      "tirada": {
+        "dado": "1D6",
+        "resultados": [
+          {
+            "resultado": "1-2",
+            "texto": "Restos de libros rotos sin valor."
+          },
+          {
+            "resultado": "3-4",
+            "texto": "Parece el mapa de un acceso secreto. Coloca una Puerta Secreta en esta misma sala o en la más cercana posible. En Modo Director de Juego el MB revela la Puerta Secreta más cercana."
+          },
+          {
+            "resultado": "5-6",
+            "texto": "¡No lo puedes creer! Entre viejos legajos encuentras un legendario Arcano Mágico. Anota un Arcano Mágico del color que desees (negro, azul, blanco, rojo o verde) en tu ficha."
+          }
+        ]
+      }
+    },
+    {
+      "id": "vientos-oscuros-1",
+      "tipo": "vientos-oscuros",
+      "titulo": "Vientos Oscuros",
+      "copias": 1,
+      "imagen": {
+        "archivo": "imagenes/vientos-oscuros-1.webp",
+        "tamano": "pequeña"
+      },
+      "texto": "Mientras revisas la habitación en busca de tesoros, notas la presencia de una energía extraña: una corriente mágica de energía oscura te rodea. Haz una tirada con 2D6 en la tabla Vientos Oscuros y aplica sus efectos. Si el resultado fue negativo, devuelve la carta a su mazo."
+    }
+  ]
+}
