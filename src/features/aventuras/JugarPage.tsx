@@ -1,19 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLoaderData } from 'react-router'
-import { Carta } from '../../components/Carta'
+import { Carta, Tirada } from '../../components/Carta'
 import { CartaDialog } from '../../components/CartaDialog'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
-import { nombreItem, type Equipo } from '../../lib/equipo'
+import { caraDC, entre } from '../../lib/dados'
+import { itemPorId, nombreItem, type ItemEquipo } from '../../lib/equipo'
 import { registrarEvento } from '../../lib/matomo'
-import { DADOS_MOVIMIENTO, urlRetrato, version } from '../../lib/personajes'
+import { DADOS_MOVIMIENTO, PERFILES_MOVIMIENTO, puntosMovimiento, urlRetrato, version, type Heroe } from '../../lib/personajes'
 import type { IdMazo, Mazos } from '../../lib/mazos'
 import type { EfectoEspecial } from '../generar/lib/tipos'
 import { CartaAliado } from '../../components/CartaAliado'
-import { CartaHeroe } from '../../components/CartaHeroe'
 import { CartaMonstruo } from '../../components/CartaMonstruo'
-import { BarraFichas, type Ficha } from './components/BarraFichas'
+import { BarraFichas, type Ficha, type PanelFicha } from './components/BarraFichas'
 import { CombateDialog, type Participante } from './components/CombateDialog'
 import { perdidas } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
@@ -31,8 +31,8 @@ import {
   avanzar,
   buscarPuertasSecretas,
   buscarTrampas,
-  cambiarPeligro,
   cambiarOro,
+  cambiarPeligro,
   cambiarVida,
   cambiarVidaMonstruo,
   carta,
@@ -62,7 +62,6 @@ import {
   perderEquipo,
   type FinPartida,
   type Miembro,
-  type Partida,
   type Paso,
   type TipoZona,
 } from './lib/partida'
@@ -102,6 +101,52 @@ const FIN: Record<FinPartida, { accion: string; titulo: string; texto: string }>
 }
 
 type EfectoSala = Extract<EfectoEspecial, { tipo: 'sala' }>
+type DadoEfecto = 'D4' | 'D6' | 'D8' | 'D10' | 'D12' | 'D20' | 'DC'
+type TiradaEfecto = { clave: string; cantidad: number; dado: DadoEfecto; resultado?: string[] }
+
+const DADOS_EFECTO: DadoEfecto[] = ['D4', 'D6', 'D8', 'D10', 'D12', 'D20', 'DC']
+const carasDado = (dado: DadoEfecto) => (dado === 'DC' ? 6 : Number(dado.slice(1)))
+const HABILIDADES_MAGIA = new Set([
+  'conocedor-de-la-magia-elemental',
+  'maestro-de-la-magia-elemental',
+  'maestro-de-magia-bardica',
+  'maestro-de-la-brujeria',
+  'maestro-de-la-magia-druidica',
+  'maestro-de-la-nigromancia',
+  'acolito-de-la-luz',
+  'conocimiento-arcano',
+  'maestro-runico',
+  'fragua-runica',
+  'afin-a-la-nigromancia',
+])
+
+const etiquetaMultilinea = (texto: string) =>
+  texto
+    .replace(/^Pócima de /, 'Pócima ')
+    .replace(/^Pergamino de /, 'Perg. ')
+    .split(/\s+/)
+    .slice(0, 3)
+    .map((palabra) => <span key={palabra}>{palabra}</span>)
+
+function AccionDialog({ titulo, children, onCerrar }: { titulo: string; children: ReactNode; onCerrar: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => ref.current?.showModal(), [])
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby="accion-titulo" onClose={onCerrar} onClick={(e) => e.target === ref.current && onCerrar()}>
+      <div className="dialog-contenido">
+        <header className="dialog-cabecera">
+          <h2 id="accion-titulo">{titulo}</h2>
+          <button type="button" className="icon-button" onClick={onCerrar} aria-label="Cerrar">
+            <Icono nombre="cerrar" />
+          </button>
+        </header>
+        {children}
+      </div>
+    </dialog>
+  )
+}
 
 /** Las reglas de sala sin texto propio se describen a partir de sus datos */
 function describirSala(e: EfectoSala, mazos: Mazos): string {
@@ -149,140 +194,75 @@ function explicarPaso(paso: Paso, dadoTrampa: string, peligro: number): [string,
   }
 }
 
-function PanelInventarioMiembro({
-  miembro,
-  partida,
-  equipo,
-  hacer,
-}: {
-  miembro: Miembro
-  partida: Partida
-  equipo: Equipo
-  hacer: (aplicar: (partida: Partida) => Partida) => void
-}) {
-  const [anadir, setAnadir] = useState('')
-  const opcionesInventario: { id: string; nombre: string; tipo: 'equipo' | 'pociones' | 'pergaminos' | 'artefactos' }[] = [
-    ...equipo.equipo.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'equipo' as const })),
-    ...equipo.pociones.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pociones' as const })),
-    ...equipo.pergaminos.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pergaminos' as const })),
-    ...equipo.artefactos.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'artefactos' as const })),
-  ]
-  const inv = partida.inventario?.[miembro.clave] ?? { oro: 0, equipo: [], equipado: [], pociones: [], pergaminos: [], artefactos: [] }
-  const nombre = 'heroe' in miembro ? miembro.heroe.nombre : miembro.aliado.nombre
-  const seleccionado = anadir || opcionesInventario[0]?.id || ''
-  const stats = estadisticasMiembro(miembro, inv, equipo)
-
+function FichaHeroePartida({ heroe, pc, movimientoFijo }: { heroe: Heroe; pc: number; movimientoFijo: boolean }) {
   return (
-    <section className="inventario-heroe">
+    <article className="ficha-heroe-compacta">
       <header>
-        <h3>Inventario</h3>
-        <span>
-          {stats.ataque} Atq · {stats.defensa} Def
-        </span>
+        <img src={urlRetrato('heroes', heroe)} alt="" />
+        <div>
+          <h2>{heroe.nombre}</h2>
+          <p>
+            {pc}/{heroe.cuerpo} PC · {heroe.mente} PM
+          </p>
+        </div>
       </header>
-      <div className="inventario-oro">
-        <strong>{inv.oro} mo</strong>
-        <button type="button" className="icon-button" aria-label={`Restar oro a ${nombre}`} onClick={() => hacer((p) => cambiarOro(p, miembro.clave, -25))}>
-          <Icono nombre="menos" />
-        </button>
-        <button type="button" className="icon-button" aria-label={`Sumar oro a ${nombre}`} onClick={() => hacer((p) => cambiarOro(p, miembro.clave, 25))}>
-          <Icono nombre="mas" />
-        </button>
-      </div>
-
-      <div className="inventario-bloque">
-        <p className="suceso-titulo">Equipo</p>
-        {inv.equipo.length || inv.artefactos.length ? (
-          <ul>
-            {[...inv.equipo, ...inv.artefactos].map((id, i) => (
-              <li key={`${id}-${i}`}>
-                <span>{nombreItem(equipo, id)}</span>
-                <button type="button" className="button mini" onClick={() => hacer((p) => alternarEquipado(p, miembro.clave, id))}>
-                  {inv.equipado.includes(id) ? 'Desequipar' : 'Equipar'}
-                </button>
-                <button type="button" className="button mini secondary" onClick={() => hacer((p) => perderEquipo(p, miembro.clave, id))}>
-                  Perder
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="nota">Sin equipo anotado.</p>
-        )}
-      </div>
-
-      <div className="inventario-bloque">
-        <p className="suceso-titulo">Pociones y pergaminos</p>
-        {[...inv.pociones, ...inv.pergaminos].length ? (
-          <ul>
-            {inv.pociones.map((id, i) => (
-              <li key={`${id}-${i}`}>
-                <span>{nombreItem(equipo, id)}</span>
-                <button type="button" className="button mini" onClick={() => hacer((p) => usarPocion(p, miembro.clave, id))}>
-                  Usar
-                </button>
-              </li>
-            ))}
-            {inv.pergaminos.map((id, i) => (
-              <li key={`${id}-${i}`}>
-                <span>{nombreItem(equipo, id)}</span>
-                <button type="button" className="button mini" onClick={() => hacer((p) => gastarPergamino(p, miembro.clave, id))}>
-                  Gastar
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="nota">Sin consumibles.</p>
-        )}
-      </div>
-
-      <div className="inventario-anadir">
-        <select value={seleccionado} onChange={(e) => setAnadir(e.target.value)}>
-          {opcionesInventario.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.nombre}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className="button secondary"
-          disabled={!seleccionado}
-          onClick={() => {
-            const item = opcionesInventario.find((item) => item.id === seleccionado)
-            if (item) hacer((p) => anadirItem(p, miembro.clave, item.id, item.tipo))
-          }}
-        >
-          Añadir
-        </button>
-      </div>
-      <p className="nota">
-        Las cartas de tesoro aplican oro y objetos conocidos automáticamente. Las reglas complejas siguen resolviéndose
-        leyendo la carta completa.
+      <dl className="ficha-atributos">
+        <div>
+          <dt>Mov</dt>
+          <dd>{movimientoFijo ? puntosMovimiento(heroe) : DADOS_MOVIMIENTO}</dd>
+        </div>
+        <div>
+          <dt>Atq</dt>
+          <dd>{heroe.ataque}</dd>
+        </div>
+        <div>
+          <dt>Def</dt>
+          <dd>{heroe.defensa}</dd>
+        </div>
+        <div>
+          <dt>Cue</dt>
+          <dd>{heroe.cuerpo}</dd>
+        </div>
+        <div>
+          <dt>Men</dt>
+          <dd>{heroe.mente}</dd>
+        </div>
+      </dl>
+      <p className="ficha-movimiento">
+        <strong>Movimiento:</strong>{' '}
+        {movimientoFijo ? `${PERFILES_MOVIMIENTO[heroe.movimiento].descripcion.toLowerCase()}.` : `tira ${DADOS_MOVIMIENTO} cada turno.`}
       </p>
+      <details className="ficha-biografia">
+        <summary>Biografía y equipo inicial</summary>
+        <p className="carta-cita">«{heroe.cita}»</p>
+        <p>{heroe.descripcion}</p>
+        <p>
+          <strong>Equipo inicial:</strong> {heroe.equipo}.
+        </p>
+        <p>
+          <strong>Limitaciones:</strong> {heroe.limitaciones}
+        </p>
+        {heroe.malvado && <p>Alineamiento malvado (regla opcional).</p>}
+      </details>
+    </article>
+  )
+}
+
+function PanelHabilidad({ titulo, texto, tiradas }: { titulo: string; texto: string; tiradas?: Parameters<typeof Tirada>[0]['tirada'][] }) {
+  return (
+    <section className="panel-habilidad-ficha">
+      <h4>{titulo}</h4>
+      <p>{texto}</p>
+      {tiradas?.map((t) => <Tirada key={t.accion} tirada={t} />)}
     </section>
   )
 }
 
-function PanelHechizosMiembro({ cartas }: { cartas: ReturnType<typeof cartasHechizosSeleccionadas> }) {
-  return (
-    <section className="inventario-heroe hechizos-partida">
-      <header>
-        <h3>Hechizos</h3>
-        <span>{cartas.length} carta{cartas.length !== 1 ? 's' : ''}</span>
-      </header>
-      {cartas.length ? (
-        <div className="naipes hechizos-naipes">
-          {cartas.map((carta) => (
-            <Carta key={carta.id} mazo="hechizos" carta={carta} variante="completa" />
-          ))}
-        </div>
-      ) : (
-        <p className="nota">No lleva hechizos anotados para este reto.</p>
-      )}
-    </section>
-  )
+function descripcionItem(item: ItemEquipo | undefined) {
+  if (!item) return undefined
+  if ('efecto' in item) return item.efecto
+  if ('reglas' in item) return item.reglas?.join(' ')
+  return undefined
 }
 
 export function JugarPage() {
@@ -297,9 +277,11 @@ export function JugarPage() {
   const [alAzar, setAlAzar] = useState(false)
   const [exportar, setExportar] = useState(false)
   const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
+  const [miembroAcciones, setMiembroAcciones] = useState<string | null>(null)
   const [accionMiembro, setAccionMiembro] = useState<{ clave: string; tipo: 'tesoro' | 'equipo' | 'encontrado' } | null>(null)
   const [equipoAUsar, setEquipoAUsar] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState('')
+  const [tiradaEfecto, setTiradaEfecto] = useState<TiradaEfecto | null>(null)
   const { zona } = p
   const mapa = secciones(p)
   const seccion = (id: number) => mapa.find((z) => z.id === id)
@@ -333,17 +315,145 @@ export function JugarPage() {
   const [errante] = opciones(mision.faccion.errante)
   const grupo: Ficha[] = miembros.map((m) => {
     const hechizos = 'heroe' in m ? cartasHechizosSeleccionadas(m.heroe, mazos.hechizos, aventura.configuracion.hechizos?.[m.clave]) : []
+    const nombre = m.nombre ?? ('heroe' in m ? m.heroe.nombre : m.aliado.nombre)
+    const puedeActuar = (p.vidas[m.clave] ?? m.cuerpo) > 0
+    const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
+    const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
+    const inv = p.inventario?.[m.clave]
+    const equipoDisponible = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? [])]
+    const itemsInventario = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? []), ...(inv?.pociones ?? []), ...(inv?.pergaminos ?? [])]
+    const panelesIzquierda: PanelFicha[] = [
+      ...itemsInventario.map((id, i) => {
+        const texto = descripcionItem(itemPorId(equipo, id))
+        const esPocion = inv?.pociones.includes(id)
+        const esPergamino = inv?.pergaminos.includes(id)
+        const esEquipo = inv?.equipo.includes(id) || inv?.artefactos.includes(id)
+        return {
+          id: `${m.clave}-${id}-${i}`,
+          label: etiquetaMultilinea(nombreItem(equipo, id)),
+          titulo: nombreItem(equipo, id),
+          tipo: 'item' as const,
+          children: (
+            <div className="panel-item-ficha">
+              {texto && <p>{texto}</p>}
+              <div className="fila-botones">
+                {esEquipo && (
+                  <button type="button" className="button mini" onClick={() => hacer((a) => alternarEquipado(a, m.clave, id))}>
+                    {inv?.equipado.includes(id) ? 'Desequipar' : 'Equipar'}
+                  </button>
+                )}
+                {esPocion && (
+                  <button type="button" className="button mini" onClick={() => hacer((a) => usarPocion(a, m.clave, id))}>
+                    Usar
+                  </button>
+                )}
+                {esPergamino && (
+                  <button type="button" className="button mini" onClick={() => hacer((a) => gastarPergamino(a, m.clave, id))}>
+                    Gastar
+                  </button>
+                )}
+                {esEquipo && (
+                  <button type="button" className="button mini secondary" onClick={() => hacer((a) => perderEquipo(a, m.clave, id))}>
+                    Perder
+                  </button>
+                )}
+              </div>
+            </div>
+          ),
+        }
+      }),
+    ]
+    const panelesDerecha: PanelFicha[] =
+      'heroe' in m
+        ? [
+            ...[
+              ...m.heroe.habilidades.filter((id) => !HABILIDADES_MAGIA.has(id)).map((id) => ({ id, nota: m.heroe.opcionales?.includes(id) ? ' (opcional)' : '' })),
+              ...(m.heroe.eligeUna ?? []).filter((id) => !HABILIDADES_MAGIA.has(id)).map((id) => ({ id, nota: '' })),
+            ].flatMap(({ id, nota }, i) => {
+              const h = habilidades[id]
+              return h
+                ? [{
+                    id: `${m.clave}-${id}-${i}`,
+                    label: etiquetaMultilinea(h.titulo),
+                    titulo: `${h.titulo}${nota}`,
+                    tipo: 'habilidad' as const,
+                    children: <PanelHabilidad titulo={`${h.titulo}${nota}`} texto={h.texto} tiradas={h.tiradas} />,
+                  }]
+                : []
+            }),
+            ...hechizos.map((c) => ({
+              id: `${m.clave}-${c.id}`,
+              label: etiquetaMultilinea(c.titulo),
+              titulo: c.titulo,
+              tipo: 'hechizo' as const,
+              children: <Carta mazo="hechizos" carta={c} variante="completa" />,
+            })),
+          ]
+        : []
     return {
       clave: m.clave,
-      nombre: m.nombre ?? ('heroe' in m ? m.heroe.nombre : m.aliado.nombre),
+      nombre,
       retrato: 'heroe' in m ? urlRetrato('heroes', m.heroe) : undefined,
       pc: p.vidas[m.clave] ?? m.cuerpo,
       cuerpo: m.cuerpo,
-      inventario: <PanelInventarioMiembro miembro={m} partida={p} equipo={equipo} hacer={hacer} />,
-      hechizos: hechizos.length ? <PanelHechizosMiembro cartas={hechizos} /> : undefined,
+      panelesIzquierda,
+      panelesDerecha,
+      resumen: inv && (
+        <div className="ficha-dialog-resumen">
+          <span className="ficha-oro">
+            <strong>{inv.oro}</strong> mo
+          </span>
+          <button type="button" className="icon-button" aria-label={`Restar oro a ${nombre}`} onClick={() => hacer((a) => cambiarOro(a, m.clave, -25))}>
+            <Icono nombre="menos" />
+          </button>
+          <button type="button" className="icon-button" aria-label={`Sumar oro a ${nombre}`} onClick={() => hacer((a) => cambiarOro(a, m.clave, 25))}>
+            <Icono nombre="mas" />
+          </button>
+        </div>
+      ),
+      acciones: (
+        <div className="acciones-ficha-personaje">
+          <button type="button" className="button" disabled={!puedeActuar} onClick={() => setAtaque({ atacante: m.clave })}>
+            <Icono nombre="espada" />
+            Atacar
+          </button>
+          <button type="button" className="button secondary" disabled={!puedeActuar} onClick={() => setTiradaEfecto({ clave: m.clave, cantidad: 1, dado: 'D6' })}>
+            <Icono nombre="dado" />
+            Tirar dados
+          </button>
+          <button type="button" className="button secondary" disabled={!puedeBuscarTrampasHeroe} onClick={() => hacer((a) => buscarTrampas(a, contexto))}>
+            Buscar trampas
+          </button>
+          <button type="button" className="button secondary" disabled={!puedeRobarTesoro} onClick={() => setAccionMiembro({ clave: m.clave, tipo: 'tesoro' })}>
+            Robar tesoro
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!puedeActuar || !equipoDisponible.length}
+            onClick={() => {
+              setEquipoAUsar(equipoDisponible[0] || '')
+              setAccionMiembro({ clave: m.clave, tipo: 'equipo' })
+            }}
+          >
+            Usar equipo
+          </button>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!puedeActuar || !opcionesEquipoEncontrado.length}
+            onClick={() => {
+              setEquipoEncontrado(opcionesEquipoEncontrado[0]?.id || '')
+              setAccionMiembro({ clave: m.clave, tipo: 'encontrado' })
+            }}
+          >
+            Equipo encontrado
+          </button>
+        </div>
+      ),
       carta:
         'heroe' in m ? (
-          <CartaHeroe heroe={m.heroe} nombre={m.nombre} habilidades={habilidades} variante="completa" movimientoFijo={movimientoFijo} />
+          <FichaHeroePartida heroe={m.heroe} pc={p.vidas[m.clave] ?? m.cuerpo} movimientoFijo={movimientoFijo} />
         ) : (
           <CartaAliado aliado={m.aliado} variante="completa" />
         ),
@@ -384,6 +494,14 @@ export function JugarPage() {
   const participante = (clave?: string) => participantes.find((x) => x.clave === clave)
   const atacante = participante(ataque?.atacante)
   const pcJefe = puntosCuerpoJefe(mision, monstruos, heroes)
+  const miembroEnAcciones = miembros.find((m) => m.clave === miembroAcciones)
+  const miembroEnSubaccion = miembros.find((m) => m.clave === accionMiembro?.clave)
+  const miembroEnTirada = miembros.find((m) => m.clave === tiradaEfecto?.clave)
+  const nombreMiembro = (m: Miembro) => ('heroe' in m ? m.heroe.nombre : m.aliado.nombre)
+  const inventarioSubaccion = miembroEnSubaccion ? p.inventario?.[miembroEnSubaccion.clave] : undefined
+  const equipoSubaccion = [...(inventarioSubaccion?.equipo ?? []), ...(inventarioSubaccion?.artefactos ?? [])]
+  const equipoSeleccionado = equipoAUsar || equipoSubaccion[0] || ''
+  const encontradoSeleccionado = equipoEncontrado || opcionesEquipoEncontrado[0]?.id || ''
 
   return (
     <>
@@ -602,117 +720,21 @@ export function JugarPage() {
                 <div className="acciones-heroes" aria-label="Acciones por héroe">
                   {miembros.map((m) => {
                     const ficha = grupo.find((f) => f.clave === m.clave)
-                    const nombre = 'heroe' in m ? m.heroe.nombre : m.aliado.nombre
+                    const nombre = nombreMiembro(m)
                     const puedeActuar = (p.vidas[m.clave] ?? m.cuerpo) > 0
-                    const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
-                    const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
-                    const inv = p.inventario?.[m.clave]
-                    const equipoDisponible = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? [])]
-                    const usandoEquipo = accionMiembro?.clave === m.clave && accionMiembro.tipo === 'equipo'
-                    const robandoTesoro = accionMiembro?.clave === m.clave && accionMiembro.tipo === 'tesoro'
-                    const encontrandoEquipo = accionMiembro?.clave === m.clave && accionMiembro.tipo === 'encontrado'
-                    const equipoSeleccionado = equipoAUsar || equipoDisponible[0] || ''
-                    const encontradoSeleccionado = equipoEncontrado || opcionesEquipoEncontrado[0]?.id || ''
                     return (
-                      <article key={m.clave} className="acciones-heroe">
+                      <button
+                        key={m.clave}
+                        type="button"
+                        className={puedeActuar ? 'acciones-heroe' : 'acciones-heroe caido'}
+                        disabled={!puedeActuar}
+                        onClick={() => setMiembroAcciones(m.clave)}
+                      >
                         <span className="acciones-heroe-cabecera">
                           {ficha?.retrato ? <img src={ficha.retrato} alt="" /> : <span className="miembro-iniciales">{nombre.slice(0, 2)}</span>}
                           <strong>{nombre}</strong>
                         </span>
-                        <span className="fila-botones">
-                          <button type="button" className="button mini" disabled={!puedeActuar} onClick={() => setAtaque({ atacante: m.clave })}>
-                            Atacar
-                          </button>
-                          <button type="button" className="button mini secondary" disabled={!puedeBuscarTrampasHeroe} onClick={() => hacer((a) => buscarTrampas(a, contexto))}>
-                            Buscar trampas
-                          </button>
-                          <button type="button" className="button mini secondary" disabled={!puedeRobarTesoro} onClick={() => setAccionMiembro({ clave: m.clave, tipo: 'tesoro' })}>
-                            Robar tesoro
-                          </button>
-                          <button
-                            type="button"
-                            className="button mini secondary"
-                            disabled={!puedeActuar || !equipoDisponible.length}
-                            onClick={() => {
-                              setEquipoAUsar(equipoDisponible[0] || '')
-                              setAccionMiembro({ clave: m.clave, tipo: 'equipo' })
-                            }}
-                          >
-                            Usar equipo
-                          </button>
-                          <button
-                            type="button"
-                            className="button mini secondary"
-                            disabled={!puedeActuar || !opcionesEquipoEncontrado.length}
-                            onClick={() => {
-                              setEquipoEncontrado(opcionesEquipoEncontrado[0]?.id || '')
-                              setAccionMiembro({ clave: m.clave, tipo: 'encontrado' })
-                            }}
-                          >
-                            Equipo encontrado
-                          </button>
-                        </span>
-                        {robandoTesoro && (
-                          <div className="acciones-heroe-panel">
-                            <p className="nota">Roba la siguiente carta del Mazo de Tesoros para {nombre}.</p>
-                            <button
-                              type="button"
-                              className="button mini"
-                              onClick={() => {
-                                hacer((a) => robarTesoro(a, contexto, m.clave))
-                                setAccionMiembro(null)
-                              }}
-                            >
-                              Robar carta de tesoro
-                            </button>
-                          </div>
-                        )}
-                        {usandoEquipo && (
-                          <div className="acciones-heroe-panel">
-                            <select value={equipoSeleccionado} onChange={(e) => setEquipoAUsar(e.target.value)}>
-                              {equipoDisponible.map((id, i) => (
-                                <option key={`${id}-${i}`} value={id}>
-                                  {nombreItem(equipo, id)}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="button mini"
-                              disabled={!equipoSeleccionado}
-                              onClick={() => {
-                                hacer((a) => perderEquipo(a, m.clave, equipoSeleccionado))
-                                setAccionMiembro(null)
-                              }}
-                            >
-                              Consumir equipo
-                            </button>
-                          </div>
-                        )}
-                        {encontrandoEquipo && (
-                          <div className="acciones-heroe-panel">
-                            <select value={encontradoSeleccionado} onChange={(e) => setEquipoEncontrado(e.target.value)}>
-                              {opcionesEquipoEncontrado.map((item) => (
-                                <option key={item.id} value={item.id}>
-                                  {item.nombre}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="button mini"
-                              disabled={!encontradoSeleccionado}
-                              onClick={() => {
-                                const item = opcionesEquipoEncontrado.find((item) => item.id === encontradoSeleccionado)
-                                if (item) hacer((a) => anadirItem(a, m.clave, item.id, item.tipo))
-                                setAccionMiembro(null)
-                              }}
-                            >
-                              Anotar en inventario
-                            </button>
-                          </div>
-                        )}
-                      </article>
+                      </button>
                     )
                   })}
                 </div>
@@ -927,6 +949,210 @@ export function JugarPage() {
           />
         )}
       </div>
+
+      {miembroEnAcciones && (
+        <AccionDialog titulo={`Acciones de ${nombreMiembro(miembroEnAcciones)}`} onCerrar={() => setMiembroAcciones(null)}>
+          {(() => {
+            const puedeActuar = (p.vidas[miembroEnAcciones.clave] ?? miembroEnAcciones.cuerpo) > 0
+            const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
+            const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
+            const inv = p.inventario?.[miembroEnAcciones.clave]
+            const equipoDisponible = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? [])]
+            return (
+              <div className="acciones-dialogo">
+                <button
+                  type="button"
+                  className="button"
+                  disabled={!puedeActuar}
+                  onClick={() => {
+                    setAtaque({ atacante: miembroEnAcciones.clave })
+                    setMiembroAcciones(null)
+                  }}
+                >
+                  Atacar
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!puedeActuar}
+                  onClick={() => {
+                    setTiradaEfecto({ clave: miembroEnAcciones.clave, cantidad: 1, dado: 'D6' })
+                    setMiembroAcciones(null)
+                  }}
+                >
+                  <Icono nombre="dado" />
+                  Tirar dados para efecto
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!puedeBuscarTrampasHeroe}
+                  onClick={() => {
+                    hacer((a) => buscarTrampas(a, contexto))
+                    setMiembroAcciones(null)
+                  }}
+                >
+                  Buscar trampas
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!puedeRobarTesoro}
+                  onClick={() => {
+                    setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'tesoro' })
+                    setMiembroAcciones(null)
+                  }}
+                >
+                  Robar tesoro
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!puedeActuar || !equipoDisponible.length}
+                  onClick={() => {
+                    setEquipoAUsar(equipoDisponible[0] || '')
+                    setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'equipo' })
+                    setMiembroAcciones(null)
+                  }}
+                >
+                  Usar equipo
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={!puedeActuar || !opcionesEquipoEncontrado.length}
+                  onClick={() => {
+                    setEquipoEncontrado(opcionesEquipoEncontrado[0]?.id || '')
+                    setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'encontrado' })
+                    setMiembroAcciones(null)
+                  }}
+                >
+                  Equipo encontrado
+                </button>
+              </div>
+            )
+          })()}
+        </AccionDialog>
+      )}
+
+      {miembroEnSubaccion && accionMiembro?.tipo === 'tesoro' && (
+        <AccionDialog titulo={`Robar tesoro: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={() => setAccionMiembro(null)}>
+          <div className="acciones-dialogo">
+            <p className="nota">Roba la siguiente carta del Mazo de Tesoros para {nombreMiembro(miembroEnSubaccion)}.</p>
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                hacer((a) => robarTesoro(a, contexto, miembroEnSubaccion.clave))
+                setAccionMiembro(null)
+              }}
+            >
+              Robar carta de tesoro
+            </button>
+          </div>
+        </AccionDialog>
+      )}
+
+      {miembroEnSubaccion && accionMiembro?.tipo === 'equipo' && (
+        <AccionDialog titulo={`Usar equipo: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={() => setAccionMiembro(null)}>
+          <div className="acciones-dialogo">
+            <select value={equipoSeleccionado} onChange={(e) => setEquipoAUsar(e.target.value)}>
+              {equipoSubaccion.map((id, i) => (
+                <option key={`${id}-${i}`} value={id}>
+                  {nombreItem(equipo, id)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="button"
+              disabled={!equipoSeleccionado}
+              onClick={() => {
+                hacer((a) => perderEquipo(a, miembroEnSubaccion.clave, equipoSeleccionado))
+                setAccionMiembro(null)
+              }}
+            >
+              Consumir equipo
+            </button>
+          </div>
+        </AccionDialog>
+      )}
+
+      {miembroEnSubaccion && accionMiembro?.tipo === 'encontrado' && (
+        <AccionDialog titulo={`Equipo encontrado: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={() => setAccionMiembro(null)}>
+          <div className="acciones-dialogo">
+            <select value={encontradoSeleccionado} onChange={(e) => setEquipoEncontrado(e.target.value)}>
+              {opcionesEquipoEncontrado.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nombre}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="button"
+              disabled={!encontradoSeleccionado}
+              onClick={() => {
+                const item = opcionesEquipoEncontrado.find((item) => item.id === encontradoSeleccionado)
+                if (item) hacer((a) => anadirItem(a, miembroEnSubaccion.clave, item.id, item.tipo))
+                setAccionMiembro(null)
+              }}
+            >
+              Anotar en inventario
+            </button>
+          </div>
+        </AccionDialog>
+      )}
+
+      {miembroEnTirada && tiradaEfecto && (
+        <AccionDialog titulo={`Tirada de efecto: ${nombreMiembro(miembroEnTirada)}`} onCerrar={() => setTiradaEfecto(null)}>
+          <div className="acciones-dialogo tirada-efecto">
+            <label>
+              <span>Cantidad</span>
+              <select
+                value={tiradaEfecto.cantidad}
+                onChange={(e) => setTiradaEfecto({ ...tiradaEfecto, cantidad: Number(e.target.value), resultado: undefined })}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Tipo de dado</span>
+              <select value={tiradaEfecto.dado} onChange={(e) => setTiradaEfecto({ ...tiradaEfecto, dado: e.target.value as DadoEfecto, resultado: undefined })}>
+                {DADOS_EFECTO.map((dado) => (
+                  <option key={dado} value={dado}>
+                    {dado === 'DC' ? 'Dado de combate' : dado}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                const resultado = Array.from({ length: tiradaEfecto.cantidad }, () => {
+                  const valor = entre(1, carasDado(tiradaEfecto.dado))
+                  return tiradaEfecto.dado === 'DC' ? caraDC(valor) : String(valor)
+                })
+                setTiradaEfecto({ ...tiradaEfecto, resultado })
+              }}
+            >
+              <Icono nombre="dado" />
+              Tirar
+            </button>
+            {tiradaEfecto.resultado && (
+              <p className="tirada-efecto-resultado">
+                Resultado: <strong>{tiradaEfecto.resultado.join(' · ')}</strong>
+                {tiradaEfecto.dado !== 'DC' && ` = ${tiradaEfecto.resultado.reduce((total, valor) => total + Number(valor), 0)}`}
+              </p>
+            )}
+          </div>
+        </AccionDialog>
+      )}
 
       {verCarta && (
         <CartaDialog
