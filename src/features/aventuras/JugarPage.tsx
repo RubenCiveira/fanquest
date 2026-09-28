@@ -15,7 +15,7 @@ import { CartaAliado } from '../../components/CartaAliado'
 import { CartaMonstruo } from '../../components/CartaMonstruo'
 import { BarraFichas, type Ficha, type PanelFicha } from './components/BarraFichas'
 import { CombateDialog, type Participante } from './components/CombateDialog'
-import { perdidas } from './lib/combate'
+import { perdidas, recuentoRecarga } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
 import { ExportarDialog } from './components/ExportarAventura'
@@ -25,6 +25,7 @@ import { SALA_INICIAL } from './config/partida'
 import { opciones, puntosCuerpoJefe } from './lib/monstruos'
 import {
   aplicarCombate,
+  activarEfecto,
   alternarEquipado,
   anadirItem,
   atrezoColocado,
@@ -36,6 +37,8 @@ import {
   cambiarVida,
   cambiarVidaMonstruo,
   carta,
+  descargarRegla,
+  disiparEfecto,
   elegirAtrezo,
   entrar,
   entrarPorPuertaSecreta,
@@ -45,6 +48,7 @@ import {
   cambiarSinPuertas,
   puertas,
   quitarPuerta,
+  recargarRegla,
   secciones,
   volver,
   type Zona,
@@ -66,7 +70,8 @@ import {
   type TipoZona,
 } from './lib/partida'
 import { reglas as reglasPartida } from './lib/preparacion'
-import { cartasHechizosSeleccionadas } from './lib/hechizos'
+import { cartasHechizosSeleccionadas, HABILIDADES_MAGIA } from './lib/hechizos'
+import { reglasDeHeroe, type ReglaEspecial } from './lib/reglasEspeciales'
 import { usePartida } from './lib/usePartida'
 import type { DatosPartida } from './rutas'
 
@@ -106,20 +111,6 @@ type TiradaEfecto = { clave: string; cantidad: number; dado: DadoEfecto; resulta
 
 const DADOS_EFECTO: DadoEfecto[] = ['D4', 'D6', 'D8', 'D10', 'D12', 'D20', 'DC']
 const carasDado = (dado: DadoEfecto) => (dado === 'DC' ? 6 : Number(dado.slice(1)))
-const HABILIDADES_MAGIA = new Set([
-  'conocedor-de-la-magia-elemental',
-  'maestro-de-la-magia-elemental',
-  'maestro-de-magia-bardica',
-  'maestro-de-la-brujeria',
-  'maestro-de-la-magia-druidica',
-  'maestro-de-la-nigromancia',
-  'acolito-de-la-luz',
-  'conocimiento-arcano',
-  'maestro-runico',
-  'fragua-runica',
-  'afin-a-la-nigromancia',
-])
-
 const etiquetaMultilinea = (texto: string) =>
   texto
     .replace(/^Pócima de /, 'Pócima ')
@@ -265,6 +256,30 @@ function descripcionItem(item: ItemEquipo | undefined) {
   return undefined
 }
 
+function AccionesRegla({ reglas, descargadas, onActivar, onDescargar }: { reglas: ReglaEspecial[]; descargadas: string[]; onActivar: (regla: ReglaEspecial) => void; onDescargar: (regla: ReglaEspecial) => void }) {
+  const manuales = reglas.filter((r) => r.disparador === 'manual')
+  if (!manuales.length) return null
+  return (
+    <div className="acciones-reglas">
+      {manuales.map((regla) => {
+        const descargada = descargadas.includes(regla.id)
+        return (
+          <button
+            key={regla.id}
+            type="button"
+            className="button mini secondary"
+            disabled={descargada}
+            title={regla.descripcion}
+            onClick={() => (regla.tipo === 'efecto' ? onActivar(regla) : onDescargar(regla))}
+          >
+            {descargada ? `${regla.nombre} descargada` : regla.tipo === 'efecto' ? `Activar ${regla.nombre}` : `Usar ${regla.nombre}`}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export function JugarPage() {
   const datos = useLoaderData<DatosPartida>()
   const { aventura, contexto, miembros, habilidades, monstruos, equipo } = datos
@@ -289,7 +304,7 @@ export function JugarPage() {
   const nombreZona = (z: Zona) => z.nombre ?? (z.tipo === 'inicial' ? NOMBRE_ZONA.inicial : `${NOMBRE_ZONA[z.tipo]} ${z.id}`)
   const porExplorar = (z: Zona) =>
     z.salidas.filter((s) => s.destino === undefined && p.caminos[s.camino ?? -1]?.length).length
-  const { movimientoFijo } = reglasPartida(aventura.configuracion)
+  const { movimientoFijo, habilidadesEspeciales } = reglasPartida(aventura.configuracion)
   const [paso] = zona.pendientes
   const onVerCarta = (mazo: IdMazo, id: string) => setVerCarta({ mazo, id })
   const reglas = reglasDeZona(mision, zona).map((e) => describirSala(e, mazos)).filter(Boolean)
@@ -320,6 +335,12 @@ export function JugarPage() {
     const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
     const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
     const inv = p.inventario?.[m.clave]
+    const efectosActivos = p.efectosActivos?.[m.clave] ?? []
+    const reglasDescargadas = p.reglasDescargadas?.[m.clave] ?? []
+    const idsDescargados = reglasDescargadas.map((r) => r.id)
+    const reglasEspeciales = reglasDeHeroe('heroe' in m ? m.heroe : undefined, hechizos.map((h) => h.id), inv, habilidadesEspeciales)
+    const activarRegla = (regla: ReglaEspecial) => hacer((a) => activarEfecto(a, m.clave, regla))
+    const descargar = (regla: ReglaEspecial) => hacer((a) => descargarRegla(a, m.clave, regla))
     const equipoDisponible = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? [])]
     const itemsInventario = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? []), ...(inv?.pociones ?? []), ...(inv?.pergaminos ?? [])]
     const panelesIzquierda: PanelFicha[] = [
@@ -336,6 +357,7 @@ export function JugarPage() {
           children: (
             <div className="panel-item-ficha">
               {texto && <p>{texto}</p>}
+              <AccionesRegla reglas={reglasEspeciales.filter((r) => r.origenId === id)} descargadas={idsDescargados} onActivar={activarRegla} onDescargar={descargar} />
               <div className="fila-botones">
                 {esEquipo && (
                   <button type="button" className="button mini" onClick={() => hacer((a) => alternarEquipado(a, m.clave, id))}>
@@ -367,8 +389,8 @@ export function JugarPage() {
       'heroe' in m
         ? [
             ...[
-              ...m.heroe.habilidades.filter((id) => !HABILIDADES_MAGIA.has(id)).map((id) => ({ id, nota: m.heroe.opcionales?.includes(id) ? ' (opcional)' : '' })),
-              ...(m.heroe.eligeUna ?? []).filter((id) => !HABILIDADES_MAGIA.has(id)).map((id) => ({ id, nota: '' })),
+              ...(habilidadesEspeciales ? m.heroe.habilidades.filter((id) => !HABILIDADES_MAGIA.has(id)).map((id) => ({ id, nota: m.heroe.opcionales?.includes(id) ? ' (opcional)' : '' })) : []),
+              ...(habilidadesEspeciales ? (m.heroe.eligeUna ?? []).filter((id) => !HABILIDADES_MAGIA.has(id)).map((id) => ({ id, nota: '' })) : []),
             ].flatMap(({ id, nota }, i) => {
               const h = habilidades[id]
               return h
@@ -377,7 +399,12 @@ export function JugarPage() {
                     label: etiquetaMultilinea(h.titulo),
                     titulo: `${h.titulo}${nota}`,
                     tipo: 'habilidad' as const,
-                    children: <PanelHabilidad titulo={`${h.titulo}${nota}`} texto={h.texto} tiradas={h.tiradas} />,
+                    children: (
+                      <>
+                        <PanelHabilidad titulo={`${h.titulo}${nota}`} texto={h.texto} tiradas={h.tiradas} />
+                        <AccionesRegla reglas={reglasEspeciales.filter((r) => r.origenId === id)} descargadas={idsDescargados} onActivar={activarRegla} onDescargar={descargar} />
+                      </>
+                    ),
                   }]
                 : []
             }),
@@ -386,7 +413,12 @@ export function JugarPage() {
               label: etiquetaMultilinea(c.titulo),
               titulo: c.titulo,
               tipo: 'hechizo' as const,
-              children: <Carta mazo="hechizos" carta={c} variante="completa" />,
+              children: (
+                <>
+                  <Carta mazo="hechizos" carta={c} variante="completa" />
+                  <AccionesRegla reglas={reglasEspeciales.filter((r) => r.origenId === c.id)} descargadas={idsDescargados} onActivar={activarRegla} onDescargar={descargar} />
+                </>
+              ),
             })),
           ]
         : []
@@ -409,6 +441,16 @@ export function JugarPage() {
           <button type="button" className="icon-button" aria-label={`Sumar oro a ${nombre}`} onClick={() => hacer((a) => cambiarOro(a, m.clave, 25))}>
             <Icono nombre="mas" />
           </button>
+          {efectosActivos.map((efecto) => (
+            <button key={efecto.id} type="button" className="button mini efecto-activo" title={efecto.descripcion} onClick={() => hacer((a) => disiparEfecto(a, m.clave, efecto.id))}>
+              Disipar {efecto.nombre}
+            </button>
+          ))}
+          {reglasDescargadas.map((regla) => (
+            <button key={regla.id} type="button" className="button mini secondary" title={regla.descripcion} onClick={() => hacer((a) => recargarRegla(a, m.clave, regla.id))}>
+              Recargar {regla.nombre}
+            </button>
+          ))}
         </div>
       ),
       acciones: (
@@ -480,7 +522,7 @@ export function JugarPage() {
     ...miembros.map((m): Participante => {
       const datos = 'heroe' in m ? m.heroe : m.aliado
       const ficha = grupo.find((f) => f.clave === m.clave)
-      const stats = estadisticasMiembro(m, p.inventario?.[m.clave], equipo)
+      const stats = estadisticasMiembro(m, p.inventario?.[m.clave], equipo, p.efectosActivos?.[m.clave])
       return { clave: m.clave, nombre: m.nombre ?? datos.nombre, bando: 'grupo', ataque: stats.ataque, defensa: stats.defensa, retrato: ficha?.retrato }
     }),
     ...(p.monstruos ?? []).flatMap((m): Participante[] => {
@@ -492,6 +534,13 @@ export function JugarPage() {
     }),
   ]
   const participante = (clave?: string) => participantes.find((x) => x.clave === clave)
+  const reglasCombate = Object.fromEntries(
+    miembros.map((m) => {
+      const hechizos = 'heroe' in m ? cartasHechizosSeleccionadas(m.heroe, mazos.hechizos, aventura.configuracion.hechizos?.[m.clave]) : []
+      const descargadas = new Set((p.reglasDescargadas?.[m.clave] ?? []).map((r) => r.id))
+      return [m.clave, reglasDeHeroe('heroe' in m ? m.heroe : undefined, hechizos.map((h) => h.id), p.inventario?.[m.clave], habilidadesEspeciales).filter((r) => !descargadas.has(r.id))]
+    }),
+  )
   const atacante = participante(ataque?.atacante)
   const pcJefe = puntosCuerpoJefe(mision, monstruos, heroes)
   const miembroEnAcciones = miembros.find((m) => m.clave === miembroAcciones)
@@ -1166,6 +1215,11 @@ export function JugarPage() {
           atacante={atacante}
           defensor={participante(ataque?.defensor)}
           enemigos={participantes.filter((x) => x.bando !== atacante.bando && (x.bando === 'monstruos' || (p.vidas[x.clave] ?? 1) > 0))}
+          reglas={reglasCombate}
+          onUsarRegla={(clave, regla) => {
+            if (regla.origenId === 'pocima-de-batalla') hacer((a) => usarPocion(a, clave, regla.origenId))
+            else if (regla.tipo !== 'repetir-dados' || regla.origenId !== 'cimitarra') hacer((a) => descargarRegla(a, clave, regla))
+          }}
           onAplicar={(c) =>
             hacer((a) =>
               aplicarCombate(
@@ -1177,6 +1231,7 @@ export function JugarPage() {
                   monstruo: participante(x.clave)?.bando === 'monstruos',
                   cuerpo: grupo.find((f) => f.clave === x.clave)?.cuerpo ?? 0,
                 })),
+                recuentoRecarga(c),
               ),
             )
           }

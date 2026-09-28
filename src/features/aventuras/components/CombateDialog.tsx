@@ -3,7 +3,10 @@ import { Icono } from '../../../components/Icono'
 import { caraDC } from '../../../lib/dados'
 import {
   ajustar,
+  anadirObjetivoExtra,
   cambiarDados,
+  cambiarDadosEn,
+  cambiarCara,
   caraDeDefensa,
   contar,
   danios,
@@ -15,6 +18,7 @@ import {
   type Combate,
   type Combatiente,
 } from '../lib/combate'
+import type { ReglaEspecial } from '../lib/reglasEspeciales'
 
 /** Combatiente con su retrato para elegirlo */
 export type Participante = Combatiente & { retrato?: string }
@@ -24,6 +28,8 @@ type Props = {
   /** Sin defensor (se pulsó «Atacar» sin arrastrar), se elige en el diálogo */
   defensor?: Participante
   enemigos: Participante[]
+  reglas?: Record<string, ReglaEspecial[]>
+  onUsarRegla?: (clave: string, regla: ReglaEspecial) => void
   onAplicar: (c: Combate) => void
   onCerrar: () => void
 }
@@ -55,10 +61,14 @@ function Retrato({ p }: { p: Participante }) {
 }
 
 /** Simula los dados de un ataque paso a paso; se monta abierto */
-export function CombateDialog({ atacante, defensor, enemigos, onAplicar, onCerrar }: Props) {
+const VALOR_CARA = { Calavera: 1, 'Escudo blanco': 4, 'Escudo negro': 6 } as const
+const AJUSTES_DADOS = [-3, -2, -1, 1, 2, 3] as const
+
+export function CombateDialog({ atacante, defensor, enemigos, reglas = {}, onUsarRegla, onAplicar, onCerrar }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const [combate, setCombate] = useState(() => (defensor ? iniciarCombate(atacante, defensor) : null))
   const [elegidos, setElegidos] = useState<number[]>([])
+  const [objetivoExtra, setObjetivoExtra] = useState('')
 
   useEffect(() => ref.current?.showModal(), [])
 
@@ -69,8 +79,11 @@ export function CombateDialog({ atacante, defensor, enemigos, onAplicar, onCerra
 
   const fase = combate && !terminado(combate) ? combate.fases[combate.actual] : undefined
   const quien = fase && combate && (fase.tipo === 'ataque' ? combate.atacante : combate.defensor)
+  const reglasFase = quien && fase ? (reglas[quien.clave] ?? []).filter((r) => r.disparador === `despues-${fase.tipo}`) : []
   const varios = combate ? combate.fases.filter((f) => f.tipo === 'ataque').length > 1 : false
   const proxima = combate?.fases[combate.actual + 1]
+  const objetivosExtra = combate ? enemigos.filter((e) => e.clave !== combate.defensor.clave) : []
+  const objetivoExtraSeleccionado = objetivosExtra.find((e) => e.clave === (objetivoExtra || objetivosExtra[0]?.clave))
 
   return (
     <dialog
@@ -160,6 +173,73 @@ export function CombateDialog({ atacante, defensor, enemigos, onAplicar, onCerra
                     Repetir todos (ventaja)
                   </button>
                 </div>
+                {reglasFase.length > 0 && (
+                  <div className="combate-reglas">
+                    <strong>Reglas disponibles</strong>
+                    {reglasFase.map((regla) => {
+                      const calaverasElegidas = elegidos.filter((i) => caraDC(fase.valores[i]) === 'Calavera').length
+                      return (
+                        <div key={regla.id} className="combate-regla">
+                          <span>{regla.nombre}</span>
+                          {regla.tipo === 'repetir-dados' && (
+                            <button
+                              type="button"
+                              className="button mini secondary"
+                              disabled={!elegidos.length || (regla.origenId === 'cimitarra' && elegidos.length !== 1)}
+                              onClick={() => {
+                                cambiar(repetir(combate, elegidos))
+                                onUsarRegla?.(quien.clave, regla)
+                              }}
+                            >
+                              Usar
+                            </button>
+                          )}
+                          {regla.tipo === 'cambiar-cara' && (
+                            <span className="fila-botones compacta">
+                              {Object.entries(VALOR_CARA).map(([cara, valor]) => (
+                                <button
+                                  key={cara}
+                                  type="button"
+                                  className="button mini secondary"
+                                  disabled={!elegidos.length}
+                                  onClick={() => {
+                                    cambiar(cambiarCara(combate, elegidos, valor))
+                                    onUsarRegla?.(quien.clave, regla)
+                                  }}
+                                >
+                                  A {cara.toLowerCase()}
+                                </button>
+                              ))}
+                            </span>
+                          )}
+                          {regla.tipo === 'dividir-impactos' && (
+                            <span className="fila-botones compacta">
+                              <select value={objetivoExtra || objetivosExtra[0]?.clave || ''} onChange={(e) => setObjetivoExtra(e.target.value)}>
+                                {objetivosExtra.map((e) => (
+                                  <option key={e.clave} value={e.clave}>
+                                    {e.nombre}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                className="button mini secondary"
+                                disabled={!calaverasElegidas || !objetivoExtraSeleccionado}
+                                onClick={() => {
+                                  if (!objetivoExtraSeleccionado) return
+                                  cambiar(anadirObjetivoExtra(cambiarCara(combate, elegidos, VALOR_CARA['Escudo blanco']), objetivoExtraSeleccionado, calaverasElegidas))
+                                  onUsarRegla?.(quien.clave, regla)
+                                }}
+                              >
+                                Dividir {calaverasElegidas || ''}
+                              </button>
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
                 <div className="fila-copias combate-dados-extra">
                   <button type="button" className="icon-button" aria-label="Un dado menos" disabled={!fase.valores.length} onClick={() => cambiar(cambiarDados(combate, -1))}>
                     <Icono nombre="menos" />
@@ -168,6 +248,13 @@ export function CombateDialog({ atacante, defensor, enemigos, onAplicar, onCerra
                   <button type="button" className="icon-button" aria-label="Un dado más" onClick={() => cambiar(cambiarDados(combate, 1))}>
                     <Icono nombre="mas" />
                   </button>
+                </div>
+                <div className="fila-botones compacta">
+                  {AJUSTES_DADOS.map((delta) => (
+                    <button key={delta} type="button" className="button mini secondary" disabled={delta < 0 && fase.valores.length < Math.abs(delta)} onClick={() => cambiar(cambiarDadosEn(combate, delta))}>
+                      {delta > 0 ? `+${delta}` : delta} dados
+                    </button>
+                  ))}
                 </div>
                 <button type="button" className="button" onClick={() => cambiar(siguiente(combate))}>
                   {proxima

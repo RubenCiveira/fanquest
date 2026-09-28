@@ -385,6 +385,11 @@ input[type='checkbox'] {
   gap: 10px;
 }
 
+.fila-botones.compacta {
+  grid-template-columns: repeat(auto-fit, minmax(78px, max-content));
+  align-items: center;
+}
+
 /* anotación a lápiz en el margen */
 .nota {
   font-family: var(--lapiz);
@@ -2858,6 +2863,27 @@ input[type='checkbox'] {
 
 .combate-dados-extra {
   color: var(--tinta);
+}
+
+.combate-reglas,
+.acciones-reglas {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: rgb(255 252 236 / 0.72);
+  border: 1px dashed var(--trazo-suave);
+  border-radius: var(--boceto-2);
+}
+
+.combate-regla {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.efecto-activo {
+  border-color: var(--rubrica);
 }
 
 /* ---------- Tabla de monstruos con la tirada ---------- */

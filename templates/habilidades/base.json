@@ -6,7 +6,8 @@
     {
       "id": "hendedura",
       "titulo": "Hendedura",
-      "texto": "Una vez por reto podrás repartir como desees las calaveras obtenidas en una tirada de ataque entre 2 o más miniaturas que tengas en tu área de influencia. Cada una de ellas hace su tirada de defensa para bloquear las calaveras que le hayas asignado. Recupera esta habilidad cada vez que obtengas dos escudos blancos en cualquier tirada de combate (ataque o defensa)."
+      "texto": "Una vez por reto podrás repartir como desees las calaveras obtenidas en una tirada de ataque entre 2 o más miniaturas que tengas en tu área de influencia. Cada una de ellas hace su tirada de defensa para bloquear las calaveras que le hayas asignado. Recupera esta habilidad cada vez que obtengas dos escudos blancos en cualquier tirada de combate (ataque o defensa).",
+      "reglasEspeciales": ["dividir-ataque-hendedura"]
     },
     {
       "id": "desactivar-trampas",
@@ -91,7 +92,8 @@
     {
       "id": "marca-de-cazador",
       "titulo": "Marca de cazador",
-      "texto": "Una vez por reto, en tu turno y como acción gratuita, marca a un enemigo: todo ataque tuyo contra él tiene 1 dado de combate adicional. Recupera el uso si obtienes dos escudos negros en cualquier tirada de combate."
+      "texto": "Una vez por reto, en tu turno y como acción gratuita, marca a un enemigo: todo ataque tuyo contra él tiene 1 dado de combate adicional. Recupera el uso si obtienes dos escudos negros en cualquier tirada de combate.",
+      "reglasEspeciales": ["marca-de-cazador-ataque"]
     },
     {
       "id": "disparo-arriesgado",
@@ -449,7 +451,8 @@
     {
       "id": "waaagh",
       "titulo": "¡Waaagh!",
-      "texto": "Una vez por reto, convoca el poder del waaagh para hacer una acción de ataque extra en tu turno. Recuperas un uso si obtienes 2 o más escudos negros en una misma tirada de ataque o de defensa."
+      "texto": "Una vez por reto, convoca el poder del waaagh para hacer una acción de ataque extra en tu turno. Recuperas un uso si obtienes 2 o más escudos negros en una misma tirada de ataque o de defensa.",
+      "reglasEspeciales": ["waaagh-ataque-extra"]
     },
     {
       "id": "animosidad",

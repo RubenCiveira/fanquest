@@ -29,6 +29,8 @@ export type Fase = {
   repeticiones: number
 }
 
+export type PerdidaCombate = { clave: string; nombre: string; pc: number }
+
 export type Combate = {
   atacante: Combatiente
   defensor: Combatiente
@@ -37,6 +39,8 @@ export type Combate = {
   actual: number
   /** Daño que se suma o resta a mano (hechizos, fuego…), por clave */
   ajustes: Record<string, number>
+  /** Daño directo a otros objetivos, por reglas como Hendedura */
+  extras: Record<string, PerdidaCombate>
 }
 
 /** Cada ataque de la acción y sus dados: «5/4» son dos ataques; «2+1», tres dados */
@@ -52,7 +56,7 @@ export function iniciarCombate(atacante: Combatiente, defensor: Combatiente): Co
     { tipo: 'ataque', ataque, valores: Array<number>(dados).fill(0), repeticiones: 0 },
     { tipo: 'defensa', ataque, valores: Array<number>(defensor.defensa).fill(0), repeticiones: 0 },
   ])
-  return tirarFase({ atacante, defensor, fases, actual: 0, ajustes: {} })
+  return tirarFase({ atacante, defensor, fases, actual: 0, ajustes: {}, extras: {} })
 }
 
 const conFase = (c: Combate, cambio: (f: Fase) => Fase): Combate => ({
@@ -74,6 +78,17 @@ export const repetir = (c: Combate, indices: number[]) =>
 /** Un dado más (se tira) o uno menos (el último) en la fase en curso */
 export const cambiarDados = (c: Combate, delta: 1 | -1) =>
   conFase(c, (f) => ({ ...f, valores: delta > 0 ? [...f.valores, tirar('1DC')] : f.valores.slice(0, -1) }))
+
+export const cambiarDadosEn = (c: Combate, delta: number) =>
+  Array.from({ length: Math.abs(delta) }).reduce<Combate>((actual) => cambiarDados(actual, delta > 0 ? 1 : -1), c)
+
+export const cambiarCara = (c: Combate, indices: number[], valor: number) =>
+  conFase(c, (f) => ({ ...f, valores: f.valores.map((v, i) => (indices.includes(i) ? valor : v)) }))
+
+export const anadirObjetivoExtra = (c: Combate, objetivo: Combatiente, pc: number): Combate => ({
+  ...c,
+  extras: { ...c.extras, [objetivo.clave]: { clave: objetivo.clave, nombre: objetivo.nombre, pc: (c.extras[objetivo.clave]?.pc ?? 0) + pc } },
+})
 
 /** Pasa a la siguiente tirada y la lanza; tras la última queda el resumen */
 export function siguiente(c: Combate): Combate {
@@ -105,10 +120,24 @@ export const ajustar = (c: Combate, clave: string, delta: number): Combate => ({
 })
 
 /** Puntos de Cuerpo que pierde cada combatiente, con los ajustes a mano */
-export function perdidas(c: Combate): { clave: string; nombre: string; pc: number }[] {
+export function perdidas(c: Combate): PerdidaCombate[] {
   const danio = danios(c).reduce((a, b) => a + b, 0)
   return [
     { ...c.atacante, pc: Math.max(0, c.ajustes[c.atacante.clave] ?? 0) },
     { ...c.defensor, pc: Math.max(0, danio + (c.ajustes[c.defensor.clave] ?? 0)) },
+    ...Object.values(c.extras).map((p) => ({ ...p, pc: Math.max(0, p.pc + (c.ajustes[p.clave] ?? 0)) })),
   ].map(({ clave, nombre, pc }) => ({ clave, nombre, pc }))
+}
+
+export function recuentoRecarga(c: Combate): Record<string, { blancas: number; negras: number }> {
+  const vacio = { blancas: 0, negras: 0 }
+  return c.fases.reduce<Record<string, { blancas: number; negras: number }>>((total, fase) => {
+    const clave = fase.tipo === 'ataque' ? c.atacante.clave : c.defensor.clave
+    const actual = total[clave] ?? vacio
+    total[clave] = {
+      blancas: actual.blancas + contar(fase.valores, 'Escudo blanco'),
+      negras: actual.negras + contar(fase.valores, 'Escudo negro'),
+    }
+    return total
+  }, {})
 }

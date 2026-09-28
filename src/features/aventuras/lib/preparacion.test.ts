@@ -225,6 +225,10 @@ describe('reglas de la partida', () => {
     expect([reglas(nuevaConfiguracion(mazos, mision(0))).movimientoFijo, reglas({ modo: 'losetas', mazos: {} }).movimientoFijo]).toEqual([true, true])
   })
 
+  it('por defecto no se usan las habilidades especiales de héroe', () => {
+    expect(reglas({ modo: 'losetas', mazos: {} }).habilidadesEspeciales).toBe(false)
+  })
+
   it('una configuración nueva empieza por el paso de reglas', () => {
     expect(nuevaConfiguracion(mazos, mision(0)).paso).toBe('reglas')
   })

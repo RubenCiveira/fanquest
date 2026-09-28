@@ -94,7 +94,8 @@
       "nivel": 1,
       "saber": "arcano",
       "cita": "Elementales de tierra · Nivel 1 · Saber arcano",
-      "texto": "Este hechizo puede lanzarse sobre el lanzador o cualquier héroe al que pueda ver. Este podrá lanzar un dado de defensa adicional cada vez que tire para defender hasta que el hechizo se rompa. El hechizo se rompe cuando el héroe sufre uno o más Puntos de Cuerpo de daño."
+      "texto": "Este hechizo puede lanzarse sobre el lanzador o cualquier héroe al que pueda ver. Este podrá lanzar un dado de defensa adicional cada vez que tire para defender hasta que el hechizo se rompa. El hechizo se rompe cuando el héroe sufre uno o más Puntos de Cuerpo de daño.",
+      "reglasEspeciales": ["piel-de-roca-defensa"]
     },
     {
       "id": "pasar-a-traves-de-la-roca-1",
@@ -116,7 +117,8 @@
       "nivel": 1,
       "saber": "arcano",
       "cita": "Elementales de fuego · Nivel 1 · Saber arcano",
-      "texto": "Este hechizo puede lanzarse sobre el lanzador o cualquier héroe al que pueda ver. Ese héroe podrá tirar dos dados de ataque adicionales cada vez que tire para atacar hasta que el hechizo se rompa. El hechizo se rompe cuando no quedan monstruos en la línea de visión del héroe."
+      "texto": "Este hechizo puede lanzarse sobre el lanzador o cualquier héroe al que pueda ver. Ese héroe podrá tirar dos dados de ataque adicionales cada vez que tire para atacar hasta que el hechizo se rompa. El hechizo se rompe cuando no quedan monstruos en la línea de visión del héroe.",
+      "reglasEspeciales": ["valentia-ataque"]
     },
     {
       "id": "fuego-de-la-ira-1",
@@ -248,7 +250,8 @@
       "nivel": 1,
       "saber": "arcano",
       "cita": "Brujería · Nivel 1 · Saber arcano",
-      "texto": "El lanzador ignora las trampas de pozo y puede tirar 1 dado de combate adicional cada vez que ataca hasta que se rompe el hechizo. El hechizo se rompe cuando el lanzador sufre 1 Punto de Cuerpo. Recupera 1 uso de este hechizo cuando reduzcas a cero los Puntos de Cuerpo de un monstruo."
+      "texto": "El lanzador ignora las trampas de pozo y puede tirar 1 dado de combate adicional cada vez que ataca hasta que se rompe el hechizo. El hechizo se rompe cuando el lanzador sufre 1 Punto de Cuerpo. Recupera 1 uso de este hechizo cuando reduzcas a cero los Puntos de Cuerpo de un monstruo.",
+      "reglasEspeciales": ["forma-demoniaca-ataque"]
     },
     {
       "id": "alas-oscuras-1",
@@ -281,7 +284,8 @@
       "nivel": 1,
       "saber": "arcano",
       "cita": "Druídicos · Nivel 1 · Saber arcano",
-      "texto": "Otorga al lanzador 1 dado de ataque y 1 dado de defensa adicionales cuando ataque a un monstruo cuerpo a cuerpo. El hechizo se rompe cuando el lanzador sufre 1 Punto de Cuerpo. Recupera 1 uso de este hechizo cuando tus Puntos de Cuerpo vuelvan a su valor inicial."
+      "texto": "Otorga al lanzador 1 dado de ataque y 1 dado de defensa adicionales cuando ataque a un monstruo cuerpo a cuerpo. El hechizo se rompe cuando el lanzador sufre 1 Punto de Cuerpo. Recupera 1 uso de este hechizo cuando tus Puntos de Cuerpo vuelvan a su valor inicial.",
+      "reglasEspeciales": ["cambio-de-forma-combate"]
     },
     {
       "id": "hada-1",
@@ -336,7 +340,8 @@
       "nivel": 1,
       "saber": "arcano",
       "cita": "Nigromancia · Nivel 1 · Saber arcano",
-      "texto": "Tú o uno de tus siervos, esbirro o necrófago, gana 1 dado adicional a su tirada de defensa. El hechizo se rompe cuando su objetivo sufra 1 o más Puntos de Cuerpo. Puedes sacrificar 1 Esbirro no-muerto para recuperar 1 uso de este hechizo. No puede haber más de una coraza ósea activa a la vez."
+      "texto": "Tú o uno de tus siervos, esbirro o necrófago, gana 1 dado adicional a su tirada de defensa. El hechizo se rompe cuando su objetivo sufra 1 o más Puntos de Cuerpo. Puedes sacrificar 1 Esbirro no-muerto para recuperar 1 uso de este hechizo. No puede haber más de una coraza ósea activa a la vez.",
+      "reglasEspeciales": ["coraza-osea-defensa"]
     },
     {
       "id": "mandato-necrotico-1",
@@ -600,7 +605,8 @@
       "nivel": 1,
       "saber": "runico",
       "cita": "Runas · Nivel 1 · Saber rúnico",
-      "texto": "Podrás forjar esta runa en un arma. Durante el próximo reto, si el portador de la runa lleva el arma equipada, obtiene el siguiente hechizo de saber rúnico de nivel 1: una vez lances los dados de una tirada de ataque, podrás lanzar este hechizo como acción gratuita. Si tiene éxito, podrás cambiar el resultado de un dado al que desees."
+      "texto": "Podrás forjar esta runa en un arma. Durante el próximo reto, si el portador de la runa lleva el arma equipada, obtiene el siguiente hechizo de saber rúnico de nivel 1: una vez lances los dados de una tirada de ataque, podrás lanzar este hechizo como acción gratuita. Si tiene éxito, podrás cambiar el resultado de un dado al que desees.",
+      "reglasEspeciales": ["runa-de-alric-cambiar-dado"]
     },
     {
       "id": "runa-de-pericia-1",

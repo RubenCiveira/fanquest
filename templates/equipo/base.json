@@ -104,7 +104,8 @@
       "precio": 460,
       "ataque": 2,
       "restricciones": ["No utilizable por el mago."],
-      "reglas": ["Puedes repetir un dado de tu tirada de ataque."]
+      "reglas": ["Puedes repetir un dado de tu tirada de ataque."],
+      "reglasEspeciales": ["cimitarra-repetir"]
     },
     {
       "id": "estoque",
@@ -481,7 +482,8 @@
       "rareza": "comun",
       "precio": 60,
       "consumible": true,
-      "efecto": "Puedes utilizarla tras realizar una tirada de ataque, pero antes de que tu oponente defienda. Puedes repetir una vez cualquier número de dados de la tirada."
+      "efecto": "Puedes utilizarla tras realizar una tirada de ataque, pero antes de que tu oponente defienda. Puedes repetir una vez cualquier número de dados de la tirada.",
+      "reglasEspeciales": ["pocima-de-batalla-repetir"]
     },
     {
       "id": "pocima-de-heroes",
@@ -702,7 +704,8 @@
       "tipo": "artefacto",
       "vendible": false,
       "intercambiable": false,
-      "efecto": "Una vez por misión, recoloca un dado que hayas lanzado al resultado que desees."
+      "efecto": "Una vez por misión, recoloca un dado que hayas lanzado al resultado que desees.",
+      "reglasEspeciales": ["amuleto-disforme-cambiar-dado"]
     },
     {
       "id": "arma-del-caos",

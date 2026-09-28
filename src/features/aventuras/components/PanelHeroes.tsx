@@ -3,7 +3,7 @@ import { CartaHeroe } from '../../../components/CartaHeroe'
 import { Icono } from '../../../components/Icono'
 import { NaipeDialog } from '../../../components/NaipeDialog'
 import type { Habilidades, Heroe } from '../../../lib/personajes'
-import { puedeLanzarHechizos } from '../lib/hechizos'
+import { HABILIDADES_MAGIA, puedeLanzarHechizos } from '../lib/hechizos'
 import { MAX_HEROES, type HeroeSeleccionado } from '../lib/preparacion'
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   onAnadir: (tipo: string, nombre: string) => void
   onQuitar: (id: string) => void
   movimientoFijo: boolean
+  habilidadesEspeciales: boolean
 }
 
 function DialogNombreHeroe({ heroe, onAnadir, onCerrar }: { heroe: Heroe; onAnadir: (nombre: string) => void; onCerrar: () => void }) {
@@ -58,7 +59,7 @@ function DialogNombreHeroe({ heroe, onAnadir, onCerrar }: { heroe: Heroe; onAnad
 }
 
 /** Elegir el grupo de héroes: al tocar una ficha se abre con la acción */
-export function PanelHeroes({ heroes, habilidades, grupo, onAnadir, onQuitar, movimientoFijo }: Props) {
+export function PanelHeroes({ heroes, habilidades, grupo, onAnadir, onQuitar, movimientoFijo, habilidadesEspeciales }: Props) {
   const [abierto, setAbierto] = useState<Heroe | null>(null)
   const [nombrando, setNombrando] = useState<Heroe | null>(null)
   const completo = grupo.length >= MAX_HEROES
@@ -79,6 +80,10 @@ export function PanelHeroes({ heroes, habilidades, grupo, onAnadir, onQuitar, mo
     setNombrando(null)
     setAbierto(null)
   }
+
+  const habilidadesVisibles = habilidadesEspeciales
+    ? habilidades
+    : Object.fromEntries(Object.entries(habilidades).filter(([id]) => HABILIDADES_MAGIA.has(id)))
 
   return (
     <section className="panel-mazo boceto">
@@ -130,7 +135,7 @@ export function PanelHeroes({ heroes, habilidades, grupo, onAnadir, onQuitar, mo
         >
           <CartaHeroe
             heroe={abierto}
-            habilidades={habilidades}
+            habilidades={habilidadesVisibles}
             variante="completa"
             movimientoFijo={movimientoFijo}
             accion={

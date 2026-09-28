@@ -8,6 +8,20 @@ export type OpcionHechizos = {
   cartas: CartaMazo[]
 }
 
+export const HABILIDADES_MAGIA = new Set([
+  'conocedor-de-la-magia-elemental',
+  'maestro-de-la-magia-elemental',
+  'maestro-de-magia-bardica',
+  'maestro-de-la-brujeria',
+  'maestro-de-la-magia-druidica',
+  'maestro-de-la-nigromancia',
+  'acolito-de-la-luz',
+  'conocimiento-arcano',
+  'maestro-runico',
+  'fragua-runica',
+  'afin-a-la-nigromancia',
+])
+
 const porGrupo = (mazo: Mazo, grupo: string, nivel?: number) =>
   mazo.cartas.filter((carta) => carta.grupo === grupo && (nivel === undefined || carta.nivel === nivel))
 
@@ -49,19 +63,7 @@ export function opcionesHechizosHeroe(heroe: Heroe, mazo: Mazo): OpcionHechizos[
 export const puedeLanzarHechizos = (heroe: Heroe, mazo?: Mazo) =>
   mazo
     ? opcionesHechizosHeroe(heroe, mazo).length > 0
-    : [
-        'conocedor-de-la-magia-elemental',
-        'maestro-de-la-magia-elemental',
-        'maestro-de-magia-bardica',
-        'maestro-de-la-brujeria',
-        'maestro-de-la-magia-druidica',
-        'maestro-de-la-nigromancia',
-        'acolito-de-la-luz',
-        'conocimiento-arcano',
-        'maestro-runico',
-        'fragua-runica',
-        'afin-a-la-nigromancia',
-      ].some((habilidad) => tiene(heroe, habilidad))
+    : [...HABILIDADES_MAGIA].some((habilidad) => tiene(heroe, habilidad))
 
 export function hechizosInicialesHeroe(heroe: Heroe, mazo: Mazo): string[] {
   const fijos = new Set([

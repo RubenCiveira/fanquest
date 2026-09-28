@@ -38,7 +38,7 @@ export function ConfigurarPage() {
   const idsBarajados = mazosDePartida(config)
   const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
   const paso = pasoActual(config)
-  const { movimientoFijo, tesorosYSucesos } = reglas(config)
+  const { movimientoFijo, tesorosYSucesos, habilidadesEspeciales } = reglas(config)
   const grupo = heroesSeleccionados(config, heroes)
   const elegidos = config.aliados ?? []
   const nombresGrupo = [
@@ -130,6 +130,20 @@ export function ConfigurarPage() {
                 </span>
               </span>
             </label>
+            <label className="regla-opcion">
+              <input
+                type="checkbox"
+                checked={habilidadesEspeciales}
+                onChange={() => asistente.cambiarReglas({ ...reglas(config), habilidadesEspeciales: !habilidadesEspeciales })}
+              />
+              <span>
+                <strong>Usar habilidades especiales de héroe</strong>
+                <span className="nota">
+                  Si se desactiva, solo se usarán las habilidades que habilitan o seleccionan hechizos. Las demás no
+                  aparecerán en ficha ni se sugerirán en combate.
+                </span>
+              </span>
+            </label>
           </fieldset>
           <button type="button" className="button" onClick={asistente.avanzar}>
             Siguiente: {TITULO_PASO.heroes}
@@ -144,6 +158,7 @@ export function ConfigurarPage() {
             onAnadir={asistente.anadirHeroe}
             onQuitar={asistente.quitarHeroe}
             movimientoFijo={movimientoFijo}
+            habilidadesEspeciales={habilidadesEspeciales}
           />
           <PanelAliados
             grupos={aliadosDelGrupo}

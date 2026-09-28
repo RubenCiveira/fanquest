@@ -6,6 +6,7 @@ import { PREPARACION } from '../../generar/config/preparacion'
 import type { EfectoEspecial, Mision, Sala } from '../../generar/lib/tipos'
 import { TABLAS_ENCUENTROS, type Encuentro } from '../config/encuentros'
 import type { Modo } from '../config/mazos'
+import type { ReglaEspecial } from './reglasEspeciales'
 import {
   bifurca,
   cartasDeAtrezo,
@@ -134,6 +135,10 @@ export type InventarioHeroe = {
   artefactos: string[]
 }
 
+export type EfectoActivo = Pick<ReglaEspecial, 'id' | 'origenId' | 'nombre' | 'descripcion' | 'ataque' | 'defensa' | 'duracion'>
+
+export type ReglaDescargada = Pick<ReglaEspecial, 'id' | 'origenId' | 'nombre' | 'descripcion' | 'recarga'>
+
 export type Partida = {
   peligro: number
   /** Puede bajar con el evento «Repleta de trampas» */
@@ -160,6 +165,8 @@ export type Partida = {
   /** Contadores de muerte del PNJ (regla especial `contador-muerte`) */
   contadorMuerte: number
   inventario?: Record<string, InventarioHeroe>
+  efectosActivos?: Record<string, EfectoActivo[]>
+  reglasDescargadas?: Record<string, ReglaDescargada[]>
   fin?: FinPartida
 }
 
@@ -222,7 +229,7 @@ export function carta(mazo: Mazo, id: string): CartaMazo {
 /** Mazo de la mazmorra según el modo: de él salen salas y, con losetas, pasillos */
 export const mazoMazmorra = (modo: Modo): IdMazo => (modo === 'losetas' ? 'mazmorra' : 'salas')
 
-export function estadisticasMiembro(m: Miembro, inventario: InventarioHeroe | undefined, equipo: Equipo) {
+export function estadisticasMiembro(m: Miembro, inventario: InventarioHeroe | undefined, equipo: Equipo, efectos: EfectoActivo[] = []) {
   const base = 'heroe' in m ? m.heroe : m.aliado
   const equipados = inventario?.equipado ?? []
   const objetos = equipados.flatMap((id) => {
@@ -232,8 +239,9 @@ export function estadisticasMiembro(m: Miembro, inventario: InventarioHeroe | un
   const armas = objetos.flatMap((item) => ('ataque' in item && item.ataque ? [item.ataque] : []))
   const defensaInicial = idsEquipoInicial(m, equipo).reduce((total, id) => total + (objetoEquipable(equipo, id)?.defensa ?? 0), 0)
   const defensaBase = Math.max(0, base.defensa - defensaInicial)
-  const defensa = objetos.reduce((total, item) => total + (('defensa' in item && item.defensa) || 0), defensaBase)
-  return { ataque: armas.length ? Math.max(...armas) : base.ataque, defensa }
+  const ataque = sumarDadosAtaque(armas.length ? Math.max(...armas) : base.ataque, efectos.reduce((total, e) => total + (e.ataque ?? 0), 0))
+  const defensa = objetos.reduce((total, item) => total + (('defensa' in item && item.defensa) || 0), defensaBase) + efectos.reduce((total, e) => total + (e.defensa ?? 0), 0)
+  return { ataque, defensa }
 }
 
 const quitar = (lista: string[], ids: string[]) =>
@@ -241,6 +249,15 @@ const quitar = (lista: string[], ids: string[]) =>
     const i = resto.indexOf(id)
     return i < 0 ? resto : [...resto.slice(0, i), ...resto.slice(i + 1)]
   }, lista)
+
+function sumarDadosAtaque(ataque: number | string, bono: number) {
+  if (!bono) return ataque
+  if (typeof ataque === 'number') return ataque + bono
+  return ataque
+    .split('/')
+    .map((parte) => `${parte}+${bono}`)
+    .join('/')
+}
 
 /** Empieza la partida con los mazos en el orden barajado en la preparación */
 export function nuevaPartida(ctx: Contexto, c: Configuracion, miembros: Miembro[], equipo: Equipo = { equipo: [], pociones: [], pergaminos: [], artefactos: [] }): Partida {
@@ -360,6 +377,40 @@ export function alternarEquipado(p: Partida, clave: string, id: string): Partida
   const inventario = inventarioDe(p, clave)
   const equipado = inventario.equipado.includes(id) ? quitarUna(inventario.equipado, id) : [...inventario.equipado, id]
   return guardarInventario(p, clave, { ...inventario, equipado })
+}
+
+const efectosDe = (p: Partida, clave: string): EfectoActivo[] => p.efectosActivos?.[clave] ?? []
+
+const descargasDe = (p: Partida, clave: string): ReglaDescargada[] => p.reglasDescargadas?.[clave] ?? []
+
+export function activarEfecto(p: Partida, clave: string, regla: EfectoActivo): Partida {
+  const efectos = efectosDe(p, clave)
+  if (efectos.some((e) => e.id === regla.id)) return p
+  return { ...p, efectosActivos: { ...p.efectosActivos, [clave]: [...efectos, regla] } }
+}
+
+export function disiparEfecto(p: Partida, clave: string, id: string): Partida {
+  return { ...p, efectosActivos: { ...p.efectosActivos, [clave]: efectosDe(p, clave).filter((e) => e.id !== id) } }
+}
+
+export function descargarRegla(p: Partida, clave: string, regla: ReglaDescargada): Partida {
+  const reglas = descargasDe(p, clave)
+  if (reglas.some((r) => r.id === regla.id)) return p
+  return { ...p, reglasDescargadas: { ...p.reglasDescargadas, [clave]: [...reglas, regla] } }
+}
+
+export function recargarRegla(p: Partida, clave: string, id: string): Partida {
+  return { ...p, reglasDescargadas: { ...p.reglasDescargadas, [clave]: descargasDe(p, clave).filter((r) => r.id !== id) } }
+}
+
+function recargarPorCombate(p: Partida, clave: string, caras: { blancas: number; negras: number }): Partida {
+  const reglas = descargasDe(p, clave)
+  const restantes = reglas.filter((r) => {
+    if (r.recarga === 'dos-escudos-blancos-combate') return caras.blancas < 2
+    if (r.recarga === 'dos-escudos-negros-combate') return caras.negras < 2
+    return true
+  })
+  return restantes.length === reglas.length ? p : { ...p, reglasDescargadas: { ...p.reglasDescargadas, [clave]: restantes } }
 }
 
 export function robarTesoro(p: Partida, ctx: Contexto, clave: string): Partida {
@@ -902,7 +953,12 @@ export function cambiarVidaMonstruo(p: Partida, id: string, delta: number): Part
   return { ...p, monstruos, hayMonstruos: monstruos.length > 0 }
 }
 
-export const sinMonstruos = (p: Partida): Partida => ({ ...p, monstruos: [], hayMonstruos: false })
+export const sinMonstruos = (p: Partida): Partida => ({
+  ...p,
+  monstruos: [],
+  hayMonstruos: false,
+  efectosActivos: Object.fromEntries(Object.entries(p.efectosActivos ?? {}).map(([clave, efectos]) => [clave, efectos.filter((e) => e.duracion !== 'hasta-sin-enemigos-visibles')])),
+})
 
 /** Daño de un combate: a cada combatiente, sus PC perdidos */
 export function aplicarCombate(
@@ -910,12 +966,18 @@ export function aplicarCombate(
   atacante: string,
   defensor: string,
   perdidas: { clave: string; nombre: string; pc: number; monstruo: boolean; cuerpo: number }[],
+  recargas: Record<string, { blancas: number; negras: number }> = {},
 ): Partida {
   let nueva = anotar(p, { tipo: 'combate', atacante, defensor, perdidas: perdidas.map(({ nombre, pc }) => ({ nombre, pc })) })
   for (const x of perdidas) {
     if (!x.pc) continue
     nueva = x.monstruo ? cambiarVidaMonstruo(nueva, x.clave, -x.pc) : cambiarVida(nueva, x.clave, -x.pc, x.cuerpo)
+    if (!x.monstruo) {
+      const efectos = efectosDe(nueva, x.clave).filter((e) => e.duracion !== 'hasta-dano')
+      nueva = { ...nueva, efectosActivos: { ...nueva.efectosActivos, [x.clave]: efectos } }
+    }
   }
+  for (const [clave, caras] of Object.entries(recargas)) nueva = recargarPorCombate(nueva, clave, caras)
   return nueva
 }
 

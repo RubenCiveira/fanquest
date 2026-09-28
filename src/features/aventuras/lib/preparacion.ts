@@ -35,9 +35,11 @@ export type Reglas = {
   movimientoFijo: boolean
   /** Prepara Mazo de Tesoros equilibrado y Mazo de Sucesos para la partida */
   tesorosYSucesos: boolean
+  /** Usa habilidades especiales de héroes que no sean selección o lanzamiento de hechizos */
+  habilidadesEspeciales: boolean
 }
 
-export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true, tesorosYSucesos: false }
+export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true, tesorosYSucesos: false, habilidadesEspeciales: false }
 
 export type HeroeSeleccionado = {
   /** Identificador único de este héroe concreto, para progreso entre aventuras */
