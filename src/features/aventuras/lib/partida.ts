@@ -36,7 +36,7 @@ import {
   tablaDeMision,
   type SeleccionMonstruos,
 } from './monstruos'
-import { claveAliado, type Configuracion } from './preparacion'
+import { claveAliado, heroesSeleccionados, type Configuracion } from './preparacion'
 
 /** Lo que la partida necesita saber de la aventura */
 export type Contexto = {
@@ -164,11 +164,15 @@ export type Partida = {
 }
 
 /** Héroe o aliado del grupo con su clave en `vidas` */
-export type Miembro = { clave: string; cuerpo: number } & ({ heroe: Heroe } | { aliado: Aliado })
+export type Miembro = { clave: string; cuerpo: number; nombre?: string } & ({ heroe: Heroe } | { aliado: Aliado })
 
 export function miembrosDelGrupo(c: Configuracion, heroes: Heroe[], grupos: { id: string; aliados: Aliado[] }[]): Miembro[] {
   return [
-    ...(c.heroes ?? []).flatMap((id) => heroes.filter((h) => h.id === id).map((heroe) => ({ clave: id, cuerpo: heroe.cuerpo, heroe }))),
+    ...heroesSeleccionados(c, heroes).flatMap((seleccionado) =>
+      heroes
+        .filter((h) => h.id === seleccionado.tipo)
+        .map((heroe) => ({ clave: seleccionado.id, cuerpo: heroe.cuerpo, nombre: seleccionado.nombre, heroe })),
+    ),
     ...grupos.flatMap((g) =>
       g.aliados
         .map((aliado) => ({ clave: claveAliado(g.id, aliado.id), cuerpo: aliado.cuerpo, aliado }))

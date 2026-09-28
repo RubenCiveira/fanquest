@@ -21,7 +21,7 @@ import {
 import { anulaBarajado, pasoActual, TITULO_PASO } from './lib/asistente'
 import { urlDorso, type IdMazo } from '../../lib/mazos'
 import { seleccionMonstruos } from './lib/monstruos'
-import { avisos, claveAliado, mazosDePartida, reglas, seleccion, type Paso } from './lib/preparacion'
+import { avisos, claveAliado, heroesSeleccionados, mazosDePartida, reglas, seleccion, type Paso } from './lib/preparacion'
 import { useConfiguracion } from './lib/useConfiguracion'
 import type { DatosConfiguracion } from './rutas'
 
@@ -39,10 +39,10 @@ export function ConfigurarPage() {
   const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
   const paso = pasoActual(config)
   const { movimientoFijo, tesorosYSucesos } = reglas(config)
-  const grupo = config.heroes ?? []
+  const grupo = heroesSeleccionados(config, heroes)
   const elegidos = config.aliados ?? []
   const nombresGrupo = [
-    ...heroes.filter((h) => grupo.includes(h.id)).map((h) => h.nombre),
+    ...grupo.map((h) => h.nombre),
     ...aliados.flatMap((g) => g.aliados.filter((a) => elegidos.includes(claveAliado(g.id, a.id))).map((a) => a.nombre)),
   ].join(', ')
   // en el grupo van PNJ y compañeros animales; los mercenarios solo se imprimen
@@ -141,7 +141,8 @@ export function ConfigurarPage() {
             heroes={heroes}
             habilidades={habilidades}
             grupo={grupo}
-            onAlternar={asistente.alternarHeroe}
+            onAnadir={asistente.anadirHeroe}
+            onQuitar={asistente.quitarHeroe}
             movimientoFijo={movimientoFijo}
           />
           <PanelAliados
@@ -162,7 +163,10 @@ export function ConfigurarPage() {
       ) : paso === 'hechizos' ? (
         <section className="paso-contenido">
           <PanelHechizos
-            heroes={heroes.filter((h) => grupo.includes(h.id))}
+            heroes={grupo.flatMap((seleccionado) => {
+              const heroe = heroes.find((h) => h.id === seleccionado.tipo)
+              return heroe ? [{ ...seleccionado, heroe }] : []
+            })}
             mazo={mazos.hechizos}
             seleccion={config.hechizos ?? {}}
             onCambiar={asistente.cambiarHechizosHeroe}

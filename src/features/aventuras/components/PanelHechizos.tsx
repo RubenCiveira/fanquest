@@ -4,8 +4,10 @@ import type { Mazo } from '../../../lib/mazos'
 import { urlRetrato, type Heroe } from '../../../lib/personajes'
 import { type OpcionHechizos, opcionesHechizosHeroe } from '../lib/hechizos'
 
+export type HeroeHechizos = { id: string; nombre: string; heroe: Heroe }
+
 type Props = {
-  heroes: Heroe[]
+  heroes: HeroeHechizos[]
   mazo: Mazo
   seleccion: Record<string, string[]>
   onCambiar: (heroe: string, hechizos: string[]) => void
@@ -21,7 +23,7 @@ function DialogHechizos({
   onCambiar,
   onCerrar,
 }: {
-  heroe: Heroe
+  heroe: HeroeHechizos
   opcion: OpcionHechizos
   elegidos: string[]
   onCambiar: (hechizos: string[]) => void
@@ -41,7 +43,7 @@ function DialogHechizos({
         <Icono nombre="cerrar" />
       </button>
       <header>
-        <img src={urlRetrato('heroes', heroe)} alt="" />
+        <img src={urlRetrato('heroes', heroe.heroe)} alt="" />
         <div>
           <h2>{opcion.titulo}</h2>
           <p className="nota">{heroe.nombre}. {opcion.descripcion}</p>
@@ -69,7 +71,7 @@ function DialogHechizos({
 
 export function PanelHechizos({ heroes, mazo, seleccion, onCambiar, onAceptar }: Props) {
   const [abierta, setAbierta] = useState<{ heroe: string; opcion: string } | null>(null)
-  const lanzadores = heroes.map((heroe) => ({ heroe, opciones: opcionesHechizosHeroe(heroe, mazo) })).filter(({ opciones }) => opciones.length)
+  const lanzadores = heroes.map((heroe) => ({ heroe, opciones: opcionesHechizosHeroe(heroe.heroe, mazo) })).filter(({ opciones }) => opciones.length)
   const seleccionDialog = abierta && lanzadores.flatMap(({ heroe, opciones }) => opciones.map((opcion) => ({ heroe, opcion }))).find(({ heroe, opcion }) => heroe.id === abierta.heroe && opcion.id === abierta.opcion)
   if (!lanzadores.length) {
     return (
@@ -99,7 +101,7 @@ export function PanelHechizos({ heroes, mazo, seleccion, onCambiar, onAceptar }:
           return (
             <article key={heroe.id} className="hechizos-heroe">
               <header>
-                <img src={urlRetrato('heroes', heroe)} alt="" />
+                <img src={urlRetrato('heroes', heroe.heroe)} alt="" />
                 <div>
                   <h3>{heroe.nombre}</h3>
                   <p className="nota">{elegidos.length} hechizo{elegidos.length !== 1 ? 's' : ''} preparado{elegidos.length !== 1 ? 's' : ''}</p>

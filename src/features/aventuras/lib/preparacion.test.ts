@@ -8,7 +8,7 @@ import { cargarMazos, type IdMazo, type Mazos } from '../../../lib/mazos'
 import { cargarHeroes, type Heroe } from '../../../lib/personajes'
 import {
   alternarAliado,
-  alternarHeroe,
+  anadirHeroe,
   reglas,
   avisos,
   barajarYGuardar,
@@ -18,6 +18,7 @@ import {
   mover,
   nuevaConfiguracion,
   ordenar,
+  quitarHeroe,
   recuento,
   type Configuracion,
   type SeleccionMazo,
@@ -176,29 +177,36 @@ describe('grupo de héroes', () => {
   const vacia: Configuracion = { modo: 'losetas', mazos: {} }
 
   it('añade héroes al grupo', () => {
-    expect(alternarHeroe(alternarHeroe(vacia, 'enano'), 'elfo').heroes).toEqual(['enano', 'elfo'])
+    const c = anadirHeroe(anadirHeroe(vacia, 'enano', 'Borin', heroes), 'elfo', 'Lethiel', heroes)
+    expect(c.heroes).toMatchObject([
+      { tipo: 'enano', nombre: 'Borin' },
+      { tipo: 'elfo', nombre: 'Lethiel' },
+    ])
   })
 
   it('quita un héroe que ya está en el grupo', () => {
-    expect(alternarHeroe({ ...vacia, heroes: ['enano', 'elfo'] }, 'enano').heroes).toEqual(['elfo'])
+    expect(quitarHeroe({ ...vacia, heroes: ['enano', 'elfo'] }, 'enano', heroes).heroes).toEqual([
+      { id: 'elfo', tipo: 'elfo', nombre: 'Elfo / Elfa' },
+    ])
   })
 
   it('cambiar el grupo devuelve los monstruos a la propuesta', () => {
-    expect(alternarHeroe({ ...vacia, monstruos: { orco: 9 } }, 'enano').monstruos).toBeUndefined()
+    expect(anadirHeroe({ ...vacia, monstruos: { orco: 9 } }, 'enano', 'Borin', heroes).monstruos).toBeUndefined()
   })
 
   it('no pasa de 4 héroes', () => {
     const completo = { ...vacia, heroes: ['barbaro', 'enano', 'elfo', 'mago'] }
-    expect(alternarHeroe(completo, 'bardo').heroes).toEqual(completo.heroes)
+    expect(anadirHeroe(completo, 'bardo', 'Lino', heroes).heroes).toEqual(completo.heroes)
   })
 
   it('añade los grupos de hechizos iniciales del héroe', () => {
-    const c = alternarHeroe(vacia, 'bardo', heroes, mazos.hechizos)
-    expect(c.hechizos?.bardo).toEqual(['canto-inspirador-1', 'cancion-curativa-1', 'cancion-de-cuna-1'])
+    const c = anadirHeroe(vacia, 'bardo', 'Lino', heroes, mazos.hechizos)
+    const id = typeof c.heroes?.[0] === 'string' ? c.heroes[0] : c.heroes?.[0]?.id
+    expect(id ? c.hechizos?.[id] : undefined).toEqual(['canto-inspirador-1', 'cancion-curativa-1', 'cancion-de-cuna-1'])
   })
 
   it('quita los hechizos al quitar al héroe', () => {
-    const c = alternarHeroe({ ...vacia, heroes: ['bardo'], hechizos: { bardo: ['canto-inspirador-1'] } }, 'bardo', heroes, mazos.hechizos)
+    const c = quitarHeroe({ ...vacia, heroes: ['bardo'], hechizos: { bardo: ['canto-inspirador-1'] } }, 'bardo', heroes)
     expect(c.hechizos?.bardo).toBeUndefined()
   })
 })

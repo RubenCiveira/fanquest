@@ -12,6 +12,8 @@ type Props = {
   sello?: string
   /** Texto del naipe pequeño */
   resumen?: string
+  /** Acción principal, bajo la imagen y antes de las estadísticas */
+  accion?: ReactNode
   /** Contenido de la carta entera, bajo las estadísticas */
   children?: ReactNode
 }
@@ -25,7 +27,7 @@ const ESTADISTICAS: [keyof Estadisticas, string, string][] = [
 ]
 
 /** Héroe o monstruo dibujado como un naipe con su fila de estadísticas */
-export function CartaPersonaje({ titulo, imagen, estadisticas, variante = 'mini', copias = 1, sello, resumen, children }: Props) {
+export function CartaPersonaje({ titulo, imagen, estadisticas, variante = 'mini', copias = 1, sello, resumen, accion, children }: Props) {
   const completa = variante === 'completa'
 
   return (
@@ -33,6 +35,7 @@ export function CartaPersonaje({ titulo, imagen, estadisticas, variante = 'mini'
       <figcaption className="carta-titulo">{titulo}</figcaption>
       {/* la completa se carga ya: puede estar oculta hasta imprimir */}
       {imagen && <img src={imagen} alt="" loading={completa ? 'eager' : 'lazy'} />}
+      {accion}
 
       <dl className="carta-stats">
         {ESTADISTICAS.map(([clave, corta, larga]) => (

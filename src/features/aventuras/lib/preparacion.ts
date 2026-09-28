@@ -39,13 +39,22 @@ export type Reglas = {
 
 export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true, tesorosYSucesos: false }
 
+export type HeroeSeleccionado = {
+  /** Identificador único de este héroe concreto, para progreso entre aventuras */
+  id: string
+  /** Id del perfil de `templates/heroes` */
+  tipo: string
+  /** Nombre propio usado durante la aventura */
+  nombre: string
+}
+
 export type Configuracion = {
   /** Paso del asistente en curso (las aventuras antiguas no lo tienen) */
   paso?: Paso
   /** Sin dato (aventuras antiguas), las reglas por defecto */
   reglas?: Reglas
-  /** Ids del grupo de héroes (las aventuras antiguas no lo tienen) */
-  heroes?: string[]
+  /** Héroes del grupo; las aventuras antiguas guardaban sólo ids de perfil */
+  heroes?: (string | HeroeSeleccionado)[]
   /** Ids de cartas de `templates/mazos/hechizos` que lleva cada héroe */
   hechizos?: Record<string, string[]>
   /** Aliados que acompañan al grupo, con `claveAliado` */
@@ -254,25 +263,43 @@ export const reglas = (c: Configuracion): Reglas => ({ ...REGLAS_POR_DEFECTO, ..
 const alternar = (lista: string[], id: string) =>
   lista.includes(id) ? lista.filter((x) => x !== id) : [...lista, id]
 
+const esHeroeSeleccionado = (heroe: string | HeroeSeleccionado): heroe is HeroeSeleccionado =>
+  typeof heroe !== 'string'
+
+export const heroesSeleccionados = (c: Configuracion, plantillas: Heroe[] = []): HeroeSeleccionado[] =>
+  (c.heroes ?? []).map((heroe) => {
+    if (esHeroeSeleccionado(heroe)) return heroe
+    return { id: heroe, tipo: heroe, nombre: plantillas.find((h) => h.id === heroe)?.nombre ?? heroe }
+  })
+
+const idHeroe = (tipo: string) => {
+  const uuid = globalThis.crypto?.randomUUID?.()
+  return uuid ? `heroe-${uuid}` : `heroe-${tipo}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 /**
- * Añade o quita un héroe del grupo; con el grupo completo no añade. Los
+ * Añade un héroe al grupo; con el grupo completo no añade. Los
  * monstruos vuelven a la propuesta, que depende de cuántos héroes hay.
  */
-export function alternarHeroe(c: Configuracion, id: string, heroes: Heroe[] = [], hechizos?: Mazo): Configuracion {
-  const grupo = c.heroes ?? []
-  if (grupo.includes(id)) {
-    const { [id]: _quitado, ...resto } = c.hechizos ?? {}
-    return { ...c, heroes: alternar(grupo, id), hechizos: resto, monstruos: undefined }
-  }
+export function anadirHeroe(c: Configuracion, tipo: string, nombre: string, heroes: Heroe[] = [], hechizos?: Mazo): Configuracion {
+  const grupo = heroesSeleccionados(c, heroes)
   if (grupo.length >= MAX_HEROES) return c
-  const heroe = heroes.find((h) => h.id === id)
+  const heroe = heroes.find((h) => h.id === tipo)
+  if (!heroe) return c
+  const seleccionado = { id: idHeroe(tipo), tipo, nombre: nombre.trim() || heroe.nombre }
   const iniciales = heroe && hechizos ? hechizosInicialesHeroe(heroe, hechizos) : []
   return {
     ...c,
-    heroes: alternar(grupo, id),
-    hechizos: iniciales.length ? { ...c.hechizos, [id]: iniciales } : c.hechizos,
+    heroes: [...grupo, seleccionado],
+    hechizos: iniciales.length ? { ...c.hechizos, [seleccionado.id]: iniciales } : c.hechizos,
     monstruos: undefined,
   }
+}
+
+export function quitarHeroe(c: Configuracion, id: string, heroes: Heroe[] = []): Configuracion {
+  const grupo = heroesSeleccionados(c, heroes)
+  const { [id]: _quitado, ...resto } = c.hechizos ?? {}
+  return { ...c, heroes: grupo.filter((heroe) => heroe.id !== id), hechizos: resto, monstruos: undefined }
 }
 
 /** Un aliado se identifica por su grupo (`templates/aliados/<grupo>.json`) y su id */

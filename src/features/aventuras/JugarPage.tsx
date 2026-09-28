@@ -335,7 +335,7 @@ export function JugarPage() {
     const hechizos = 'heroe' in m ? cartasHechizosSeleccionadas(m.heroe, mazos.hechizos, aventura.configuracion.hechizos?.[m.clave]) : []
     return {
       clave: m.clave,
-      nombre: 'heroe' in m ? m.heroe.nombre : m.aliado.nombre,
+      nombre: m.nombre ?? ('heroe' in m ? m.heroe.nombre : m.aliado.nombre),
       retrato: 'heroe' in m ? urlRetrato('heroes', m.heroe) : undefined,
       pc: p.vidas[m.clave] ?? m.cuerpo,
       cuerpo: m.cuerpo,
@@ -343,7 +343,7 @@ export function JugarPage() {
       hechizos: hechizos.length ? <PanelHechizosMiembro cartas={hechizos} /> : undefined,
       carta:
         'heroe' in m ? (
-          <CartaHeroe heroe={m.heroe} habilidades={habilidades} variante="completa" movimientoFijo={movimientoFijo} />
+          <CartaHeroe heroe={m.heroe} nombre={m.nombre} habilidades={habilidades} variante="completa" movimientoFijo={movimientoFijo} />
         ) : (
           <CartaAliado aliado={m.aliado} variante="completa" />
         ),
@@ -371,7 +371,7 @@ export function JugarPage() {
       const datos = 'heroe' in m ? m.heroe : m.aliado
       const ficha = grupo.find((f) => f.clave === m.clave)
       const stats = estadisticasMiembro(m, p.inventario?.[m.clave], equipo)
-      return { clave: m.clave, nombre: datos.nombre, bando: 'grupo', ataque: stats.ataque, defensa: stats.defensa, retrato: ficha?.retrato }
+      return { clave: m.clave, nombre: m.nombre ?? datos.nombre, bando: 'grupo', ataque: stats.ataque, defensa: stats.defensa, retrato: ficha?.retrato }
     }),
     ...(p.monstruos ?? []).flatMap((m): Participante[] => {
       const datos = monstruos[m.monstruo]

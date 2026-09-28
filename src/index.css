@@ -1031,6 +1031,11 @@ input[type='checkbox'] {
   height: 44%;
 }
 
+.carta-accion {
+  justify-self: stretch;
+  margin: 2px 0 4px;
+}
+
 .carta-stats {
   display: grid;
   flex: none;

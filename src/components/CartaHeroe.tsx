@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import {
   DADOS_MOVIMIENTO,
   PERFILES_MOVIMIENTO,
@@ -16,6 +17,8 @@ type Props = {
   habilidades?: Habilidades
   variante?: 'mini' | 'completa'
   sello?: string
+  nombre?: string
+  accion?: ReactNode
   /** Con Puntos de Movimiento fijos según su perfil; sin ellos tira dados */
   movimientoFijo?: boolean
 }
@@ -33,17 +36,18 @@ function TextoHabilidad({ habilidad, nota }: { habilidad: Habilidad; nota?: stri
 }
 
 /** Ficha de héroe dibujada como un naipe */
-export function CartaHeroe({ heroe, habilidades = {}, variante, sello, movimientoFijo = true }: Props) {
+export function CartaHeroe({ heroe, habilidades = {}, variante, sello, nombre, accion, movimientoFijo = true }: Props) {
   const propias = heroe.habilidades.flatMap((id) => habilidades[id] ?? [])
   const aElegir = (heroe.eligeUna ?? []).flatMap((id) => habilidades[id] ?? [])
 
   return (
     <CartaPersonaje
-      titulo={heroe.nombre}
+      titulo={nombre ?? heroe.nombre}
       imagen={urlRetrato('heroes', heroe)}
       estadisticas={{ ...heroe, movimiento: movimientoFijo ? puntosMovimiento(heroe) : DADOS_MOVIMIENTO }}
       variante={variante}
       sello={sello}
+      accion={accion}
       resumen={heroe.equipo}
     >
       <p className="carta-cita">«{heroe.cita}»</p>

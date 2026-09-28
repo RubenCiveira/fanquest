@@ -46,7 +46,22 @@ export function opcionesHechizosHeroe(heroe: Heroe, mazo: Mazo): OpcionHechizos[
   return opciones.filter((opcion) => opcion.cartas.length)
 }
 
-export const puedeLanzarHechizos = (heroe: Heroe, mazo: Mazo) => opcionesHechizosHeroe(heroe, mazo).length > 0
+export const puedeLanzarHechizos = (heroe: Heroe, mazo?: Mazo) =>
+  mazo
+    ? opcionesHechizosHeroe(heroe, mazo).length > 0
+    : [
+        'conocedor-de-la-magia-elemental',
+        'maestro-de-la-magia-elemental',
+        'maestro-de-magia-bardica',
+        'maestro-de-la-brujeria',
+        'maestro-de-la-magia-druidica',
+        'maestro-de-la-nigromancia',
+        'acolito-de-la-luz',
+        'conocimiento-arcano',
+        'maestro-runico',
+        'fragua-runica',
+        'afin-a-la-nigromancia',
+      ].some((habilidad) => tiene(heroe, habilidad))
 
 export function hechizosInicialesHeroe(heroe: Heroe, mazo: Mazo): string[] {
   const fijos = new Set([
