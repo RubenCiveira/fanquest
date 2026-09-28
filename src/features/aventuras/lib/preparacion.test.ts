@@ -5,6 +5,7 @@ import { CONFIG_EXTRAS_DEFECTO } from '../../generar/lib/reglasExtras'
 import type { Mision, PlantillaAventuras } from '../../generar/lib/tipos'
 import { MAZOS_POR_MODO, type Modo } from '../config/mazos'
 import { cargarMazos, type IdMazo, type Mazos } from '../../../lib/mazos'
+import { cargarHeroes, type Heroe } from '../../../lib/personajes'
 import {
   alternarAliado,
   alternarHeroe,
@@ -24,8 +25,9 @@ import {
 
 let mazos: Mazos
 let plantilla: PlantillaAventuras
+let heroes: Heroe[]
 beforeAll(async () => {
-  ;[mazos, plantilla] = await Promise.all([cargarMazos(), cargarPlantillaAventuras()])
+  ;[mazos, plantilla, heroes] = await Promise.all([cargarMazos(), cargarPlantillaAventuras(), cargarHeroes()])
 })
 
 const SIN_EXTRAS = { ...CONFIG_EXTRAS_DEFECTO, probUna: 0, probDos: 0 }
@@ -188,6 +190,16 @@ describe('grupo de héroes', () => {
   it('no pasa de 4 héroes', () => {
     const completo = { ...vacia, heroes: ['barbaro', 'enano', 'elfo', 'mago'] }
     expect(alternarHeroe(completo, 'bardo').heroes).toEqual(completo.heroes)
+  })
+
+  it('añade los grupos de hechizos iniciales del héroe', () => {
+    const c = alternarHeroe(vacia, 'bardo', heroes, mazos.hechizos)
+    expect(c.hechizos?.bardo).toEqual(['canto-inspirador-1', 'cancion-curativa-1', 'cancion-de-cuna-1'])
+  })
+
+  it('quita los hechizos al quitar al héroe', () => {
+    const c = alternarHeroe({ ...vacia, heroes: ['bardo'], hechizos: { bardo: ['canto-inspirador-1'] } }, 'bardo', heroes, mazos.hechizos)
+    expect(c.hechizos?.bardo).toBeUndefined()
   })
 })
 

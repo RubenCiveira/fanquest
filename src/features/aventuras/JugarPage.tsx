@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLoaderData } from 'react-router'
+import { Carta } from '../../components/Carta'
 import { CartaDialog } from '../../components/CartaDialog'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import { Icono } from '../../components/Icono'
@@ -66,6 +67,7 @@ import {
   type TipoZona,
 } from './lib/partida'
 import { reglas as reglasPartida } from './lib/preparacion'
+import { cartasHechizosSeleccionadas } from './lib/hechizos'
 import { usePartida } from './lib/usePartida'
 import type { DatosPartida } from './rutas'
 
@@ -147,133 +149,139 @@ function explicarPaso(paso: Paso, dadoTrampa: string, peligro: number): [string,
   }
 }
 
-function PanelInventario({
+function PanelInventarioMiembro({
+  miembro,
   partida,
-  miembros,
   equipo,
   hacer,
-  contexto,
 }: {
+  miembro: Miembro
   partida: Partida
-  miembros: Miembro[]
   equipo: Equipo
   hacer: (aplicar: (partida: Partida) => Partida) => void
-  contexto: DatosPartida['contexto']
 }) {
-  const [anadir, setAnadir] = useState<Record<string, string>>({})
+  const [anadir, setAnadir] = useState('')
   const opcionesInventario: { id: string; nombre: string; tipo: 'equipo' | 'pociones' | 'pergaminos' | 'artefactos' }[] = [
     ...equipo.equipo.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'equipo' as const })),
     ...equipo.pociones.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pociones' as const })),
     ...equipo.pergaminos.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pergaminos' as const })),
     ...equipo.artefactos.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'artefactos' as const })),
   ]
+  const inv = partida.inventario?.[miembro.clave] ?? { oro: 0, equipo: [], equipado: [], pociones: [], pergaminos: [], artefactos: [] }
+  const nombre = 'heroe' in miembro ? miembro.heroe.nombre : miembro.aliado.nombre
+  const seleccionado = anadir || opcionesInventario[0]?.id || ''
+  const stats = estadisticasMiembro(miembro, inv, equipo)
 
   return (
-    <details className="inventario-panel">
-      <summary>Inventario, tesoros y equipo</summary>
-      <div className="inventario-lista">
-        {miembros.map((m) => {
-          const inv = partida.inventario?.[m.clave] ?? { oro: 0, equipo: [], equipado: [], pociones: [], pergaminos: [], artefactos: [] }
-          const nombre = 'heroe' in m ? m.heroe.nombre : m.aliado.nombre
-          const seleccionado = anadir[m.clave] ?? opcionesInventario[0]?.id ?? ''
-          const stats = estadisticasMiembro(m, inv, equipo)
-          return (
-            <section key={m.clave} className="inventario-heroe">
-              <header>
-                <h3>{nombre}</h3>
-                <span>
-                  {stats.ataque} Atq · {stats.defensa} Def
-                </span>
-              </header>
-              <div className="inventario-oro">
-                <strong>{inv.oro} mo</strong>
-                <button type="button" className="icon-button" aria-label={`Restar oro a ${nombre}`} onClick={() => hacer((p) => cambiarOro(p, m.clave, -25))}>
-                  <Icono nombre="menos" />
-                </button>
-                <button type="button" className="icon-button" aria-label={`Sumar oro a ${nombre}`} onClick={() => hacer((p) => cambiarOro(p, m.clave, 25))}>
-                  <Icono nombre="mas" />
-                </button>
-                <button type="button" className="button secondary" disabled={!partida.mazos.tesoros?.length} onClick={() => hacer((p) => robarTesoro(p, contexto, m.clave))}>
-                  Robar tesoro
-                </button>
-              </div>
+    <section className="inventario-heroe">
+      <header>
+        <h3>Inventario</h3>
+        <span>
+          {stats.ataque} Atq · {stats.defensa} Def
+        </span>
+      </header>
+      <div className="inventario-oro">
+        <strong>{inv.oro} mo</strong>
+        <button type="button" className="icon-button" aria-label={`Restar oro a ${nombre}`} onClick={() => hacer((p) => cambiarOro(p, miembro.clave, -25))}>
+          <Icono nombre="menos" />
+        </button>
+        <button type="button" className="icon-button" aria-label={`Sumar oro a ${nombre}`} onClick={() => hacer((p) => cambiarOro(p, miembro.clave, 25))}>
+          <Icono nombre="mas" />
+        </button>
+      </div>
 
-              <div className="inventario-bloque">
-                <p className="suceso-titulo">Equipo</p>
-                {inv.equipo.length || inv.artefactos.length ? (
-                  <ul>
-                    {[...inv.equipo, ...inv.artefactos].map((id, i) => (
-                      <li key={`${id}-${i}`}>
-                        <span>{nombreItem(equipo, id)}</span>
-                        <button type="button" className="button mini" onClick={() => hacer((p) => alternarEquipado(p, m.clave, id))}>
-                          {inv.equipado.includes(id) ? 'Desequipar' : 'Equipar'}
-                        </button>
-                        <button type="button" className="button mini secondary" onClick={() => hacer((p) => perderEquipo(p, m.clave, id))}>
-                          Perder
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="nota">Sin equipo anotado.</p>
-                )}
-              </div>
-
-              <div className="inventario-bloque">
-                <p className="suceso-titulo">Pociones y pergaminos</p>
-                {[...inv.pociones, ...inv.pergaminos].length ? (
-                  <ul>
-                    {inv.pociones.map((id, i) => (
-                      <li key={`${id}-${i}`}>
-                        <span>{nombreItem(equipo, id)}</span>
-                        <button type="button" className="button mini" onClick={() => hacer((p) => usarPocion(p, m.clave, id))}>
-                          Usar
-                        </button>
-                      </li>
-                    ))}
-                    {inv.pergaminos.map((id, i) => (
-                      <li key={`${id}-${i}`}>
-                        <span>{nombreItem(equipo, id)}</span>
-                        <button type="button" className="button mini" onClick={() => hacer((p) => gastarPergamino(p, m.clave, id))}>
-                          Gastar
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="nota">Sin consumibles.</p>
-                )}
-              </div>
-
-              <div className="inventario-anadir">
-                <select value={seleccionado} onChange={(e) => setAnadir({ ...anadir, [m.clave]: e.target.value })}>
-                  {opcionesInventario.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nombre}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="button secondary"
-                  disabled={!seleccionado}
-                  onClick={() => {
-                    const item = opcionesInventario.find((item) => item.id === seleccionado)
-                    if (item) hacer((p) => anadirItem(p, m.clave, item.id, item.tipo))
-                  }}
-                >
-                  Añadir
+      <div className="inventario-bloque">
+        <p className="suceso-titulo">Equipo</p>
+        {inv.equipo.length || inv.artefactos.length ? (
+          <ul>
+            {[...inv.equipo, ...inv.artefactos].map((id, i) => (
+              <li key={`${id}-${i}`}>
+                <span>{nombreItem(equipo, id)}</span>
+                <button type="button" className="button mini" onClick={() => hacer((p) => alternarEquipado(p, miembro.clave, id))}>
+                  {inv.equipado.includes(id) ? 'Desequipar' : 'Equipar'}
                 </button>
-              </div>
-            </section>
-          )
-        })}
+                <button type="button" className="button mini secondary" onClick={() => hacer((p) => perderEquipo(p, miembro.clave, id))}>
+                  Perder
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="nota">Sin equipo anotado.</p>
+        )}
+      </div>
+
+      <div className="inventario-bloque">
+        <p className="suceso-titulo">Pociones y pergaminos</p>
+        {[...inv.pociones, ...inv.pergaminos].length ? (
+          <ul>
+            {inv.pociones.map((id, i) => (
+              <li key={`${id}-${i}`}>
+                <span>{nombreItem(equipo, id)}</span>
+                <button type="button" className="button mini" onClick={() => hacer((p) => usarPocion(p, miembro.clave, id))}>
+                  Usar
+                </button>
+              </li>
+            ))}
+            {inv.pergaminos.map((id, i) => (
+              <li key={`${id}-${i}`}>
+                <span>{nombreItem(equipo, id)}</span>
+                <button type="button" className="button mini" onClick={() => hacer((p) => gastarPergamino(p, miembro.clave, id))}>
+                  Gastar
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="nota">Sin consumibles.</p>
+        )}
+      </div>
+
+      <div className="inventario-anadir">
+        <select value={seleccionado} onChange={(e) => setAnadir(e.target.value)}>
+          {opcionesInventario.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.nombre}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={!seleccionado}
+          onClick={() => {
+            const item = opcionesInventario.find((item) => item.id === seleccionado)
+            if (item) hacer((p) => anadirItem(p, miembro.clave, item.id, item.tipo))
+          }}
+        >
+          Añadir
+        </button>
       </div>
       <p className="nota">
         Las cartas de tesoro aplican oro y objetos conocidos automáticamente. Las reglas complejas siguen resolviéndose
         leyendo la carta completa.
       </p>
-    </details>
+    </section>
+  )
+}
+
+function PanelHechizosMiembro({ cartas }: { cartas: ReturnType<typeof cartasHechizosSeleccionadas> }) {
+  return (
+    <section className="inventario-heroe hechizos-partida">
+      <header>
+        <h3>Hechizos</h3>
+        <span>{cartas.length} carta{cartas.length !== 1 ? 's' : ''}</span>
+      </header>
+      {cartas.length ? (
+        <div className="naipes hechizos-naipes">
+          {cartas.map((carta) => (
+            <Carta key={carta.id} mazo="hechizos" carta={carta} variante="completa" />
+          ))}
+        </div>
+      ) : (
+        <p className="nota">No lleva hechizos anotados para este reto.</p>
+      )}
+    </section>
   )
 }
 
@@ -289,6 +297,9 @@ export function JugarPage() {
   const [alAzar, setAlAzar] = useState(false)
   const [exportar, setExportar] = useState(false)
   const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
+  const [accionMiembro, setAccionMiembro] = useState<{ clave: string; tipo: 'tesoro' | 'equipo' | 'encontrado' } | null>(null)
+  const [equipoAUsar, setEquipoAUsar] = useState('')
+  const [equipoEncontrado, setEquipoEncontrado] = useState('')
   const { zona } = p
   const mapa = secciones(p)
   const seccion = (id: number) => mapa.find((z) => z.id === id)
@@ -307,20 +318,37 @@ export function JugarPage() {
     ...atrezoColocado(zona).map((id) => ({ mazo: 'atrezo' as const, id })),
     ...(especial ? [{ mazo: 'salas-especiales' as const, id: especial }] : []),
   ].filter(({ mazo, id }, i, todas) => sePuedeTirar(carta(mazos[mazo], id)) && todas.findIndex((t) => t.id === id) === i)
+  const opcionesEquipoEncontrado: { id: string; nombre: string; tipo?: 'equipo' | 'pociones' | 'pergaminos' | 'artefactos' }[] = [
+    ...equipo.equipo.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'equipo' as const })),
+    ...equipo.pociones.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pociones' as const })),
+    ...equipo.pergaminos.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pergaminos' as const })),
+    ...equipo.artefactos.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'artefactos' as const })),
+    ...mazos.tesoros.cartas.flatMap((c) => (c.equipoId ? [{ id: c.equipoId, nombre: c.titulo }] : [])),
+    ...mazos.sucesos.cartas
+      .filter((c) => c.titulo.startsWith('Arcano Mágico'))
+      .map((c) => ({ id: c.tipo, nombre: c.titulo, tipo: 'artefactos' as const })),
+  ]
+    .filter((item, i, todos) => todos.findIndex((otro) => otro.id === item.id) === i)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
   const [errante] = opciones(mision.faccion.errante)
-  const grupo: Ficha[] = miembros.map((m) => ({
-    clave: m.clave,
-    nombre: 'heroe' in m ? m.heroe.nombre : m.aliado.nombre,
-    retrato: 'heroe' in m ? urlRetrato('heroes', m.heroe) : undefined,
-    pc: p.vidas[m.clave] ?? m.cuerpo,
-    cuerpo: m.cuerpo,
-    carta:
-      'heroe' in m ? (
-        <CartaHeroe heroe={m.heroe} habilidades={habilidades} variante="completa" movimientoFijo={movimientoFijo} />
-      ) : (
-        <CartaAliado aliado={m.aliado} variante="completa" />
-      ),
-  }))
+  const grupo: Ficha[] = miembros.map((m) => {
+    const hechizos = 'heroe' in m ? cartasHechizosSeleccionadas(m.heroe, mazos.hechizos, aventura.configuracion.hechizos?.[m.clave]) : []
+    return {
+      clave: m.clave,
+      nombre: 'heroe' in m ? m.heroe.nombre : m.aliado.nombre,
+      retrato: 'heroe' in m ? urlRetrato('heroes', m.heroe) : undefined,
+      pc: p.vidas[m.clave] ?? m.cuerpo,
+      cuerpo: m.cuerpo,
+      inventario: <PanelInventarioMiembro miembro={m} partida={p} equipo={equipo} hacer={hacer} />,
+      hechizos: hechizos.length ? <PanelHechizosMiembro cartas={hechizos} /> : undefined,
+      carta:
+        'heroe' in m ? (
+          <CartaHeroe heroe={m.heroe} habilidades={habilidades} variante="completa" movimientoFijo={movimientoFijo} />
+        ) : (
+          <CartaAliado aliado={m.aliado} variante="completa" />
+        ),
+    }
+  })
   const enJuego: Ficha[] = (p.monstruos ?? []).flatMap((m) => {
     const datos = monstruos[m.monstruo]
     return datos
@@ -462,8 +490,6 @@ export function JugarPage() {
             </details>
           )}
 
-          <PanelInventario partida={p} miembros={miembros} equipo={equipo} hacer={hacer} contexto={contexto} />
-
           <section className="zona" aria-labelledby="zona-titulo">
             <p className="zona-etiqueta">Dónde estáis</p>
             <h2 id="zona-titulo">{nombreZona(zona)}</h2>
@@ -572,6 +598,124 @@ export function JugarPage() {
             !paso && (
               <section className="acciones" aria-labelledby="acciones-titulo">
                 <h2 id="acciones-titulo">Qué podéis hacer</h2>
+
+                <div className="acciones-heroes" aria-label="Acciones por héroe">
+                  {miembros.map((m) => {
+                    const ficha = grupo.find((f) => f.clave === m.clave)
+                    const nombre = 'heroe' in m ? m.heroe.nombre : m.aliado.nombre
+                    const puedeActuar = (p.vidas[m.clave] ?? m.cuerpo) > 0
+                    const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
+                    const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
+                    const inv = p.inventario?.[m.clave]
+                    const equipoDisponible = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? [])]
+                    const usandoEquipo = accionMiembro?.clave === m.clave && accionMiembro.tipo === 'equipo'
+                    const robandoTesoro = accionMiembro?.clave === m.clave && accionMiembro.tipo === 'tesoro'
+                    const encontrandoEquipo = accionMiembro?.clave === m.clave && accionMiembro.tipo === 'encontrado'
+                    const equipoSeleccionado = equipoAUsar || equipoDisponible[0] || ''
+                    const encontradoSeleccionado = equipoEncontrado || opcionesEquipoEncontrado[0]?.id || ''
+                    return (
+                      <article key={m.clave} className="acciones-heroe">
+                        <span className="acciones-heroe-cabecera">
+                          {ficha?.retrato ? <img src={ficha.retrato} alt="" /> : <span className="miembro-iniciales">{nombre.slice(0, 2)}</span>}
+                          <strong>{nombre}</strong>
+                        </span>
+                        <span className="fila-botones">
+                          <button type="button" className="button mini" disabled={!puedeActuar} onClick={() => setAtaque({ atacante: m.clave })}>
+                            Atacar
+                          </button>
+                          <button type="button" className="button mini secondary" disabled={!puedeBuscarTrampasHeroe} onClick={() => hacer((a) => buscarTrampas(a, contexto))}>
+                            Buscar trampas
+                          </button>
+                          <button type="button" className="button mini secondary" disabled={!puedeRobarTesoro} onClick={() => setAccionMiembro({ clave: m.clave, tipo: 'tesoro' })}>
+                            Robar tesoro
+                          </button>
+                          <button
+                            type="button"
+                            className="button mini secondary"
+                            disabled={!puedeActuar || !equipoDisponible.length}
+                            onClick={() => {
+                              setEquipoAUsar(equipoDisponible[0] || '')
+                              setAccionMiembro({ clave: m.clave, tipo: 'equipo' })
+                            }}
+                          >
+                            Usar equipo
+                          </button>
+                          <button
+                            type="button"
+                            className="button mini secondary"
+                            disabled={!puedeActuar || !opcionesEquipoEncontrado.length}
+                            onClick={() => {
+                              setEquipoEncontrado(opcionesEquipoEncontrado[0]?.id || '')
+                              setAccionMiembro({ clave: m.clave, tipo: 'encontrado' })
+                            }}
+                          >
+                            Equipo encontrado
+                          </button>
+                        </span>
+                        {robandoTesoro && (
+                          <div className="acciones-heroe-panel">
+                            <p className="nota">Roba la siguiente carta del Mazo de Tesoros para {nombre}.</p>
+                            <button
+                              type="button"
+                              className="button mini"
+                              onClick={() => {
+                                hacer((a) => robarTesoro(a, contexto, m.clave))
+                                setAccionMiembro(null)
+                              }}
+                            >
+                              Robar carta de tesoro
+                            </button>
+                          </div>
+                        )}
+                        {usandoEquipo && (
+                          <div className="acciones-heroe-panel">
+                            <select value={equipoSeleccionado} onChange={(e) => setEquipoAUsar(e.target.value)}>
+                              {equipoDisponible.map((id, i) => (
+                                <option key={`${id}-${i}`} value={id}>
+                                  {nombreItem(equipo, id)}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="button mini"
+                              disabled={!equipoSeleccionado}
+                              onClick={() => {
+                                hacer((a) => perderEquipo(a, m.clave, equipoSeleccionado))
+                                setAccionMiembro(null)
+                              }}
+                            >
+                              Consumir equipo
+                            </button>
+                          </div>
+                        )}
+                        {encontrandoEquipo && (
+                          <div className="acciones-heroe-panel">
+                            <select value={encontradoSeleccionado} onChange={(e) => setEquipoEncontrado(e.target.value)}>
+                              {opcionesEquipoEncontrado.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.nombre}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="button mini"
+                              disabled={!encontradoSeleccionado}
+                              onClick={() => {
+                                const item = opcionesEquipoEncontrado.find((item) => item.id === encontradoSeleccionado)
+                                if (item) hacer((a) => anadirItem(a, m.clave, item.id, item.tipo))
+                                setAccionMiembro(null)
+                              }}
+                            >
+                              Anotar en inventario
+                            </button>
+                          </div>
+                        )}
+                      </article>
+                    )
+                  })}
+                </div>
 
                 {p.hayMonstruos && zona.tipo !== 'inicial' && (
                   <p className="aviso-partida">
@@ -696,11 +840,6 @@ export function JugarPage() {
                           <button type="button" className="button secondary" onClick={() => hacer((a) => moverse(a, contexto, !movimientoFijo))}>
                             {movimientoFijo ? `Dado de trampa al moverse (${p.dadoTrampa})` : `Moverse (${DADOS_MOVIMIENTO})`}
                           </button>
-                          {puedeCaerEnTrampa(zona) && !p.hayMonstruos && (
-                            <button type="button" className="button secondary" onClick={() => hacer((a) => buscarTrampas(a, contexto))}>
-                              Buscar trampas
-                            </button>
-                          )}
                         </div>
                       </div>
                     )}

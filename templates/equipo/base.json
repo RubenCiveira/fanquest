@@ -524,6 +524,14 @@
       "efecto": "Al tomarla, recuperas 4 Puntos de Cuerpo perdidos previamente."
     },
     {
+      "id": "pocima-curativa",
+      "nombre": "Pócima Curativa",
+      "rareza": "tesoro",
+      "consumible": true,
+      "comprable": false,
+      "efecto": "Objeto encontrado durante la aventura. Resuelve su efecto leyendo la carta o evento que la concedió."
+    },
+    {
       "id": "pocima-de-restauracion",
       "nombre": "Pócima de Restauración",
       "rareza": "comun",
@@ -714,6 +722,41 @@
       "vendible": false,
       "intercambiable": false,
       "efecto": "Una vez equipada, es imposible quitársela. No penaliza el movimiento ni el lanzamiento de hechizos."
+    },
+    {
+      "id": "arcano-magico-azul",
+      "nombre": "Arcano Mágico Azul",
+      "origen": "sucesos",
+      "tipo": "arcano",
+      "efecto": "Objeto encontrado durante la aventura. Anótalo para resolver eventos que pidan Arcanos Mágicos."
+    },
+    {
+      "id": "arcano-magico-blanco",
+      "nombre": "Arcano Mágico Blanco",
+      "origen": "sucesos",
+      "tipo": "arcano",
+      "efecto": "Objeto encontrado durante la aventura. Anótalo para resolver eventos que pidan Arcanos Mágicos."
+    },
+    {
+      "id": "arcano-magico-negro",
+      "nombre": "Arcano Mágico Negro",
+      "origen": "sucesos",
+      "tipo": "arcano",
+      "efecto": "Objeto encontrado durante la aventura. Anótalo para resolver eventos que pidan Arcanos Mágicos."
+    },
+    {
+      "id": "arcano-magico-rojo",
+      "nombre": "Arcano Mágico Rojo",
+      "origen": "sucesos",
+      "tipo": "arcano",
+      "efecto": "Objeto encontrado durante la aventura. Anótalo para resolver eventos que pidan Arcanos Mágicos."
+    },
+    {
+      "id": "arcano-magico-verde",
+      "nombre": "Arcano Mágico Verde",
+      "origen": "sucesos",
+      "tipo": "arcano",
+      "efecto": "Objeto encontrado durante la aventura. Anótalo para resolver eventos que pidan Arcanos Mágicos."
     }
   ],
   "tablas": {

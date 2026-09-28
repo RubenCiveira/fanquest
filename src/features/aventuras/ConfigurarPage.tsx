@@ -7,6 +7,7 @@ import { registrarEvento } from '../../lib/matomo'
 import { DADOS_MOVIMIENTO } from '../../lib/personajes'
 import { PanelAliados } from './components/PanelAliados'
 import { PanelHeroes } from './components/PanelHeroes'
+import { PanelHechizos } from './components/PanelHechizos'
 import { PanelMazo } from './components/PanelMazo'
 import { PanelMonstruos } from './components/PanelMonstruos'
 import { PasosAsistente } from './components/PasosAsistente'
@@ -153,6 +154,12 @@ export function ConfigurarPage() {
                 ? 'El PNJ de esta misión os acompaña desde el principio: añade su perfil.'
                 : 'Esta misión tiene un PNJ que puede unirse al grupo si lo encontráis: añade su perfil entonces.')
             }
+          />
+          <PanelHechizos
+            heroes={heroes.filter((h) => grupo.includes(h.id))}
+            mazo={mazos.hechizos}
+            seleccion={config.hechizos ?? {}}
+            onCambiar={asistente.cambiarHechizosHeroe}
           />
           <button type="button" className="button" disabled={!grupo.length} onClick={asistente.avanzar}>
             Siguiente: {TITULO_PASO.mazos}

@@ -8,6 +8,8 @@ import {
   type Modo,
 } from '../config/mazos'
 import type { CartaMazo, IdMazo, Mazo, Mazos } from '../../../lib/mazos'
+import type { Heroe } from '../../../lib/personajes'
+import { hechizosInicialesHeroe } from './hechizos'
 import type { SeleccionMonstruos } from './monstruos'
 
 /** Carta apartada por una regla especial y la que ocupa su lugar */
@@ -44,6 +46,8 @@ export type Configuracion = {
   reglas?: Reglas
   /** Ids del grupo de héroes (las aventuras antiguas no lo tienen) */
   heroes?: string[]
+  /** Ids de cartas de `templates/mazos/hechizos` que lleva cada héroe */
+  hechizos?: Record<string, string[]>
   /** Aliados que acompañan al grupo, con `claveAliado` */
   aliados?: string[]
   /** Monstruos elegidos; sin dato, la propuesta de la misión */
@@ -254,11 +258,21 @@ const alternar = (lista: string[], id: string) =>
  * Añade o quita un héroe del grupo; con el grupo completo no añade. Los
  * monstruos vuelven a la propuesta, que depende de cuántos héroes hay.
  */
-export function alternarHeroe(c: Configuracion, id: string): Configuracion {
+export function alternarHeroe(c: Configuracion, id: string, heroes: Heroe[] = [], hechizos?: Mazo): Configuracion {
   const grupo = c.heroes ?? []
-  return grupo.includes(id) || grupo.length < MAX_HEROES
-    ? { ...c, heroes: alternar(grupo, id), monstruos: undefined }
-    : c
+  if (grupo.includes(id)) {
+    const { [id]: _quitado, ...resto } = c.hechizos ?? {}
+    return { ...c, heroes: alternar(grupo, id), hechizos: resto, monstruos: undefined }
+  }
+  if (grupo.length >= MAX_HEROES) return c
+  const heroe = heroes.find((h) => h.id === id)
+  const iniciales = heroe && hechizos ? hechizosInicialesHeroe(heroe, hechizos) : []
+  return {
+    ...c,
+    heroes: alternar(grupo, id),
+    hechizos: iniciales.length ? { ...c.hechizos, [id]: iniciales } : c.hechizos,
+    monstruos: undefined,
+  }
 }
 
 /** Un aliado se identifica por su grupo (`templates/aliados/<grupo>.json`) y su id */

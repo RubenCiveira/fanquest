@@ -16,7 +16,7 @@ import {
 } from './preparacion'
 
 /** Configuración de la misión en edición, guardada en cada cambio */
-export function useConfiguracion({ aventura, configuracion, mazos }: DatosConfiguracion) {
+export function useConfiguracion({ aventura, configuracion, mazos, heroes }: DatosConfiguracion) {
   const [config, setConfig] = useState(configuracion)
 
   const guardar = (nueva: Configuracion) => {
@@ -33,7 +33,9 @@ export function useConfiguracion({ aventura, configuracion, mazos }: DatosConfig
       guardar({ ...config, mazos: { ...config.mazos, [id]: seleccion }, barajado: undefined }),
     cambiarModo: (modo: Modo) => guardar({ ...config, modo, barajado: undefined }),
     cambiarReglas: (reglas: Reglas) => guardar({ ...config, reglas }),
-    alternarHeroe: (id: string) => guardar(alternarHeroe(config, id)),
+    alternarHeroe: (id: string) => guardar(alternarHeroe(config, id, heroes, mazos.hechizos)),
+    cambiarHechizosHeroe: (id: string, hechizos: string[]) =>
+      guardar({ ...config, hechizos: { ...config.hechizos, [id]: hechizos }, barajado: undefined }),
     alternarAliado: (clave: string) => guardar(alternarAliado(config, clave)),
     /** Sin selección se vuelve a la propuesta de la misión */
     cambiarMonstruos: (monstruos?: SeleccionMonstruos) => guardar({ ...config, monstruos }),

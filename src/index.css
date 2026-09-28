@@ -1086,6 +1086,33 @@ input[type='checkbox'] {
   color: var(--vitela);
 }
 
+.naipes-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 4px;
+  background: rgb(246 238 217 / 0.6);
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.naipes-tabs button {
+  flex: 1;
+  padding: 6px 10px;
+  font-family: var(--versalitas);
+  font-weight: 700;
+  color: var(--grafito);
+  background: transparent;
+  border: 0;
+  border-radius: var(--boceto-1);
+  cursor: pointer;
+}
+
+.naipes-tabs button.activo {
+  color: var(--vitela);
+  background: var(--rubrica);
+}
+
 /* doble clase: debe ganar a .dialog, que va después */
 .dialog.dialog-carta {
   width: fit-content;
@@ -2023,33 +2050,62 @@ input[type='checkbox'] {
   cursor: pointer;
 }
 
-.inventario-panel {
-  padding: 10px 12px;
-  background: rgb(246 238 217 / 0.6);
-  border: 1.5px solid var(--trazo-suave);
-  border-radius: var(--boceto-2);
-}
-
-.inventario-panel summary {
-  font-family: var(--versalitas);
-  font-weight: 700;
-  color: var(--grafito);
-  cursor: pointer;
-}
-
-.inventario-lista {
-  display: grid;
-  gap: 12px;
-  margin-top: 12px;
-}
-
 .inventario-heroe {
   display: grid;
   gap: 10px;
+  margin-top: 12px;
   padding: 10px;
   background: var(--vitela);
   border: 1px solid var(--trazo-suave);
   border-radius: var(--boceto-1);
+}
+
+.acciones-heroes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.acciones-heroe {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: rgb(246 238 217 / 0.6);
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.acciones-heroe-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--versalitas);
+}
+
+.acciones-heroe-cabecera img,
+.acciones-heroe-cabecera .miembro-iniciales {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.acciones-heroe-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--trazo-suave);
+}
+
+.acciones-heroe-panel p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.acciones-heroe-panel select {
+  max-width: 100%;
 }
 
 .inventario-heroe header,
@@ -2085,6 +2141,88 @@ input[type='checkbox'] {
 
 .inventario-anadir select {
   max-width: 100%;
+}
+
+.hechizos-config {
+  display: grid;
+  gap: 14px;
+}
+
+.hechizos-heroe {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: rgb(246 238 217 / 0.6);
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.hechizos-heroe h3,
+.hechizos-grupo {
+  margin: 0;
+}
+
+.hechizos-heroe h3 {
+  font-family: var(--versalitas);
+  color: var(--grafito);
+}
+
+.hechizos-grupo {
+  padding: 10px;
+  border: 1px dashed var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.hechizos-grupo legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  width: 100%;
+  padding: 0 0 8px;
+  font-family: var(--versalitas);
+  color: var(--grafito);
+}
+
+.hechizos-grupo legend span {
+  flex: 1 1 14rem;
+}
+
+.hechizos-grupo small,
+.hechizos-lista small {
+  display: block;
+  font-family: var(--texto);
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--tinta-suave);
+}
+
+.hechizos-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.hechizos-lista label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  background: var(--vitela);
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.hechizos-lista input {
+  margin-top: 4px;
+}
+
+.hechizos-naipes {
+  align-items: stretch;
+}
+
+.hechizos-naipes .carta-completa {
+  height: auto;
 }
 
 .button.mini {

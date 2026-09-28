@@ -12,6 +12,8 @@ export type Ficha = {
   /** Nombre corto para distinguir miniaturas iguales */
   alias?: string
   carta: ReactNode
+  inventario?: ReactNode
+  hechizos?: ReactNode
 }
 
 /** Distancia a partir de la que pulsar «Atacar» pasa a ser arrastrarlo */
@@ -56,6 +58,7 @@ function enemigoEn(x: number, y: number, bando: string): HTMLElement | undefined
 
 export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', bando, onAtacar }: Props) {
   const [abierta, setAbierta] = useState<string | null>(null)
+  const [pestana, setPestana] = useState<'ficha' | 'inventario' | 'hechizos'>('ficha')
   const ficha = fichas.find((f) => f.clave === abierta)
   const barra = useRef<HTMLElement>(null)
   const lista = useRef<HTMLDivElement>(null)
@@ -137,7 +140,10 @@ export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', ba
           <button
             type="button"
             className={f.pc ? 'miembro' : 'miembro caido'}
-            onClick={() => setAbierta(f.clave)}
+            onClick={() => {
+              setAbierta(f.clave)
+              setPestana('ficha')
+            }}
             aria-label={`${f.alias ? `${f.alias}, ` : ''}${f.nombre}: ${f.pc} de ${f.cuerpo} PC`}
           >
             {f.alias && <span className="miembro-alias">{f.alias}</span>}
@@ -208,7 +214,28 @@ export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', ba
             </>
           }
         >
-          {ficha.carta}
+          {ficha.inventario || ficha.hechizos ? (
+            <>
+              <div className="naipes-tabs" role="tablist" aria-label={`Contenido de ${ficha.nombre}`}>
+                <button type="button" role="tab" aria-selected={pestana === 'ficha'} className={pestana === 'ficha' ? 'activo' : undefined} onClick={() => setPestana('ficha')}>
+                  Ficha
+                </button>
+                {ficha.inventario && (
+                  <button type="button" role="tab" aria-selected={pestana === 'inventario'} className={pestana === 'inventario' ? 'activo' : undefined} onClick={() => setPestana('inventario')}>
+                    Inventario
+                  </button>
+                )}
+                {ficha.hechizos && (
+                  <button type="button" role="tab" aria-selected={pestana === 'hechizos'} className={pestana === 'hechizos' ? 'activo' : undefined} onClick={() => setPestana('hechizos')}>
+                    Hechizos
+                  </button>
+                )}
+              </div>
+              {pestana === 'ficha' ? ficha.carta : pestana === 'inventario' ? ficha.inventario : ficha.hechizos}
+            </>
+          ) : (
+            ficha.carta
+          )}
         </NaipeDialog>
       )}
 
