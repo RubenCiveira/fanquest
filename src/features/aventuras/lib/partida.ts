@@ -1050,3 +1050,7 @@ export function monstruosAlAzar(p: Partida, ctx: Contexto, categoria: number, ca
     valores.map((v) => ({ opciones: [candidatos[v - 1]], avanzado: false, cantidad: 1 })),
   )
 }
+
+export function anadirMonstruo(p: Partida, ctx: Contexto, monstruo: string, avanzado: boolean): Partida {
+  return aparecen(p, ctx, [{ opciones: [monstruo], avanzado, cantidad: 1 }])
+}

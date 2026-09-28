@@ -12,6 +12,7 @@ import {
   aparecen,
   apariciones,
   anadirPuerta,
+  anadirMonstruo,
   candidatosDeCategoria,
   monstruosAlAzar,
   cambiarSinPuertas,
@@ -345,6 +346,11 @@ describe('monstruos en juego', () => {
     const ctx = { ...contexto(), seleccion: { 'horror-rosa': 3 } }
     const p = aparecen(partida(ctx), ctx, [{ opciones: ['desangrador-de-khorne', 'horror-rosa'], avanzado: false, cantidad: 1 }])
     expect(p.monstruos?.map((m) => m.monstruo)).toEqual(['horror-rosa'])
+  })
+
+  it('añade un monstruo escogido manualmente', () => {
+    const p = anadirMonstruo(partida(contexto()), contexto(), 'goblin', false)
+    expect(p.monstruos?.map((m) => m.monstruo)).toEqual(['goblin'])
   })
 
   it('a 0 PC el monstruo muere y, sin monstruos, ya no hay monstruos en juego', () => {

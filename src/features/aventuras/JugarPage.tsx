@@ -19,7 +19,7 @@ import { perdidas, recuentoRecarga } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
 import { ExportarDialog } from './components/ExportarAventura'
-import { MonstruosAlAzarDialog } from './components/MonstruosAlAzarDialog'
+import { MonstruosDialog } from './components/MonstruosAlAzarDialog'
 import { TablaTiradaDialog, type TiradaEnTabla } from './components/TablaTiradaDialog'
 import { SALA_INICIAL } from './config/partida'
 import { opciones, puntosCuerpoJefe } from './lib/monstruos'
@@ -28,6 +28,7 @@ import {
   activarEfecto,
   alternarEquipado,
   anadirItem,
+  anadirMonstruo,
   atrezoColocado,
   avanzar,
   botinDeTesoro,
@@ -117,6 +118,7 @@ type DadoEfecto = 'D4' | 'D6' | 'D8' | 'D10' | 'D12' | 'D20' | 'DC'
 type TiradaEfecto = { clave: string; cantidad: number; dado: DadoEfecto; resultado?: string[] }
 
 const DADOS_EFECTO: DadoEfecto[] = ['D4', 'D6', 'D8', 'D10', 'D12', 'D20', 'DC']
+const AVISO_MONSTRUOS_ACTIVOS = 'No se pueden ejecutar estas acciones habiendo un monstruo activo.'
 const carasDado = (dado: DadoEfecto) => (dado === 'DC' ? 6 : Number(dado.slice(1)))
 const etiquetaMultilinea = (texto: string) =>
   texto
@@ -300,11 +302,13 @@ export function JugarPage() {
   const [verReglas, setVerReglas] = useState(false)
   const [terminar, setTerminar] = useState<FinPartida | null>(null)
   const [tabla, setTabla] = useState<TiradaEnTabla | null>(null)
-  const [alAzar, setAlAzar] = useState(false)
+  const [anadirMonstruos, setAnadirMonstruos] = useState(false)
   const [exportar, setExportar] = useState(false)
   const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
   const [miembroAcciones, setMiembroAcciones] = useState<string | null>(null)
   const [accionMiembro, setAccionMiembro] = useState<{ clave: string; tipo: 'tesoro' | 'equipo' | 'encontrado' } | null>(null)
+  const [volverAccionesMiembro, setVolverAccionesMiembro] = useState<string | null>(null)
+  const [avisoAccion, setAvisoAccion] = useState<string | null>(null)
   const [equipoAUsar, setEquipoAUsar] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState('')
   const [tiradaEfecto, setTiradaEfecto] = useState<TiradaEfecto | null>(null)
@@ -341,13 +345,16 @@ export function JugarPage() {
   ]
     .filter((item, i, todos) => todos.findIndex((otro) => otro.id === item.id) === i)
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  const busquedaEquipoEncontrado = equipoEncontrado.trim().toLocaleLowerCase('es')
+  const sugerenciasEquipoEncontrado = opcionesEquipoEncontrado
+    .filter((item) => !busquedaEquipoEncontrado || item.id.includes(busquedaEquipoEncontrado) || item.nombre.toLocaleLowerCase('es').includes(busquedaEquipoEncontrado))
+    .slice(0, 8)
   const [errante] = opciones(mision.faccion.errante)
   const grupo: Ficha[] = miembros.map((m) => {
     const hechizos = 'heroe' in m ? cartasHechizosSeleccionadas(m.heroe, mazos.hechizos, aventura.configuracion.hechizos?.[m.clave]) : []
     const nombre = m.nombre ?? ('heroe' in m ? m.heroe.nombre : m.aliado.nombre)
     const puedeActuar = (p.vidas[m.clave] ?? m.cuerpo) > 0
-    const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
-    const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
+    const puedeCogerCartaTesoro = zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
     const inv = p.inventario?.[m.clave]
     const efectosActivos = p.efectosActivos?.[m.clave] ?? []
     const reglasDescargadas = p.reglasDescargadas?.[m.clave] ?? []
@@ -468,7 +475,7 @@ export function JugarPage() {
         </div>
       ),
       acciones: (
-        <div className="acciones-ficha-personaje">
+        <div className="acciones-ficha-personaje acciones-rueda">
           <button type="button" className="button" disabled={!puedeActuar} onClick={() => setAtaque({ atacante: m.clave })}>
             <Icono nombre="espada" />
             Atacar
@@ -477,22 +484,32 @@ export function JugarPage() {
             <Icono nombre="dado" />
             Tirar dados
           </button>
-          <button type="button" className="button secondary" disabled={!puedeBuscarTrampasHeroe} onClick={() => hacer((a) => buscarTrampas(a, contexto))}>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!puedeActuar || (!p.hayMonstruos && !puedeCaerEnTrampa(zona))}
+            onClick={() => (p.hayMonstruos ? setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS) : hacer((a) => buscarTrampas(a, contexto)))}
+          >
             Buscar trampas
           </button>
-          <button type="button" className="button secondary" disabled={!puedeRobarTesoro} onClick={() => setAccionMiembro({ clave: m.clave, tipo: 'tesoro' })}>
-            Robar tesoro
+          <button
+            type="button"
+            className="button secondary"
+            disabled={!puedeActuar || (!p.hayMonstruos && !puedeCogerCartaTesoro)}
+            onClick={() => (p.hayMonstruos ? setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS) : setAccionMiembro({ clave: m.clave, tipo: 'tesoro' }))}
+          >
+            Coger carta de tesoro
           </button>
           <button
             type="button"
             className="button secondary"
             disabled={!puedeActuar || !equipoDisponible.length}
             onClick={() => {
-              setEquipoAUsar(equipoDisponible[0] || '')
+              setEquipoAUsar(equipoDisponible[0] ? nombreItem(equipo, equipoDisponible[0]) : '')
               setAccionMiembro({ clave: m.clave, tipo: 'equipo' })
             }}
           >
-            Usar equipo
+            Consumir equipo
           </button>
           <button
             type="button"
@@ -503,7 +520,7 @@ export function JugarPage() {
               setAccionMiembro({ clave: m.clave, tipo: 'encontrado' })
             }}
           >
-            Equipo encontrado
+            Coger equipo específico
           </button>
         </div>
       ),
@@ -563,11 +580,37 @@ export function JugarPage() {
   const nombreMiembro = (m: Miembro) => ('heroe' in m ? m.heroe.nombre : m.aliado.nombre)
   const inventarioSubaccion = miembroEnSubaccion ? p.inventario?.[miembroEnSubaccion.clave] : undefined
   const equipoSubaccion = [...(inventarioSubaccion?.equipo ?? []), ...(inventarioSubaccion?.artefactos ?? [])]
-  const equipoSeleccionado = equipoAUsar || equipoSubaccion[0] || ''
-  const encontradoSeleccionado = equipoEncontrado || opcionesEquipoEncontrado[0]?.id || ''
+  const busquedaEquipoAUsar = equipoAUsar.trim().toLocaleLowerCase('es')
+  const sugerenciasEquipoAUsar = equipoSubaccion
+    .map((id) => ({ id, nombre: nombreItem(equipo, id) }))
+    .filter((item) => !busquedaEquipoAUsar || item.id.includes(busquedaEquipoAUsar) || item.nombre.toLocaleLowerCase('es').includes(busquedaEquipoAUsar))
+    .slice(0, 8)
+  const equipoSeleccionado = equipoSubaccion.find((id) => id === equipoAUsar || nombreItem(equipo, id) === equipoAUsar) ?? ''
+  const encontradoSeleccionado = opcionesEquipoEncontrado.find((item) => item.id === equipoEncontrado || item.nombre === equipoEncontrado)?.id ?? ''
   const cartaTesoroRobado = tesoroRobado ? carta(mazos.tesoros, tesoroRobado.id) : undefined
   const botinTesoroRobado = tesoroRobado ? botinDeTesoro(contexto, tesoroRobado.id) : undefined
   const botinActual = botinSuelo.find((b) => b.id === botinElegido?.id)
+  const volverADialogoAcciones = () => {
+    const clave = volverAccionesMiembro
+    setVolverAccionesMiembro(null)
+    if (clave) setMiembroAcciones(clave)
+  }
+  const cerrarAccionMiembro = () => {
+    setAccionMiembro(null)
+    volverADialogoAcciones()
+  }
+  const cerrarTiradaEfecto = () => {
+    setTiradaEfecto(null)
+    volverADialogoAcciones()
+  }
+  const cerrarAtaque = () => {
+    setAtaque(null)
+    volverADialogoAcciones()
+  }
+  const finalizarAccionMiembro = () => {
+    setAccionMiembro(null)
+    setVolverAccionesMiembro(null)
+  }
 
   return (
     <>
@@ -985,9 +1028,9 @@ export function JugarPage() {
                     {zona.tipo !== 'pasillo' && (
                       <div className="grupo-acciones">
                         <p className="nota">Si la sala o una regla especial pide monstruos de una categoría.</p>
-                        <button type="button" className="button secondary" onClick={() => setAlAzar(true)}>
+                        <button type="button" className="button secondary" onClick={() => setAnadirMonstruos(true)}>
                           <Icono nombre="dado" />
-                          Añadir monstruos al azar
+                          Añadir monstruos
                         </button>
                       </div>
                     )}
@@ -1038,20 +1081,26 @@ export function JugarPage() {
       </div>
 
       {miembroEnAcciones && (
-        <AccionDialog titulo={`Acciones de ${nombreMiembro(miembroEnAcciones)}`} onCerrar={() => setMiembroAcciones(null)}>
+        <AccionDialog
+          titulo={`Acciones de ${nombreMiembro(miembroEnAcciones)}`}
+          onCerrar={() => {
+            setVolverAccionesMiembro(null)
+            setMiembroAcciones(null)
+          }}
+        >
           {(() => {
             const puedeActuar = (p.vidas[miembroEnAcciones.clave] ?? miembroEnAcciones.cuerpo) > 0
-            const puedeRobarTesoro = puedeActuar && !p.hayMonstruos && zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
-            const puedeBuscarTrampasHeroe = puedeActuar && !p.hayMonstruos && puedeCaerEnTrampa(zona)
+            const puedeCogerCartaTesoro = zona.tipo !== 'inicial' && zona.tipo !== 'pasillo' && Boolean(p.mazos.tesoros?.length)
             const inv = p.inventario?.[miembroEnAcciones.clave]
             const equipoDisponible = [...(inv?.equipo ?? []), ...(inv?.artefactos ?? [])]
             return (
-              <div className="acciones-dialogo">
+              <div className="acciones-dialogo acciones-rueda">
                 <button
                   type="button"
                   className="button"
                   disabled={!puedeActuar}
                   onClick={() => {
+                    setVolverAccionesMiembro(miembroEnAcciones.clave)
                     setAtaque({ atacante: miembroEnAcciones.clave })
                     setMiembroAcciones(null)
                   }}
@@ -1063,6 +1112,7 @@ export function JugarPage() {
                   className="button secondary"
                   disabled={!puedeActuar}
                   onClick={() => {
+                    setVolverAccionesMiembro(miembroEnAcciones.clave)
                     setTiradaEfecto({ clave: miembroEnAcciones.clave, cantidad: 1, dado: 'D6' })
                     setMiembroAcciones(null)
                   }}
@@ -1073,8 +1123,12 @@ export function JugarPage() {
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={!puedeBuscarTrampasHeroe}
+                  disabled={!puedeActuar || (!p.hayMonstruos && !puedeCaerEnTrampa(zona))}
                   onClick={() => {
+                    if (p.hayMonstruos) {
+                      setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS)
+                      return
+                    }
                     hacer((a) => buscarTrampas(a, contexto))
                     setMiembroAcciones(null)
                   }}
@@ -1084,37 +1138,44 @@ export function JugarPage() {
                 <button
                   type="button"
                   className="button secondary"
-                  disabled={!puedeRobarTesoro}
+                  disabled={!puedeActuar || (!p.hayMonstruos && !puedeCogerCartaTesoro)}
                   onClick={() => {
+                    if (p.hayMonstruos) {
+                      setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS)
+                      return
+                    }
+                    setVolverAccionesMiembro(miembroEnAcciones.clave)
                     setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'tesoro' })
                     setMiembroAcciones(null)
                   }}
                 >
-                  Robar tesoro
+                  Coger carta de tesoro
                 </button>
                 <button
                   type="button"
                   className="button secondary"
                   disabled={!puedeActuar || !equipoDisponible.length}
                   onClick={() => {
-                    setEquipoAUsar(equipoDisponible[0] || '')
+                    setVolverAccionesMiembro(miembroEnAcciones.clave)
+                    setEquipoAUsar(equipoDisponible[0] ? nombreItem(equipo, equipoDisponible[0]) : '')
                     setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'equipo' })
                     setMiembroAcciones(null)
                   }}
                 >
-                  Usar equipo
+                  Consumir equipo
                 </button>
                 <button
                   type="button"
                   className="button secondary"
                   disabled={!puedeActuar || !opcionesEquipoEncontrado.length}
                   onClick={() => {
+                    setVolverAccionesMiembro(miembroEnAcciones.clave)
                     setEquipoEncontrado(opcionesEquipoEncontrado[0]?.id || '')
                     setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'encontrado' })
                     setMiembroAcciones(null)
                   }}
                 >
-                  Equipo encontrado
+                  Coger equipo específico
                 </button>
               </div>
             )
@@ -1122,8 +1183,19 @@ export function JugarPage() {
         </AccionDialog>
       )}
 
+      {avisoAccion && (
+        <AccionDialog titulo="Acción no disponible" onCerrar={() => setAvisoAccion(null)}>
+          <div className="acciones-dialogo">
+            <p className="aviso-partida">{avisoAccion}</p>
+            <button type="button" className="button" onClick={() => setAvisoAccion(null)}>
+              Entendido
+            </button>
+          </div>
+        </AccionDialog>
+      )}
+
       {miembroEnSubaccion && accionMiembro?.tipo === 'tesoro' && (
-        <AccionDialog titulo={`Robar tesoro: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={() => setAccionMiembro(null)}>
+        <AccionDialog titulo={`Robar tesoro: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={cerrarAccionMiembro}>
           <div className="acciones-dialogo">
             <p className="nota">Roba la siguiente carta del Mazo de Tesoros para {nombreMiembro(miembroEnSubaccion)}.</p>
             <button
@@ -1133,7 +1205,7 @@ export function JugarPage() {
                 const [id, nueva] = robarTesoro(p, contexto)
                 hacer(() => nueva)
                 if (id) setTesoroRobado({ clave: miembroEnSubaccion.clave, id })
-                setAccionMiembro(null)
+                finalizarAccionMiembro()
               }}
             >
               Robar carta de tesoro
@@ -1143,22 +1215,33 @@ export function JugarPage() {
       )}
 
       {miembroEnSubaccion && accionMiembro?.tipo === 'equipo' && (
-        <AccionDialog titulo={`Usar equipo: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={() => setAccionMiembro(null)}>
+        <AccionDialog titulo={`Consumir equipo: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={cerrarAccionMiembro}>
           <div className="acciones-dialogo">
-            <select value={equipoSeleccionado} onChange={(e) => setEquipoAUsar(e.target.value)}>
-              {equipoSubaccion.map((id, i) => (
-                <option key={`${id}-${i}`} value={id}>
-                  {nombreItem(equipo, id)}
-                </option>
+            <label className="campo equipo-buscador">
+              <span>Equipo</span>
+              <input type="search" value={equipoAUsar} onChange={(e) => setEquipoAUsar(e.target.value)} placeholder="Busca en su inventario…" autoComplete="off" />
+            </label>
+            <div className="equipo-sugerencias" role="listbox" aria-label="Equipo del personaje">
+              {sugerenciasEquipoAUsar.map((item, i) => (
+                <button
+                  key={`${item.id}-${i}`}
+                  type="button"
+                  className={item.id === equipoSeleccionado ? 'equipo-opcion elegida' : 'equipo-opcion'}
+                  onClick={() => setEquipoAUsar(item.nombre)}
+                >
+                  <strong>{item.nombre}</strong>
+                  <span>{item.id}</span>
+                </button>
               ))}
-            </select>
+              {!sugerenciasEquipoAUsar.length && <p className="nota">No hay equipo que coincida con esa búsqueda.</p>}
+            </div>
             <button
               type="button"
               className="button"
               disabled={!equipoSeleccionado}
               onClick={() => {
                 hacer((a) => perderEquipo(a, miembroEnSubaccion.clave, equipoSeleccionado))
-                setAccionMiembro(null)
+                finalizarAccionMiembro()
               }}
             >
               Consumir equipo
@@ -1249,15 +1332,26 @@ export function JugarPage() {
       )}
 
       {miembroEnSubaccion && accionMiembro?.tipo === 'encontrado' && (
-        <AccionDialog titulo={`Equipo encontrado: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={() => setAccionMiembro(null)}>
+        <AccionDialog titulo={`Equipo encontrado: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={cerrarAccionMiembro}>
           <div className="acciones-dialogo">
-            <select value={encontradoSeleccionado} onChange={(e) => setEquipoEncontrado(e.target.value)}>
-              {opcionesEquipoEncontrado.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nombre}
-                </option>
+            <label className="campo equipo-buscador">
+              <span>Equipo</span>
+              <input type="search" value={equipoEncontrado} onChange={(e) => setEquipoEncontrado(e.target.value)} placeholder="Poción, espada, pergamino…" autoComplete="off" />
+            </label>
+            <div className="equipo-sugerencias" role="listbox" aria-label="Equipo disponible">
+              {sugerenciasEquipoEncontrado.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={item.id === encontradoSeleccionado ? 'equipo-opcion elegida' : 'equipo-opcion'}
+                  onClick={() => setEquipoEncontrado(item.nombre)}
+                >
+                  <strong>{item.nombre}</strong>
+                  <span>{item.tipo ?? 'tesoro'} · {item.id}</span>
+                </button>
               ))}
-            </select>
+              {!sugerenciasEquipoEncontrado.length && <p className="nota">No hay equipo que coincida con esa búsqueda.</p>}
+            </div>
             <button
               type="button"
               className="button"
@@ -1265,7 +1359,7 @@ export function JugarPage() {
               onClick={() => {
                 const item = opcionesEquipoEncontrado.find((item) => item.id === encontradoSeleccionado)
                 if (item) hacer((a) => anadirItem(a, miembroEnSubaccion.clave, item.id, item.tipo))
-                setAccionMiembro(null)
+                finalizarAccionMiembro()
               }}
             >
               Anotar en inventario
@@ -1275,7 +1369,7 @@ export function JugarPage() {
       )}
 
       {miembroEnTirada && tiradaEfecto && (
-        <AccionDialog titulo={`Tirada de efecto: ${nombreMiembro(miembroEnTirada)}`} onCerrar={() => setTiradaEfecto(null)}>
+        <AccionDialog titulo={`Tirada de efecto: ${nombreMiembro(miembroEnTirada)}`} onCerrar={cerrarTiradaEfecto}>
           <div className="acciones-dialogo tirada-efecto">
             <label>
               <span>Cantidad</span>
@@ -1356,20 +1450,21 @@ export function JugarPage() {
               ),
             )
           }
-          onCerrar={() => setAtaque(null)}
+          onCerrar={cerrarAtaque}
         />
       )}
       {exportar && <ExportarDialog mision={mision} onCerrar={() => setExportar(false)} />}
-      {alAzar && (
-        <MonstruosAlAzarDialog
+      {anadirMonstruos && (
+        <MonstruosDialog
           contexto={contexto}
+          onAnadir={(monstruo, avanzado) => hacer((a) => anadirMonstruo(a, contexto, monstruo, avanzado))}
           onTirar={(categoria, cantidad) => {
             const nueva = monstruosAlAzar(p, contexto, categoria, cantidad)
             hacer(() => nueva)
             const tirada = nueva.zona.sucesos.at(-1)
             if (tirada?.tipo === 'azar') setTabla(tirada)
           }}
-          onCerrar={() => setAlAzar(false)}
+          onCerrar={() => setAnadirMonstruos(false)}
         />
       )}
       {tabla && <TablaTiradaDialog tirada={tabla} contexto={contexto} monstruos={monstruos} onCerrar={() => setTabla(null)} />}
