@@ -135,6 +135,12 @@ export type InventarioHeroe = {
   artefactos: string[]
 }
 
+export type BotinSuelo =
+  | { id: string; tipo: 'oro'; cantidad: number; origen?: { mazo: IdMazo; id: string } }
+  | { id: string; tipo: 'item'; itemId: string; categoria: keyof Omit<InventarioHeroe, 'oro' | 'equipado'>; origen?: { mazo: IdMazo; id: string } }
+
+export type BotinNuevo = Omit<Extract<BotinSuelo, { tipo: 'oro' }>, 'id'> | Omit<Extract<BotinSuelo, { tipo: 'item' }>, 'id'>
+
 export type EfectoActivo = Pick<ReglaEspecial, 'id' | 'origenId' | 'nombre' | 'descripcion' | 'ataque' | 'defensa' | 'duracion'>
 
 export type ReglaDescargada = Pick<ReglaEspecial, 'id' | 'origenId' | 'nombre' | 'descripcion' | 'recarga'>
@@ -165,6 +171,7 @@ export type Partida = {
   /** Contadores de muerte del PNJ (regla especial `contador-muerte`) */
   contadorMuerte: number
   inventario?: Record<string, InventarioHeroe>
+  suelo?: Record<number, BotinSuelo[]>
   efectosActivos?: Record<string, EfectoActivo[]>
   reglasDescargadas?: Record<string, ReglaDescargada[]>
   fin?: FinPartida
@@ -332,10 +339,6 @@ const quitarUna = (lista: string[], id: string) => {
   return i < 0 ? lista : [...lista.slice(0, i), ...lista.slice(i + 1)]
 }
 
-function conNotaInventario(p: Partida, clave: string, texto: string): Partida {
-  return anotar(p, { tipo: 'inventario', clave, texto })
-}
-
 function clasificarItem(id: string): keyof Omit<InventarioHeroe, 'oro' | 'equipado'> {
   if (id.startsWith('pergamino-')) return 'pergaminos'
   if (id.startsWith('pocima-') || id.startsWith('agua-') || id === 'antidoto') return 'pociones'
@@ -351,6 +354,32 @@ export function anadirItem(p: Partida, clave: string, id: string, tipo = clasifi
   const inventario = inventarioDe(p, clave)
   const lista = inventario[tipo]
   return guardarInventario(p, clave, { ...inventario, [tipo]: [...lista, id] })
+}
+
+const botinDe = (p: Partida, zona = p.zona.id): BotinSuelo[] => p.suelo?.[zona] ?? []
+
+const conBotin = (p: Partida, zona: number, botin: BotinSuelo[]): Partida => ({
+  ...p,
+  suelo: { ...p.suelo, [zona]: botin },
+})
+
+const idBotin = (p: Partida) => `botin-${p.zona.id}-${Object.values(p.suelo ?? {}).flat().length + 1}`
+
+export const botinDeZona = (p: Partida): BotinSuelo[] => botinDe(p)
+
+export function dejarBotinEnSuelo(p: Partida, botin: BotinNuevo): Partida {
+  return conBotin(p, p.zona.id, [...botinDe(p), { ...botin, id: idBotin(p) } as BotinSuelo])
+}
+
+export function consumirBotinSuelo(p: Partida, id: string): Partida {
+  return conBotin(p, p.zona.id, botinDe(p).filter((b) => b.id !== id))
+}
+
+export function cogerBotinSuelo(p: Partida, clave: string, id: string): Partida {
+  const botin = botinDe(p).find((b) => b.id === id)
+  if (!botin) return p
+  const sinBotin = consumirBotinSuelo(p, id)
+  return botin.tipo === 'oro' ? cambiarOro(sinBotin, clave, botin.cantidad) : anadirItem(sinBotin, clave, botin.itemId, botin.categoria)
 }
 
 export function usarPocion(p: Partida, clave: string, id: string): Partida {
@@ -413,19 +442,36 @@ function recargarPorCombate(p: Partida, clave: string, caras: { blancas: number;
   return restantes.length === reglas.length ? p : { ...p, reglasDescargadas: { ...p.reglasDescargadas, [clave]: restantes } }
 }
 
-export function robarTesoro(p: Partida, ctx: Contexto, clave: string): Partida {
+export function robarTesoro(p: Partida, ctx: Contexto): [string | undefined, Partida] {
   let [id, nueva] = robarPreparado(p, 'tesoros')
-  if (!id) return conNotaInventario(p, clave, 'No quedan cartas en el Mazo de Tesoros.')
+  if (!id) return [undefined, p]
   const c = carta(ctx.mazos.tesoros, id)
   if (c.reciclar) nueva = { ...nueva, mazos: { ...nueva.mazos, tesoros: barajar([...(nueva.mazos.tesoros ?? []), id]) } }
   nueva = anotar(nueva, { tipo: 'carta', mazo: 'tesoros', id })
-  if (c.oro) nueva = cambiarOro(nueva, clave, c.oro)
-  if (c.equipoId) nueva = anadirItem(nueva, clave, c.equipoId)
-  if (c.suceso) {
-    const [suceso, trasSuceso] = robarPreparado(nueva, 'sucesos')
-    nueva = suceso ? anotar(trasSuceso, { tipo: 'carta', mazo: 'sucesos', id: suceso }) : conNotaInventario(trasSuceso, clave, 'No quedan cartas en el Mazo de Sucesos.')
-  }
-  return nueva
+  return [id, nueva]
+}
+
+export function botinDeTesoro(ctx: Contexto, id: string): BotinNuevo | undefined {
+  const c = carta(ctx.mazos.tesoros, id)
+  if (c.oro) return { tipo: 'oro', cantidad: c.oro, origen: { mazo: 'tesoros', id } }
+  if (c.equipoId) return { tipo: 'item', itemId: c.equipoId, categoria: clasificarItem(c.equipoId), origen: { mazo: 'tesoros', id } }
+  return undefined
+}
+
+export function cargarTesoroEnInventario(p: Partida, ctx: Contexto, clave: string, id: string): Partida {
+  const botin = botinDeTesoro(ctx, id)
+  if (!botin) return p
+  return botin.tipo === 'oro' ? cambiarOro(p, clave, botin.cantidad) : anadirItem(p, clave, botin.itemId, botin.categoria)
+}
+
+export function dejarTesoroEnSuelo(p: Partida, ctx: Contexto, id: string): Partida {
+  const botin = botinDeTesoro(ctx, id)
+  return botin ? dejarBotinEnSuelo(p, botin) : p
+}
+
+export function robarSucesoDeTesoro(p: Partida): [string | undefined, Partida] {
+  const [suceso, nueva] = robarPreparado(p, 'sucesos')
+  return suceso ? [suceso, anotar(nueva, { tipo: 'carta', mazo: 'sucesos', id: suceso })] : [undefined, nueva]
 }
 
 /** Secuencia de exploración de lo que indica la carta */

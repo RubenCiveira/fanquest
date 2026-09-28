@@ -30,8 +30,11 @@ import {
   anadirItem,
   atrezoColocado,
   avanzar,
+  botinDeTesoro,
+  botinDeZona,
   buscarPuertasSecretas,
   buscarTrampas,
+  cargarTesoroEnInventario,
   cambiarOro,
   cambiarPeligro,
   cambiarVida,
@@ -39,6 +42,7 @@ import {
   carta,
   descargarRegla,
   disiparEfecto,
+  dejarTesoroEnSuelo,
   elegirAtrezo,
   entrar,
   entrarPorPuertaSecreta,
@@ -49,6 +53,8 @@ import {
   puertas,
   quitarPuerta,
   recargarRegla,
+  cogerBotinSuelo,
+  consumirBotinSuelo,
   secciones,
   volver,
   type Zona,
@@ -57,6 +63,7 @@ import {
   puedeCaerEnTrampa,
   reglasDeZona,
   robarTesoro,
+  robarSucesoDeTesoro,
   sePuedeTirar,
   sinMonstruos,
   estadisticasMiembro,
@@ -256,6 +263,10 @@ function descripcionItem(item: ItemEquipo | undefined) {
   return undefined
 }
 
+function nombreBotin(equipo: Parameters<typeof nombreItem>[0], botin: ReturnType<typeof botinDeZona>[number]) {
+  return botin.tipo === 'oro' ? `${botin.cantidad} mo` : nombreItem(equipo, botin.itemId)
+}
+
 function AccionesRegla({ reglas, descargadas, onActivar, onDescargar }: { reglas: ReglaEspecial[]; descargadas: string[]; onActivar: (regla: ReglaEspecial) => void; onDescargar: (regla: ReglaEspecial) => void }) {
   const manuales = reglas.filter((r) => r.disparador === 'manual')
   if (!manuales.length) return null
@@ -297,6 +308,8 @@ export function JugarPage() {
   const [equipoAUsar, setEquipoAUsar] = useState('')
   const [equipoEncontrado, setEquipoEncontrado] = useState('')
   const [tiradaEfecto, setTiradaEfecto] = useState<TiradaEfecto | null>(null)
+  const [tesoroRobado, setTesoroRobado] = useState<{ clave: string; id: string } | null>(null)
+  const [botinElegido, setBotinElegido] = useState<{ id: string; clave: string } | null>(null)
   const { zona } = p
   const mapa = secciones(p)
   const seccion = (id: number) => mapa.find((z) => z.id === id)
@@ -315,6 +328,7 @@ export function JugarPage() {
     ...atrezoColocado(zona).map((id) => ({ mazo: 'atrezo' as const, id })),
     ...(especial ? [{ mazo: 'salas-especiales' as const, id: especial }] : []),
   ].filter(({ mazo, id }, i, todas) => sePuedeTirar(carta(mazos[mazo], id)) && todas.findIndex((t) => t.id === id) === i)
+  const botinSuelo = botinDeZona(p)
   const opcionesEquipoEncontrado: { id: string; nombre: string; tipo?: 'equipo' | 'pociones' | 'pergaminos' | 'artefactos' }[] = [
     ...equipo.equipo.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'equipo' as const })),
     ...equipo.pociones.map((item) => ({ id: item.id, nombre: item.nombre, tipo: 'pociones' as const })),
@@ -551,6 +565,9 @@ export function JugarPage() {
   const equipoSubaccion = [...(inventarioSubaccion?.equipo ?? []), ...(inventarioSubaccion?.artefactos ?? [])]
   const equipoSeleccionado = equipoAUsar || equipoSubaccion[0] || ''
   const encontradoSeleccionado = equipoEncontrado || opcionesEquipoEncontrado[0]?.id || ''
+  const cartaTesoroRobado = tesoroRobado ? carta(mazos.tesoros, tesoroRobado.id) : undefined
+  const botinTesoroRobado = tesoroRobado ? botinDeTesoro(contexto, tesoroRobado.id) : undefined
+  const botinActual = botinSuelo.find((b) => b.id === botinElegido?.id)
 
   return (
     <>
@@ -711,6 +728,27 @@ export function JugarPage() {
                   <SucesoPartida key={i} suceso={s} contexto={contexto} monstruos={monstruos} onVerCarta={onVerCarta} onVerTabla={setTabla} />
                 ))}
               </ol>
+            )}
+
+            {botinSuelo.length > 0 && (
+              <section className="botin-suelo">
+                <h3>En el suelo</h3>
+                <ul className="recuento">
+                  {botinSuelo.map((botin) => (
+                    <li key={botin.id}>
+                      <span>{nombreBotin(equipo, botin)}</span>
+                      <span className="fila-botones compacta">
+                        <button type="button" className="button mini" onClick={() => setBotinElegido({ id: botin.id, clave: miembros[0]?.clave ?? '' })}>
+                          Coger
+                        </button>
+                        <button type="button" className="button mini secondary" onClick={() => hacer((a) => consumirBotinSuelo(a, botin.id))}>
+                          Consumir
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
 
             {paso && !p.fin && (
@@ -1092,7 +1130,9 @@ export function JugarPage() {
               type="button"
               className="button"
               onClick={() => {
-                hacer((a) => robarTesoro(a, contexto, miembroEnSubaccion.clave))
+                const [id, nueva] = robarTesoro(p, contexto)
+                hacer(() => nueva)
+                if (id) setTesoroRobado({ clave: miembroEnSubaccion.clave, id })
                 setAccionMiembro(null)
               }}
             >
@@ -1122,6 +1162,87 @@ export function JugarPage() {
               }}
             >
               Consumir equipo
+            </button>
+          </div>
+        </AccionDialog>
+      )}
+
+      {tesoroRobado && cartaTesoroRobado && (
+        <AccionDialog titulo={`Tesoro: ${cartaTesoroRobado.titulo}`} onCerrar={() => setTesoroRobado(null)}>
+          <div className="acciones-dialogo tesoro-robado">
+            <Carta mazo="tesoros" carta={cartaTesoroRobado} variante="completa" />
+            <div className="fila-botones">
+              {cartaTesoroRobado.suceso && (
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    const [suceso, nueva] = robarSucesoDeTesoro(p)
+                    hacer(() => nueva)
+                    setTesoroRobado(null)
+                    if (suceso) setVerCarta({ mazo: 'sucesos', id: suceso })
+                  }}
+                >
+                  Mostrar suceso
+                </button>
+              )}
+              {botinTesoroRobado && (
+                <>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => {
+                      hacer((a) => cargarTesoroEnInventario(a, contexto, tesoroRobado.clave, tesoroRobado.id))
+                      setTesoroRobado(null)
+                    }}
+                  >
+                    Cargar en inventario
+                  </button>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    onClick={() => {
+                      hacer((a) => dejarTesoroEnSuelo(a, contexto, tesoroRobado.id))
+                      setTesoroRobado(null)
+                    }}
+                  >
+                    Dejar en el suelo
+                  </button>
+                </>
+              )}
+              {!cartaTesoroRobado.suceso && !botinTesoroRobado && (
+                <button type="button" className="button" onClick={() => setTesoroRobado(null)}>
+                  Resuelto
+                </button>
+              )}
+            </div>
+          </div>
+        </AccionDialog>
+      )}
+
+      {botinActual && botinElegido && (
+        <AccionDialog titulo={`Coger ${nombreBotin(equipo, botinActual)}`} onCerrar={() => setBotinElegido(null)}>
+          <div className="acciones-dialogo">
+            <label>
+              <span>Personaje</span>
+              <select value={botinElegido.clave} onChange={(e) => setBotinElegido({ ...botinElegido, clave: e.target.value })}>
+                {miembros.map((m) => (
+                  <option key={m.clave} value={m.clave}>
+                    {nombreMiembro(m)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="button"
+              disabled={!botinElegido.clave}
+              onClick={() => {
+                hacer((a) => cogerBotinSuelo(a, botinElegido.clave, botinElegido.id))
+                setBotinElegido(null)
+              }}
+            >
+              Añadir al inventario
             </button>
           </div>
         </AccionDialog>

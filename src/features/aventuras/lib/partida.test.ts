@@ -22,8 +22,12 @@ import {
   volver,
   atrezoColocado,
   avanzar,
+  botinDeZona,
+  cargarTesoroEnInventario,
   buscarPuertasSecretas,
   buscarTrampas,
+  cogerBotinSuelo,
+  dejarTesoroEnSuelo,
   moverse,
   cambiarPeligro,
   carta,
@@ -33,6 +37,7 @@ import {
   filaEncuentro,
   miembrosDelGrupo,
   nuevaPartida,
+  robarTesoro,
   resultados,
   tirarCarta,
   turnoBrujo,
@@ -347,6 +352,35 @@ describe('monstruos en juego', () => {
     const p = aparecen(partida(ctx), ctx, [{ opciones: ['goblin'], avanzado: false, cantidad: 1, cuerpo: 1 }])
     const tras = cambiarVidaMonstruo(p, 'goblin-1', -1)
     expect([tras.monstruos, tras.hayMonstruos]).toEqual([[], false])
+  })
+})
+
+describe('tesoros en sala', () => {
+  const conTesoro = () => {
+    const ctx = contexto()
+    const p = partida(ctx)
+    return { ctx, p: { ...p, mazos: { ...p.mazos, tesoros: ['pequena-bolsa-de-oro-1'] } } }
+  }
+
+  it('robar tesoro muestra la carta sin cargarla automáticamente', () => {
+    const { ctx, p } = conTesoro()
+    const [id, tras] = robarTesoro(p, ctx)
+    expect([id, tras.inventario?.barbaro?.oro]).toEqual(['pequena-bolsa-de-oro-1', undefined])
+  })
+
+  it('el tesoro puede cargarse en inventario o dejarse en el suelo', () => {
+    const { ctx, p } = conTesoro()
+    const cargado = cargarTesoroEnInventario(p, ctx, 'barbaro', 'pequena-bolsa-de-oro-1')
+    const enSuelo = dejarTesoroEnSuelo(p, ctx, 'pequena-bolsa-de-oro-1')
+    expect([cargado.inventario?.barbaro.oro, botinDeZona(enSuelo).map((b) => b.tipo === 'oro' && b.cantidad)]).toEqual([25, [25]])
+  })
+
+  it('cualquier héroe puede coger el botín del suelo', () => {
+    const { ctx, p } = conTesoro()
+    const enSuelo = dejarTesoroEnSuelo(p, ctx, 'pequena-bolsa-de-oro-1')
+    const [botin] = botinDeZona(enSuelo)
+    const cogido = cogerBotinSuelo(enSuelo, 'enano', botin.id)
+    expect([cogido.inventario?.enano.oro, botinDeZona(cogido)]).toEqual([25, []])
   })
 })
 
