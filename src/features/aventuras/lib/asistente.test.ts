@@ -8,12 +8,12 @@ const BARAJADA: Configuracion = { ...BASE, paso: 'barajar', barajado: { fecha: '
 
 describe('asistente de preparación', () => {
   it('empieza en el paso de las reglas', () => {
-    expect(PASOS.map((p) => estadoPaso(BASE, p))).toEqual(['actual', 'pendiente', 'pendiente', 'pendiente', 'pendiente'])
+    expect(PASOS.map((p) => estadoPaso(BASE, p))).toEqual(['actual', ...Array(PASOS.length - 1).fill('pendiente')])
   })
 
   it('avanza paso a paso', () => {
     const c = avanzar(BASE)
-    expect(PASOS.map((p) => estadoPaso(c, p))).toEqual(['completado', 'actual', 'pendiente', 'pendiente', 'pendiente'])
+    expect(PASOS.map((p) => estadoPaso(c, p))).toEqual(['completado', 'actual', ...Array(PASOS.length - 2).fill('pendiente')])
   })
 
   it('no pasa del último paso', () => {
@@ -21,7 +21,7 @@ describe('asistente de preparación', () => {
   })
 
   it('con los mazos barajados todos los pasos están completados', () => {
-    expect(PASOS.map((p) => estadoPaso(BARAJADA, p))).toEqual(['completado', 'completado', 'completado', 'completado', 'completado'])
+    expect(PASOS.map((p) => estadoPaso(BARAJADA, p))).toEqual(Array(PASOS.length).fill('completado'))
   })
 
   it('volver a un paso anula el barajado', () => {

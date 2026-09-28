@@ -155,15 +155,19 @@ export function ConfigurarPage() {
                 : 'Esta misión tiene un PNJ que puede unirse al grupo si lo encontráis: añade su perfil entonces.')
             }
           />
+          <button type="button" className="button" disabled={!grupo.length} onClick={asistente.avanzar}>
+            Siguiente: {TITULO_PASO.hechizos}
+          </button>
+        </section>
+      ) : paso === 'hechizos' ? (
+        <section className="paso-contenido">
           <PanelHechizos
             heroes={heroes.filter((h) => grupo.includes(h.id))}
             mazo={mazos.hechizos}
             seleccion={config.hechizos ?? {}}
             onCambiar={asistente.cambiarHechizosHeroe}
+            onAceptar={asistente.avanzar}
           />
-          <button type="button" className="button" disabled={!grupo.length} onClick={asistente.avanzar}>
-            Siguiente: {TITULO_PASO.mazos}
-          </button>
         </section>
       ) : paso === 'mazos' ? (
         <section className="paso-contenido">

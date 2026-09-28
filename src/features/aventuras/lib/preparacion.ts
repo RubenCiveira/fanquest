@@ -19,7 +19,7 @@ export type Reemplazo = { original: string; reemplazo: string }
 export type SeleccionMazo = { cartas: string[]; reemplazos: Reemplazo[] }
 
 /** Pasos del asistente de preparación, en orden */
-export const PASOS = ['reglas', 'heroes', 'mazos', 'monstruos', 'barajar'] as const
+export const PASOS = ['reglas', 'heroes', 'hechizos', 'mazos', 'monstruos', 'barajar'] as const
 
 export type Paso = (typeof PASOS)[number]
 

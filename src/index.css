@@ -2145,14 +2145,40 @@ input[type='checkbox'] {
 
 .hechizos-config {
   display: grid;
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
 }
 
 .hechizos-heroe {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  align-content: start;
+  gap: 8px;
+  padding: 8px;
   background: rgb(246 238 217 / 0.6);
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.hechizos-vacio {
+  justify-items: start;
+}
+
+.hechizos-vacio p {
+  margin: 0;
+}
+
+.hechizos-heroe header {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.hechizos-heroe header img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  object-position: top;
   border: 1px solid var(--trazo-suave);
   border-radius: var(--boceto-1);
 }
@@ -2162,9 +2188,34 @@ input[type='checkbox'] {
   margin: 0;
 }
 
+.hechizos-heroe .nota {
+  margin: 0;
+}
+
 .hechizos-heroe h3 {
   font-family: var(--versalitas);
+  font-size: 1rem;
+  line-height: 1;
   color: var(--grafito);
+}
+
+.hechizos-categorias {
+  display: grid;
+  gap: 6px;
+}
+
+.hechizos-categorias .button {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding-inline: 6px;
+}
+
+.hechizos-categorias .button span {
+  font-family: var(--texto);
+  font-weight: 400;
+  opacity: 0.8;
 }
 
 .hechizos-grupo {
@@ -2215,6 +2266,41 @@ input[type='checkbox'] {
 
 .hechizos-lista input {
   margin-top: 4px;
+}
+
+.hechizos-dialog {
+  width: min(760px, calc(100% - 24px));
+  max-height: min(760px, calc(100dvh - 24px));
+  padding: 22px;
+  overflow: auto;
+}
+
+.hechizos-dialog > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-right: 36px;
+}
+
+.hechizos-dialog > header img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.hechizos-dialog h2,
+.hechizos-dialog p {
+  margin: 0;
+}
+
+.hechizos-dialog-acciones {
+  margin: 0 0 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--trazo-suave);
 }
 
 .hechizos-naipes {

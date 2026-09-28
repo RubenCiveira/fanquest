@@ -5,6 +5,7 @@ import { PASOS, type Configuracion, type Paso } from './preparacion'
 export const TITULO_PASO: Record<Paso, string> = {
   reglas: 'Reglas',
   heroes: 'Grupo',
+  hechizos: 'Hechizos',
   mazos: 'Mazos',
   monstruos: 'Monstruos',
   barajar: 'Barajar',
