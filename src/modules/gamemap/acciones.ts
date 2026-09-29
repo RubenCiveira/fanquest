@@ -46,15 +46,23 @@ export function estadoDeEscuadra(m: Mapa, config: Configuracion, id: string): Es
       estancia.elementos.flatMap((el) => (el.tipo === 'heroe' && el.escuadra === id ? [{ id: el.id, estancia: estancia.id, posicion: el.posicion }] : [])),
     ),
   )
-  return { escuadra: id, turno: turno.numero, heroes, modo: modoActual(m, config, id), acciones: turno.acciones?.[id] ?? [] }
+  return {
+    escuadra: id,
+    turno: turno.numero,
+    heroes,
+    modo: modoActual(m, config, id),
+    acciones: turno.acciones?.[id] ?? [],
+    movimientos: turno.movimientos?.[id] ?? [],
+  }
 }
 
 /**
  * Apunta la acción de la escuadra en el turno. La primera empieza su
  * activación en su modo actual; cambiar de modo cambia el de la activación y
- * terminar turno la da por terminada. Falla si la escuadra no puede actuar
+ * terminar turno la da por terminada. `heroe`: el que la hace, si es de un
+ * héroe (mover…). Falla si la escuadra no puede actuar
  */
-export function ejecutarAccion(m: Mapa, config: Configuracion, id: string, accion: string): Mapa {
+export function ejecutarAccion(m: Mapa, config: Configuracion, id: string, accion: string, heroe?: string): Mapa {
   const motivo = motivoParaNoActuar(m, id)
   if (motivo) throw new Error(motivo)
   const turno = turnoDe(m)
@@ -71,7 +79,7 @@ export function ejecutarAccion(m: Mapa, config: Configuracion, id: string, accio
     turno: {
       ...turno,
       activaciones: { ...turno.activaciones, [id]: activacion },
-      acciones: { ...turno.acciones, [id]: [...(turno.acciones?.[id] ?? []), accion] },
+      acciones: { ...turno.acciones, [id]: [...(turno.acciones?.[id] ?? []), heroe ? { accion, heroe } : { accion }] },
     },
   }
 }

@@ -5,7 +5,7 @@ un **proveedor** que implementa el proyecto. El proveedor es un solo objeto
 que cumple todas las interfaces de `ProveedorMapa`:
 
 ```ts
-type ProveedorMapa = ProveedorConfiguracion & ProveedorEstancias & ProveedorHeroes
+type ProveedorMapa = ProveedorConfiguracion & ProveedorConfirmacion & ProveedorEstancias & ProveedorHeroes
 ```
 
 Todos los tipos se importan desde `index.ts` del módulo. La implementación de
@@ -17,11 +17,14 @@ y `../map-debug-imp/escuadras.ts`.
 | Interfaz | Miembro | Cuándo lo usa el gestor |
 | --- | --- | --- |
 | `ProveedorConfiguracion` | `configuracion` | Siempre que aplica reglas de activación |
+| `ProveedorConfirmacion` | `confirmar(mensaje)` | Antes de un movimiento que consume una acción adicional (deslizar…) |
 | `ProveedorEstancias` | `describirEstancia(mapa?)` | En cada `nuevaEstancia()` |
 | `ProveedorHeroes` | `listarEscuadras()` | La primera vez que necesita las escuadras (una sola vez por gestor) |
 | `Escuadra` | `heroes()` | Al crear la estancia inicial |
 | `Escuadra` | `modoActivacion()` | Al crear la estancia inicial, con modo agresivo o sigiloso, si la escuadra aún no tiene modo |
 | `Escuadra` | `acciones(estado)` | En cada `accionesDisponibles()` y `ejecutarAccion()` |
+| `Escuadra` | `activar(acciones)` | Tras cada acción o movimiento de la escuadra, mientras se activa |
+| `Heroe` | `opcionesMovimiento(estado)` | Al empezar a arrastrar su ficha (`opcionesMovimiento()`) y al soltarla (`moverHeroe()`) |
 
 ## ProveedorConfiguracion
 
@@ -40,6 +43,17 @@ configuracion: {
 - `modosActivacion`: con `agresivo-sigiloso`, cada escuadra se activa en uno
   de esos dos modos y puede cambiar de uno a otro; con `normal`, todas las
   activaciones son normales.
+
+## ProveedorConfirmacion
+
+```ts
+confirmar(mensaje: string): Promise<boolean>
+```
+
+Pide al jugador que confirme algo antes de hacerlo; `true` si confirma. Ahora
+se usa al soltar una ficha en un tramo que consume una acción adicional
+(«Confirme que queremos deslizar»): sin confirmar, no se mueve. El banco de
+pruebas lo resuelve con un diálogo de confirmar o cancelar.
 
 ## ProveedorEstancias
 
@@ -86,12 +100,14 @@ interface Escuadra {
   heroes(): Promise<Heroe[]>
   modoActivacion(): Promise<'agresivo' | 'sigiloso'>
   acciones(estado: EstadoEscuadra): Promise<Accion[]>
+  activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
 }
 
 interface Heroe {
   id: string
   nombre: string
   imagenVtt?: string // URL de la ficha VTT vista desde arriba
+  opcionesMovimiento(estado: EstadoEscuadra, gastado: MovimientoGastado): Promise<OpcionesMovimiento | undefined>
 }
 ```
 
@@ -115,13 +131,75 @@ interface Heroe {
   turno: number,     // número del turno en curso
   heroes: [{ id: string, estancia: string, posicion?: { x: number, y: number } }],
   modo: 'normal' | 'agresivo' | 'sigiloso',
-  acciones: string[], // ids de las acciones ya ejecutadas en este turno
+  acciones: [{ accion: string, heroe?: string }], // las ya ejecutadas en este turno; `heroe`, si la hizo uno
+  movimientos: [{ heroe: string, opcion: string, casillas: number, acciones: string[] }], // los de este turno
 }
 ```
+
+- `activar(acciones)`: después de cada acción de la corona o movimiento, el
+  gestor pasa a la escuadra todas las que lleva en el turno
+  (`AccionEjecutada = { accion, heroe? }`, con `heroe` en las que hizo un
+  héroe: mover, deslizar…). Responde `{ completo: true }` si su activación
+  ha terminado: el gestor termina su turno como si hubiera elegido «Terminar
+  turno». Con `{ completo: false }` sigue activándose. No se llama tras
+  «Terminar turno». El banco de pruebas da la activación por completa cuando
+  la escuadra se ha movido y además ha hecho otra acción, y lo muestra con
+  `console.log`.
 
 Sin `posicion`, el héroe está en la zona de espera de su estancia. De momento
 el gestor solo apunta las acciones propias en `acciones`: su efecto en el
 juego aún corre a cargo del proyecto.
+
+## Movimiento: Heroe.opcionesMovimiento
+
+Al arrastrar una ficha, el gestor pregunta al héroe cómo puede moverse ahora,
+con el estado de su escuadra y lo que ya ha movido este turno:
+`gastado = { casillas, acciones }`, la suma de sus movimientos anteriores y
+las acciones que consumieron. Se le pregunta cada vez que se arrastra, también
+si ya se ha movido: devuelve lo que le queda (o `undefined` si no puede
+moverse más), con su movimiento base y sus variaciones:
+
+```ts
+type OpcionesMovimiento = { base: OpcionMovimiento; variaciones: OpcionMovimiento[] }
+
+type OpcionMovimiento = {
+  id: string
+  nombre: string                  // se muestra junto a la flecha
+  tipo: 'normal' | 'carga'        // la carga se dibuja en otro color
+  accion: Accion                  // la que consume moverse así
+  tramos: TramoMovimiento[]       // el primero es el movimiento; los siguientes lo alargan
+  alejarseDeEnemigos?: number     // no pasar ni terminar a esa distancia o menos (1: junto)
+  terminarJuntoAEnemigo?: boolean // carga
+}
+
+type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la adicional que consume
+```
+
+Ejemplos: mover 6 sin acercarse a enemigos es `tramos: [{ distancia: 6 }]` con
+`alejarseDeEnemigos: 1`; cargar 8 es `tipo: 'carga'`, `tramos: [{ distancia: 8 }]`
+y `terminarJuntoAEnemigo: true`; mover 6 y deslizar 3 más es
+`tramos: [{ distancia: 6 }, { distancia: 3, accion: deslizar }]`.
+
+- El recorrido se hace casilla a casilla en ortogonal, sin atravesar objetos
+  ni estancias interiores. Puede pasar por encima de otros héroes, pero no
+  terminar encima.
+- Al soltar vale la primera opción que permite el recorrido: la base y
+  después las variaciones, en el orden en que vienen. Ordénalas de la más
+  barata a la más cara.
+- Las distancias a enemigos cuentan las diagonales (junto es a 1 casilla en
+  cualquier dirección). Aún no hay enemigos en el mapa: no se puede cargar.
+- Si el recorrido llega a un tramo con acción adicional, el gestor pide
+  confirmación (`ProveedorConfirmacion`) antes de mover.
+- Al mover, el gestor apunta en la escuadra el movimiento (héroe, opción,
+  casillas y acciones) en `estado.movimientos`, y la `accion` de la opción y
+  la de cada tramo adicional usado en `estado.acciones`; si no había
+  empezado, empieza su activación. Si el héroe solo puede moverse una vez por
+  turno, comprueba `gastado.casillas`; para que tras deslizar no pueda
+  moverse más, `gastado.acciones`. El banco de pruebas devuelve lo que queda
+  de mover más deslizar 3, y nada si ya ha deslizado (`movimientoDePrueba`).
+- La vista del banco de pruebas pinta la flecha en verde en el primer tramo,
+  rojiza en los tramos con acción adicional y morada en una carga; no la
+  alarga más allá del alcance, y soltar fuera de él no hace nada.
 
 El mapa se guarda como JSON, así que el gestor no guarda las escuadras (tienen
 métodos): guarda su `id` y su `nombre`, y cada ficha de héroe, el id de su
@@ -133,16 +211,33 @@ al proveedor, que debe devolver las mismas (mismos ids).
 ```ts
 import { GestorMapa, type Escuadra, type ProveedorMapa } from '../gamemap'
 
+const mover = { id: 'mover', nombre: 'Mover' }
+
 const grupo: Escuadra = {
   id: 'grupo',
   nombre: 'El grupo',
-  heroes: async () => [{ id: 'barbaro', nombre: 'Bárbaro', imagenVtt: urlBarbaro }],
+  heroes: async () => [
+    {
+      id: 'barbaro',
+      nombre: 'Bárbaro',
+      imagenVtt: urlBarbaro,
+      opcionesMovimiento: async (_estado, { casillas }) =>
+        casillas > 0
+          ? undefined
+          : {
+              base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 6 }] },
+              variaciones: [],
+            },
+    },
+  ],
   modoActivacion: async () => 'sigiloso',
-  acciones: async ({ acciones }) => (acciones.includes('mover') ? [] : [{ id: 'mover', nombre: 'Mover' }]),
+  acciones: async () => [],
+  activar: async (acciones) => ({ completo: acciones.some((a) => a.accion === 'mover') }),
 }
 
 const proveedor: ProveedorMapa = {
   configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' },
+  confirmar: async (mensaje) => window.confirm(mensaje),
   describirEstancia: async (mapa) => ({
     tipo: mapa ? 'pasillo' : 'sala',
     tamano: mapa ? { columnas: 2, filas: 7 } : { columnas: 6, filas: 4 },
@@ -156,8 +251,8 @@ const proveedor: ProveedorMapa = {
 const gestor = new GestorMapa(proveedor, mapaGuardado) // sin mapa guardado, empieza vacío
 gestor.suscribir((mapa) => guardar(mapa)) // cada cambio crea un mapa nuevo
 await gestor.nuevaEstancia() // la inicial, con los héroes
-const acciones = await gestor.accionesDisponibles('grupo') // Mover, Cambiar a agresivo, Terminar turno
-await gestor.ejecutarAccion('grupo', 'mover')
+const acciones = await gestor.accionesDisponibles('grupo') // Cambiar a agresivo, Terminar turno
+await gestor.moverHeroe('barbaro', [{ x: 2, y: 1 }, { x: 2, y: 2 }]) // de su casilla a la de al lado
 ```
 
 ## En React

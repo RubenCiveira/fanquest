@@ -3,6 +3,7 @@ import { activar, motivoParaNoActivar, motivoParaNoTerminarTurno, terminarActiva
 import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situar } from '../elementos'
 import { estanciasDe } from '../estancias'
+import { accionesAdicionales, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
 import type { Casilla } from '../modelo/casilla'
@@ -10,7 +11,11 @@ import type { FichaHeroe } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
 import type { Estancia } from '../modelo/estancia'
 import type { Mapa } from '../modelo/mapa'
+import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
 import type { ProveedorMapa } from './ProveedorMapa'
+
+/** Casillas de los enemigos: aún no hay, así que no se puede cargar ni hay de quién alejarse */
+const SIN_ENEMIGOS: Casilla[] = []
 
 /**
  * Gestiona el estado del mapa: pide al proveedor del proyecto cada estancia
@@ -68,13 +73,15 @@ export class GestorMapa {
 
   /**
    * Coloca o mueve a mano un elemento de una estancia del mapa; sin
-   * `posicion`, lo devuelve a la zona de espera. Si no puede ir ahí, el mapa
-   * no cambia y devuelve el motivo
+   * `posicion`, lo devuelve a la zona de espera. Un héroe solo se coloca así
+   * desde la zona de espera: en el mapa se mueve arrastrándolo (`moverHeroe`).
+   * Si no puede ir ahí, el mapa no cambia y devuelve el motivo
    */
   colocarElemento(estanciaId: string, elementoId: string, posicion?: Casilla): string | undefined {
     const estancia = this.#mapa.estancias.find((e) => e.id === estanciaId)
     const elemento = estancia?.elementos.find((el) => el.id === elementoId)
     if (!estancia || !elemento) return `No hay ningún elemento «${elementoId}» en «${estanciaId}»`
+    if (elemento.tipo === 'heroe' && elemento.posicion) return `${elemento.nombre} se mueve arrastrando su ficha`
     const motivo = posicion && motivoParaNoColocar(estancia, elemento, posicion)
     if (motivo) return motivo
     const colocada = colocarElemento(estancia, elementoId, posicion)
@@ -122,6 +129,67 @@ export class GestorMapa {
     if (motivo) return motivo
     if (!(await this.accionesDisponibles(escuadraId)).some((a) => a.id === accionId)) return `«${accionId}» no es una acción disponible ahora`
     this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId))
+    await this.#preguntarSiCompleta(escuadraId)
+  }
+
+  /**
+   * Cómo puede moverse ahora el héroe, según le diga él mismo con el estado
+   * de su escuadra y lo que ya ha movido este turno. Nada si no está colocado
+   * o su escuadra no puede actuar
+   */
+  async opcionesMovimiento(heroeId: string): Promise<OpcionesMovimiento | undefined> {
+    const ficha = this.#fichaDe(heroeId)?.ficha
+    if (!ficha?.posicion || motivoParaNoActuar(this.#mapa, ficha.escuadra)) return
+    const escuadra = (await this.#listarEscuadras()).find((e) => e.id === ficha.escuadra)
+    const heroe = (await escuadra?.heroes())?.find((h) => h.id === heroeId)
+    return heroe?.opcionesMovimiento(estadoDeEscuadra(this.#mapa, this.configuracion, ficha.escuadra), gastadoPor(this.#mapa, ficha))
+  }
+
+  /**
+   * Mueve el héroe por el recorrido (de su casilla a la de destino) con la
+   * primera de sus opciones de movimiento que lo permita y apunta en su
+   * escuadra el movimiento y las acciones que consume. Si consume acciones
+   * adicionales (deslizar…), antes pide confirmación al proveedor; sin ella no
+   * se mueve. Si no puede moverse, el mapa no cambia y devuelve el motivo
+   */
+  async moverHeroe(heroeId: string, recorrido: Casilla[]): Promise<string | undefined> {
+    const opciones = await this.opcionesMovimiento(heroeId)
+    const evaluar = () => {
+      const encontrada = this.#fichaDe(heroeId)
+      if (!encontrada) return { motivo: `No hay ningún héroe «${heroeId}» colocado en el mapa` }
+      const { estancia, ficha } = encontrada
+      if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, ficha.escuadra) ?? `${ficha.nombre} no puede moverse ahora` }
+      return { ficha, ...evaluarRecorrido(estancia, ficha, recorrido, opciones, SIN_ENEMIGOS) }
+    }
+    const evaluado = evaluar()
+    if ('motivo' in evaluado) return evaluado.motivo
+    const adicionales = accionesAdicionales(evaluado)
+    if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return
+    // mientras se confirmaba el mapa ha podido cambiar
+    const confirmado = adicionales.length ? evaluar() : evaluado
+    if ('motivo' in confirmado) return confirmado.motivo
+    this.#cambiar(mover(this.#mapa, this.configuracion, confirmado.ficha, recorrido, confirmado))
+    await this.#preguntarSiCompleta(confirmado.ficha.escuadra)
+  }
+
+  /**
+   * Pasa a la escuadra, si sigue activándose, las acciones que lleva en el
+   * turno; si responde que su activación está completa, termina su turno
+   */
+  async #preguntarSiCompleta(escuadraId: string) {
+    const enCurso = () => turnoDe(this.#mapa).activaciones[escuadraId]?.terminada === false
+    const escuadra = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
+    if (!escuadra || !enCurso()) return
+    const { completo } = await escuadra.activar(turnoDe(this.#mapa).acciones?.[escuadraId] ?? [])
+    if (completo && enCurso()) this.#cambiar(terminarActivacion(this.#mapa, escuadraId))
+  }
+
+  /** Ficha del héroe y la estancia (de las del mapa, no interiores) en que está */
+  #fichaDe(heroeId: string) {
+    for (const estancia of this.#mapa.estancias) {
+      const ficha = estancia.elementos.find((el) => el.id === heroeId)
+      if (ficha?.tipo === 'heroe') return { estancia, ficha }
+    }
   }
 
   #listarEscuadras() {

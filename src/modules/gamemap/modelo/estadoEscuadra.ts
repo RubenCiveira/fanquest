@@ -1,6 +1,8 @@
+import type { AccionEjecutada } from './accionEjecutada'
 import type { ModoActivacion } from './activacion'
 import type { Casilla } from './casilla'
 import type { Escuadra } from './escuadra'
+import type { MovimientoHecho } from './movimientoHecho'
 
 /** Posición de un héroe: su estancia y su casilla en ella (sin casilla, está en la zona de espera) */
 export type PosicionHeroe = { id: string; estancia: string; posicion?: Casilla }
@@ -13,6 +15,8 @@ export type EstadoEscuadra = {
   /** Sus héroes vivos */
   heroes: PosicionHeroe[]
   modo: ModoActivacion
-  /** Ids de las acciones que ya ha ejecutado en este turno, en orden */
-  acciones: string[]
+  /** Acciones que ya ha ejecutado en este turno, en orden */
+  acciones: AccionEjecutada[]
+  /** Movimientos de sus héroes en este turno, en orden */
+  movimientos: MovimientoHecho[]
 }

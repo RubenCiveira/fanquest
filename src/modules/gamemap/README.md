@@ -89,6 +89,12 @@ await gestor.nuevaEstancia()
   héroes, modo y acciones ya hechas en el turno. Añade las suyas: «Cambiar a
   …» (con modo agresivo o sigiloso) y «Terminar turno». La primera acción de
   la escuadra en el turno empieza su activación; «Terminar turno» la termina.
+- **Movimiento**: al arrastrar una ficha, el gestor pregunta al héroe sus
+  `OpcionesMovimiento` (movimiento base y variaciones, cada una en tramos que
+  pueden consumir acciones adicionales). El recorrido vale con la primera
+  opción que lo permite; si consume una acción adicional, antes se pide
+  confirmación. El movimiento y sus acciones quedan apuntados en el turno de
+  la escuadra (ver `PROVEEDORES.md`).
 - **Descripción de estancia**: lo que el proyecto devuelve al pedirle una
   estancia nueva: tipo, tamaño, orientación, número de salidas y elementos.
 - **Puerta**: va en una arista del muro exterior, no dentro de una casilla:

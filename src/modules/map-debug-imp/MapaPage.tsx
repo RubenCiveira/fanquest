@@ -50,8 +50,10 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
   useEffect(() => gestor.suscribir((m) => guardarMapa(id, m)), [gestor, id])
 
   // la miniatura elegida, si es un héroe, muestra en corona las acciones de su escuadra
-  const heroe = mapa.estancias.flatMap((e) => e.elementos).find((el) => el.id === seleccion?.elemento)
-  const escuadraElegida = heroe?.tipo === 'heroe' ? heroe.escuadra : undefined
+  const seleccionado = mapa.estancias.flatMap((e) => e.elementos).find((el) => el.id === seleccion?.elemento)
+  const escuadraElegida = seleccionado?.tipo === 'heroe' ? seleccionado.escuadra : undefined
+  // un héroe ya en el mapa no se coloca a mano: se arrastra
+  const heroeEnMapa = seleccionado?.tipo === 'heroe' && !!seleccionado.posicion
   const [acciones, setAcciones] = useState<{ escuadra: string; mapa: Mapa; lista: Accion[] }>()
 
   useEffect(() => {
@@ -78,9 +80,13 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
     }
   }
 
-  /** Con un elemento elegido, la casilla es su sitio nuevo; si no, se informa de qué estancia es */
+  /**
+   * Con un elemento elegido que se coloca a mano, la casilla es su sitio
+   * nuevo; si no (o es un héroe ya en el mapa, que se arrastra), se informa de
+   * qué estancia es
+   */
   function elegirCasilla(e: Estancia, c: Casilla) {
-    if (seleccion?.estancia !== e.id) {
+    if (seleccion?.estancia !== e.id || heroeEnMapa) {
       const en = estanciaEn(e, c)
       setNota(en && `Casilla ${c.x},${c.y}: ${en.estancia.id} (${en.estancia.tipo}), casilla ${en.casilla.x},${en.casilla.y}. Ruta: ${en.ruta.map((r) => r.id).join(' › ')}.`)
       return
@@ -148,6 +154,8 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
               activaciones={turno.activaciones}
               ultimosModos={turno.ultimosModos}
               corona={seleccion?.estancia === e.id && escuadraElegida ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
+              opcionesMovimiento={(heroe) => gestor.opcionesMovimiento(heroe)}
+              onMover={async (heroe, recorrido) => setNota(await gestor.moverHeroe(heroe, recorrido))}
             />
             <div className="map-debug-espera">
               <span className="nota">Zona de espera:</span>
@@ -163,13 +171,13 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
                   {el.nombre} ({el.columnas} × {el.filas})
                 </button>
               ))}
-              {elegido && e.elementos.find((el) => el.id === elegido)?.posicion && (
+              {elegido && !heroeEnMapa && e.elementos.find((el) => el.id === elegido)?.posicion && (
                 <button type="button" className="button secondary" onClick={aEspera}>
                   Devolver a la zona de espera
                 </button>
               )}
             </div>
-            {elegido && <p className="nota">Pulsa la casilla donde quieres su esquina superior izquierda.</p>}
+            {elegido && !heroeEnMapa && <p className="nota">Pulsa la casilla donde quieres su esquina superior izquierda.</p>}
             {elegido && escuadraElegida && motivoParaNoActuar(mapa, escuadraElegida) && <p className="nota">{motivoParaNoActuar(mapa, escuadraElegida)}</p>}
           </article>
         )

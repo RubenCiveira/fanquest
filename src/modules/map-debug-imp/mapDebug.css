@@ -238,3 +238,62 @@
   fill: var(--tinta);
   pointer-events: none;
 }
+
+/* arrastrar la ficha no desplaza la página en pantallas táctiles */
+.vista-elemento.heroe {
+  touch-action: none;
+}
+
+.vista-recorrido polyline {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.vista-recorrido text {
+  font-family: var(--versalitas);
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: var(--tinta);
+  paint-order: stroke;
+  stroke: var(--vitela);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+/* colores del movimiento: verde el normal, rojizo el tramo que consume otra acción (deslizar), morado la carga y gris lo que no vale */
+.vista-recorrido .normal {
+  stroke: var(--musgo);
+}
+
+.vista-recorrido .accion {
+  stroke: var(--rubrica);
+}
+
+.vista-recorrido .carga {
+  stroke: #6b3f8f;
+}
+
+.vista-recorrido .invalido {
+  stroke: var(--grafito);
+  stroke-dasharray: 4 5;
+}
+
+.vista-recorrido-punta.normal {
+  fill: var(--musgo);
+}
+
+.vista-recorrido-punta.accion {
+  fill: var(--rubrica);
+}
+
+.vista-recorrido-punta.carga {
+  fill: #6b3f8f;
+}
+
+.vista-recorrido-punta.invalido {
+  fill: var(--grafito);
+}

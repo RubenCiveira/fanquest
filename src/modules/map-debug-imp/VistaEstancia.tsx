@@ -1,4 +1,20 @@
-import { estanciaEn, estanciasDe, type Accion, type Activacion, type Casilla, type ModoActivacion, type Estancia, type FichaHeroe, type Puerta } from '../gamemap'
+import { useId, useRef, useState, type PointerEvent } from 'react'
+import {
+  alcance,
+  estanciaEn,
+  estanciasDe,
+  evaluarRecorrido,
+  extenderRecorrido,
+  type Accion,
+  type Activacion,
+  type Casilla,
+  type Estancia,
+  type FichaHeroe,
+  type ModoActivacion,
+  type OpcionesMovimiento,
+  type Puerta,
+  type RecorridoEvaluado,
+} from '../gamemap'
 
 /** Lado de una casilla en unidades del SVG */
 const LADO = 32
@@ -105,6 +121,75 @@ function Corona({ cx, cy, acciones, onAccion }: { cx: number; cy: number; accion
   )
 }
 
+/** Cómo se pinta cada paso de la flecha: un color por tipo de movimiento y otro para los tramos que consumen otra acción */
+const CLASES_FLECHA = ['normal', 'accion', 'carga', 'invalido'] as const
+
+type ClaseFlecha = (typeof CLASES_FLECHA)[number]
+
+function claseDelPaso(evaluado: RecorridoEvaluado | undefined, paso: number): ClaseFlecha {
+  if (!evaluado || 'motivo' in evaluado) return 'invalido'
+  if (evaluado.opcion.tipo === 'carga') return 'carga'
+  return evaluado.opcion.tramos[evaluado.tramos[paso]]?.accion ? 'accion' : 'normal'
+}
+
+/**
+ * Flecha del recorrido que se está arrastrando, por los centros de sus
+ * casillas y en un tramo de color por cada parte del movimiento, con el nombre
+ * de la opción que vale (o por qué no vale ninguna) junto al destino
+ */
+function Flecha({ recorrido, evaluado, marcador }: { recorrido: Casilla[]; evaluado?: RecorridoEvaluado; marcador: string }) {
+  const centro = ({ x, y }: Casilla) => `${(x + 0.5) * LADO},${(y + 0.5) * LADO}`
+  const tramos = recorrido.slice(1).reduce<{ clase: ClaseFlecha; casillas: Casilla[] }[]>((hechos, c, i) => {
+    const clase = claseDelPaso(evaluado, i)
+    const ultimo = hechos.at(-1)
+    return ultimo?.clase === clase
+      ? [...hechos.slice(0, -1), { clase, casillas: [...ultimo.casillas, c] }]
+      : [...hechos, { clase, casillas: [recorrido[i], c] }]
+  }, [])
+  const destino = recorrido.at(-1)
+  const pasos = recorrido.length - 1
+  const etiqueta = !evaluado ? `${pasos}…` : 'motivo' in evaluado ? evaluado.motivo : `${evaluado.opcion.nombre} · ${pasos}`
+  return (
+    <g className="vista-recorrido">
+      {tramos.map(({ clase, casillas }, i) => (
+        <polyline
+          key={i}
+          className={clase}
+          points={casillas.map(centro).join(' ')}
+          markerEnd={i === tramos.length - 1 ? `url(#${marcador}-${clase})` : undefined}
+        />
+      ))}
+      {destino && pasos > 0 && (
+        <text x={(destino.x + 0.5) * LADO} y={destino.y * LADO - 4}>
+          {etiqueta}
+        </text>
+      )}
+    </g>
+  )
+}
+
+type Arrastre = {
+  ficha: FichaHeroe
+  recorrido: Casilla[]
+  /** Mientras llegan, sin definir; `null` si el héroe no puede moverse */
+  opciones?: OpcionesMovimiento | null
+  /** El puntero está en una casilla a la que no llega: soltar ahí no hace nada */
+  fuera?: boolean
+}
+
+const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
+
+/**
+ * El recorrido hasta la casilla bajo el puntero, sin pasar del alcance de
+ * sus opciones: si no llega, la flecha se queda donde estaba y queda `fuera`
+ */
+function hasta(estancia: Estancia, a: Arrastre, c: Casilla): Arrastre {
+  if (misma(a.recorrido.at(-1), c)) return a.fuera ? { ...a, fuera: false } : a
+  const recorrido = extenderRecorrido(estancia, a.ficha, a.recorrido, c)
+  if (a.opciones && recorrido.length - 1 > alcance(a.opciones)) return { ...a, fuera: true }
+  return { ...a, recorrido, fuera: !misma(recorrido.at(-1), c) }
+}
+
 type Props = {
   estancia: Estancia
   elegida?: Casilla
@@ -118,19 +203,96 @@ type Props = {
   ultimosModos?: Record<string, ModoActivacion>
   /** Acciones que se dibujan en corona alrededor del elemento resaltado */
   corona?: { acciones: Accion[]; onAccion: (id: string) => void }
+  /** Cómo puede moverse un héroe: se pregunta al empezar a arrastrar su ficha */
+  opcionesMovimiento?: (heroeId: string) => Promise<OpcionesMovimiento | undefined>
+  /** Al soltar una ficha arrastrada: sin esto, las fichas no se arrastran */
+  onMover?: (heroeId: string, recorrido: Casilla[]) => void
 }
 
-/** Dibujo de una estancia con las suyas dentro, sus puertas y sus elementos colocados; las casillas se colorean por su tipo */
-export function VistaEstancia({ estancia, elegida, onElegir, elemento, onElegirElemento, activaciones, ultimosModos, corona }: Props) {
+/**
+ * Dibujo de una estancia con las suyas dentro, sus puertas y sus elementos
+ * colocados; las casillas se colorean por su tipo. Las fichas de héroe de la
+ * estancia se arrastran casilla a casilla, con la flecha del recorrido; pulsarlas
+ * sin arrastrar las elige
+ */
+export function VistaEstancia({
+  estancia,
+  elegida,
+  onElegir,
+  elemento,
+  onElegirElemento,
+  activaciones,
+  ultimosModos,
+  corona,
+  opcionesMovimiento,
+  onMover,
+}: Props) {
+  const svg = useRef<SVGSVGElement>(null)
+  // ids de las puntas de flecha, únicos aunque haya varias vistas en la página
+  const marcador = `flecha${useId().replace(/[^a-zA-Z0-9]/g, '')}`
+  const [arrastre, setArrastre] = useState<Arrastre>()
   const ancho = estancia.columnas * LADO
   const alto = estancia.filas * LADO
+
+  const casillaBajo = (ev: PointerEvent): Casilla | undefined => {
+    const matriz = svg.current?.getScreenCTM()
+    if (!matriz) return
+    const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(matriz.inverse())
+    return { x: Math.floor(p.x / LADO), y: Math.floor(p.y / LADO) }
+  }
+
+  function empezar(ev: PointerEvent, ficha: FichaHeroe) {
+    if (!ficha.posicion) return
+    svg.current?.setPointerCapture(ev.pointerId)
+    setArrastre({ ficha, recorrido: [ficha.posicion] })
+    // si ya se había arrastrado más allá de su alcance, la flecha se recorta hasta él
+    opcionesMovimiento?.(ficha.id).then((opciones) =>
+      setArrastre((a) => {
+        if (a?.ficha.id !== ficha.id) return a
+        const maximo = opciones ? alcance(opciones) + 1 : a.recorrido.length
+        return { ...a, opciones: opciones ?? null, recorrido: a.recorrido.slice(0, maximo), fuera: a.fuera || a.recorrido.length > maximo }
+      }),
+    )
+  }
+
+  function arrastrar(ev: PointerEvent) {
+    const c = casillaBajo(ev)
+    if (!c) return
+    setArrastre((a) => a && hasta(estancia, a, c))
+  }
+
+  function soltar() {
+    if (!arrastre) return
+    const { ficha, recorrido, fuera } = arrastre
+    setArrastre(undefined)
+    if (fuera) return
+    if (recorrido.length > 1) onMover?.(ficha.id, recorrido)
+    else onElegirElemento?.(ficha.id)
+  }
+
+  const evaluado: RecorridoEvaluado | undefined =
+    arrastre?.opciones === null
+      ? { motivo: `${arrastre.ficha.nombre} no puede moverse ahora` }
+      : arrastre?.opciones && evaluarRecorrido(estancia, arrastre.ficha, arrastre.recorrido, arrastre.opciones)
+
   return (
     <svg
+      ref={svg}
+      onPointerMove={arrastre ? arrastrar : undefined}
+      onPointerUp={soltar}
+      onPointerCancel={() => setArrastre(undefined)}
       className="vista-estancia"
       viewBox={`${-GROSOR} ${-GROSOR} ${ancho + 2 * GROSOR} ${alto + 2 * GROSOR}`}
       role="img"
       aria-label={`Estancia ${estancia.id}`}
     >
+      <defs>
+        {CLASES_FLECHA.map((clase) => (
+          <marker key={clase} id={`${marcador}-${clase}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+            <path className={`vista-recorrido-punta ${clase}`} d="M0 0L10 5L0 10z" />
+          </marker>
+        ))}
+      </defs>
       {Array.from({ length: estancia.columnas * estancia.filas }, (_, i) => {
         const c = { x: i % estancia.columnas, y: Math.floor(i / estancia.columnas) }
         const activa = elegida?.x === c.x && elegida.y === c.y
@@ -158,7 +320,13 @@ export function VistaEstancia({ estancia, elegida, onElegir, elemento, onElegirE
         e.elementos.flatMap((el) =>
           el.posicion
             ? [
-                <g key={el.id} className={`vista-elemento ${el.tipo}${el.id === elemento ? ' activo' : ''}`} onClick={() => onElegirElemento?.(el.id)}>
+                <g
+                  key={el.id}
+                  className={`vista-elemento ${el.tipo}${el.id === elemento ? ' activo' : ''}`}
+                  {...(el.tipo === 'heroe' && onMover && e.id === estancia.id
+                    ? { onPointerDown: (ev: PointerEvent) => empezar(ev, el) }
+                    : { onClick: () => onElegirElemento?.(el.id) })}
+                >
                   {el.tipo === 'heroe' ? (
                     <FichaEnMapa
                       ficha={el}
@@ -188,7 +356,14 @@ export function VistaEstancia({ estancia, elegida, onElegir, elemento, onElegirE
       {estanciasDe(estancia).flatMap(({ estancia: e, origen }) =>
         e.puertas.map((p) => <PuertaEnMuro key={`${e.id}-${p.id}`} puerta={p} origen={origen} />),
       )}
-      {corona && corona.acciones.length > 0 &&
+      {arrastre && (
+        <Flecha
+          recorrido={arrastre.recorrido}
+          evaluado={arrastre.fuera ? { motivo: 'Fuera de alcance' } : evaluado}
+          marcador={marcador}
+        />
+      )}
+      {!arrastre && corona && corona.acciones.length > 0 &&
         estanciasDe(estancia).flatMap(({ estancia: e, origen }) =>
           e.elementos.flatMap((el) =>
             el.id === elemento && el.posicion

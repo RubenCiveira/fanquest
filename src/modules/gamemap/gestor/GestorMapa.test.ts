@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { AccionEjecutada } from '../modelo/accionEjecutada'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
+import type { EstadoEscuadra } from '../modelo/estadoEscuadra'
+import type { MovimientoGastado } from '../modelo/movimientoGastado'
+import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
 import { GestorMapa } from './GestorMapa'
 
 const sala: DescripcionEstancia = {
@@ -10,23 +14,44 @@ const sala: DescripcionEstancia = {
   elementos: [{ tipo: 'objeto', nombre: 'Cofre', columnas: 1, filas: 1 }],
 }
 
+const mover = { id: 'mover', nombre: 'Mover' }
+const opciones: OpcionesMovimiento = {
+  base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 2 }] },
+  variaciones: [
+    {
+      id: 'mover-y-deslizar',
+      nombre: 'Mover y deslizar',
+      tipo: 'normal',
+      accion: mover,
+      tramos: [{ distancia: 2 }, { distancia: 1, accion: { id: 'deslizar', nombre: 'Deslizar' } }],
+    },
+  ],
+}
+/** Por defecto, ninguna activación queda completa tras una acción */
+const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
+
+const opcionesMovimiento = vi.fn(async (_estado: EstadoEscuadra, _gastado: MovimientoGastado) => opciones)
+
 const proveedor = () => ({
+  confirmar: vi.fn(async () => true),
   configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' } as const,
   describirEstancia: vi.fn(async () => sala),
   listarEscuadras: vi.fn(async () => [
     {
       id: 'rojos',
       nombre: 'Rojos',
-      heroes: async () => [{ id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png' }],
+      heroes: async () => [{ id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', opcionesMovimiento }],
       modoActivacion: async () => 'agresivo' as const,
       acciones: vi.fn(async () => [{ id: 'mover', nombre: 'Mover' }]),
+      activar,
     },
     {
       id: 'azules',
       nombre: 'Azules',
-      heroes: async () => [{ id: 'enano', nombre: 'Enano' }],
+      heroes: async () => [{ id: 'enano', nombre: 'Enano', opcionesMovimiento }],
       modoActivacion: async () => 'sigiloso' as const,
       acciones: async () => [],
+      activar,
     },
   ]),
 })
@@ -174,7 +199,7 @@ describe('gestor del mapa', () => {
 
   it('no pregunta el modo a una escuadra que ya lo tiene', async () => {
     const modoActivacion = vi.fn(async () => 'agresivo' as const)
-    const p = { ...proveedor(), listarEscuadras: async () => [{ id: 'rojos', nombre: 'Rojos', heroes: async () => [], modoActivacion, acciones: async () => [] }] }
+    const p = { ...proveedor(), listarEscuadras: async () => [{ id: 'rojos', nombre: 'Rojos', heroes: async () => [], modoActivacion, acciones: async () => [], activar }] }
     await new GestorMapa(p, { estancias: [], turno: { numero: 3, activaciones: {}, ultimosModos: { rojos: 'sigiloso' } } }).nuevaEstancia()
     expect(modoActivacion).not.toHaveBeenCalled()
   })
@@ -192,7 +217,7 @@ describe('gestor del mapa', () => {
     await gestor.ejecutarAccion('rojos', 'mover')
     const [rojos] = await p.listarEscuadras.mock.results[0].value
     await gestor.accionesDisponibles('rojos')
-    expect(rojos.acciones).toHaveBeenLastCalledWith(expect.objectContaining({ escuadra: 'rojos', turno: 1, modo: 'agresivo', acciones: ['mover'] }))
+    expect(rojos.acciones).toHaveBeenLastCalledWith(expect.objectContaining({ escuadra: 'rojos', turno: 1, modo: 'agresivo', acciones: [{ accion: 'mover' }] }))
   })
 
   it('pide las escuadras al proveedor una sola vez', async () => {
@@ -215,5 +240,129 @@ describe('gestor del mapa', () => {
     await gestor.nuevaEstancia()
     await gestor.ejecutarAccion('rojos', 'terminar-turno')
     expect(await gestor.accionesDisponibles('rojos')).toEqual([])
+  })
+
+  /** Recorrido de `pasos` casillas hacia la derecha desde la casilla de salida */
+  const enLinea = (desde: { x: number; y: number }, pasos: number) => Array.from({ length: pasos + 1 }, (_, i) => ({ x: desde.x + i, y: desde.y }))
+
+  /** Gestor con una estancia inicial amplia y vacía y la casilla del bárbaro en ella */
+  async function conBarbaro(confirma = true) {
+    const amplia = { ...sala, tamano: { columnas: 12, filas: 8 }, elementos: [] }
+    const p = { ...proveedor(), confirmar: vi.fn(async () => confirma), describirEstancia: async () => amplia }
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    const posicion = gestor.mapa.estancias[0].elementos.find((el) => el.id === 'barbaro')?.posicion ?? { x: -1, y: -1 }
+    return { gestor, posicion, confirmar: p.confirmar }
+  }
+
+  it('pregunta al héroe cómo puede moverse, con el estado de su escuadra y sin nada gastado', async () => {
+    const { gestor } = await conBarbaro()
+    expect([await gestor.opcionesMovimiento('barbaro'), opcionesMovimiento.mock.lastCall]).toEqual([
+      opciones,
+      [expect.objectContaining({ escuadra: 'rojos', turno: 1 }), { casillas: 0, acciones: [] }],
+    ])
+  })
+
+  it('mueve al héroe y apunta en su escuadra la acción que consume', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    const destino = { x: posicion.x, y: posicion.y + 1 }
+    await gestor.moverHeroe('barbaro', [posicion, destino])
+    const estancia = gestor.mapa.estancias[0]
+    expect([estancia.elementos.find((el) => el.id === 'barbaro')?.posicion, gestor.mapa.turno?.acciones?.rojos]).toEqual([
+      destino,
+      [{ accion: 'mover', heroe: 'barbaro' }],
+    ])
+  })
+
+  it('si el recorrido no vale, dice por qué y el héroe no se mueve', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    const antes = gestor.mapa
+    expect([await gestor.moverHeroe('barbaro', enLinea(posicion, 4)), gestor.mapa]).toEqual(['Demasiado lejos: 4 casillas y como mucho 3', antes])
+  })
+
+  it('un héroe cuya escuadra ya terminó su turno no puede moverse', async () => {
+    const { gestor } = await conBarbaro()
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    expect(await gestor.opcionesMovimiento('barbaro')).toBeUndefined()
+  })
+
+  it('dentro del movimiento base, mueve sin preguntar y apunta cuántas casillas', async () => {
+    const { gestor, posicion, confirmar } = await conBarbaro()
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 2))
+    expect([confirmar.mock.calls.length, gestor.mapa.turno?.movimientos?.rojos]).toEqual([
+      0,
+      [{ heroe: 'barbaro', opcion: 'mover', casillas: 2, acciones: ['mover'] }],
+    ])
+  })
+
+  it('para deslizar, pide confirmación', async () => {
+    const { gestor, posicion, confirmar } = await conBarbaro()
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 3))
+    expect(confirmar).toHaveBeenCalledWith('Confirme que queremos deslizar')
+  })
+
+  it('confirmado, mueve y apunta el movimiento y la acción de deslizar', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 3))
+    expect([gestor.mapa.turno?.acciones?.rojos, gestor.mapa.turno?.movimientos?.rojos]).toEqual([
+      [
+        { accion: 'mover', heroe: 'barbaro' },
+        { accion: 'deslizar', heroe: 'barbaro' },
+      ],
+      [{ heroe: 'barbaro', opcion: 'mover-y-deslizar', casillas: 3, acciones: ['mover', 'deslizar'] }],
+    ])
+  })
+
+  it('sin confirmar, no hace nada', async () => {
+    const { gestor, posicion } = await conBarbaro(false)
+    const antes = gestor.mapa
+    expect([await gestor.moverHeroe('barbaro', enLinea(posicion, 3)), gestor.mapa]).toEqual([undefined, antes])
+  })
+
+  it('si el héroe ya se ha movido, se le pregunta de nuevo diciendo lo que ha gastado', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 2))
+    await gestor.opcionesMovimiento('barbaro')
+    expect(opcionesMovimiento.mock.lastCall?.[1]).toEqual({ casillas: 2, acciones: ['mover'] })
+  })
+
+  it('tras moverse, pasa a la escuadra las acciones que lleva', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 2))
+    expect(activar).toHaveBeenLastCalledWith([{ accion: 'mover', heroe: 'barbaro' }])
+  })
+
+  it('si la escuadra dice que su activación está completa, termina su turno', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    activar.mockResolvedValueOnce({ completo: true })
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 2))
+    expect(gestor.mapa.turno?.activaciones.rojos).toEqual({ modo: 'agresivo', terminada: true })
+  })
+
+  it('si no está completa, la escuadra sigue activándose', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    await gestor.moverHeroe('barbaro', enLinea(posicion, 2))
+    expect(gestor.mapa.turno?.activaciones.rojos).toEqual({ modo: 'agresivo', terminada: false })
+  })
+
+  it('tras terminar turno a mano no se pregunta a la escuadra', async () => {
+    const { gestor } = await conBarbaro()
+    activar.mockClear()
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    expect(activar).not.toHaveBeenCalled()
+  })
+
+  it('un héroe colocado no se lleva a otra casilla a mano: se mueve arrastrándolo', async () => {
+    const { gestor, posicion } = await conBarbaro()
+    const antes = gestor.mapa
+    expect([gestor.colocarElemento('estancia-1', 'barbaro', { x: posicion.x, y: posicion.y + 2 }), gestor.mapa]).toEqual([
+      'Bárbaro se mueve arrastrando su ficha',
+      antes,
+    ])
+  })
+
+  it('un héroe colocado tampoco vuelve a mano a la zona de espera', async () => {
+    const { gestor } = await conBarbaro()
+    expect(gestor.colocarElemento('estancia-1', 'barbaro')).toBe('Bárbaro se mueve arrastrando su ficha')
   })
 })

@@ -43,7 +43,8 @@ describe('acciones de las escuadras', () => {
       turno: 2,
       heroes: [{ id: 'barbaro', estancia: 'sala', posicion: { x: 1, y: 1 } }],
       modo: 'agresivo',
-      acciones: ['mover'],
+      acciones: [{ accion: 'mover' }],
+      movimientos: [],
     })
   })
 
