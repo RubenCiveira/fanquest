@@ -50,11 +50,18 @@ async function cargar(archivo) {
 }
 
 // Interiores de los tres paneles, separados por líneas verticales que
-// ocupan casi todo el alto de la hoja aunque el dibujo las cruce.
-function paneles({ ancho, alto, enFila, enColumna }) {
+// ocupan casi todo el alto de la hoja aunque el dibujo las cruce, o que
+// tienen un trazo continuo de más de media hoja si el dibujo tapa mucha línea.
+function paneles({ ancho, alto, oscuro, enFila, enColumna }) {
   const bordesY = tramos(0, alto, (y) => enFila(y, 0, ancho - 1) > ancho * 0.9)
   const [top, bottom] = [bordesY[0][1] + SANGRADO, bordesY.at(-1)[0] - SANGRADO]
-  const lineas = tramos(0, ancho, (x) => enColumna(x, top, bottom) > (bottom - top) * 0.75)
+  const lineas = tramos(
+    0,
+    ancho,
+    (x) =>
+      enColumna(x, top, bottom) > (bottom - top) * 0.75 ||
+      tramos(top, bottom + 1, (y) => oscuro(x, y)).some(([y0, y1]) => y1 - y0 > (bottom - top) * 0.5),
+  )
   if (lineas.length !== 4) throw new Error(`se esperaban 3 paneles y hay ${lineas.length - 1}`)
   return lineas.slice(0, 3).map(([, fin], i) => ({
     left: fin + SANGRADO,
@@ -93,15 +100,19 @@ function figura({ oscuro, enFila, enColumna }, { left, right, top, bottom }) {
 
 // Fichas circulares: en cada mitad del panel, las tres circunferencias con
 // más borde oscuro y blanco justo por fuera (las armas pueden salirse del
-// círculo, así que no hay huecos limpios entre fichas).
+// círculo, así que no hay huecos limpios entre fichas). El borde admite un
+// píxel de holgura porque algunas fichas no son circunferencias perfectas.
 function fichas({ oscuro }, { left, right, top, bottom }) {
   const mitad = (right - left) / 2
   const angulos = Array.from({ length: 90 }, (_, i) => (i * Math.PI) / 45)
   const pixel = (cx, cy, r, a) =>
     oscuro(Math.round(cx + r * Math.cos(a)), Math.round(cy + r * Math.sin(a)))
   const puntuacion = (cx, cy, r) =>
-    angulos.filter((a) => pixel(cx, cy, r, a) && ![5, 10, 15].some((d) => pixel(cx, cy, r + d, a)))
-      .length
+    angulos.filter(
+      (a) =>
+        [-1, 0, 1].some((d) => pixel(cx, cy, r + d, a)) &&
+        ![5, 10, 15].some((d) => pixel(cx, cy, r + d, a)),
+    ).length
   const circulos = [0, 1].flatMap((columna) => {
     const centro = left + mitad * (columna + 0.5)
     const candidatos = []
