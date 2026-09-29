@@ -37,6 +37,10 @@ src/
     imprimir/          Fichas imprimibles
   lib/                 Utilidades compartidas: dados, plantillas, mazos,
                        personajes, texto y Matomo
+  modules/
+    gamemap/           Motor de mapas reutilizable, sin dependencias de la app
+    map-debug-imp/     Implementacion de FetenQuest y banco de pruebas en
+                       /map-debug
 public/                Iconos PWA y assets publicos
 ```
 

@@ -1,0 +1,159 @@
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Icono } from '../../components/Icono'
+import {
+  construirEstancia,
+  largoMuro,
+  type DescripcionElemento,
+  type DescripcionEstancia,
+  type Direccion,
+  type Mapa,
+  type TipoEstancia,
+} from '../gamemap'
+import { ETIQUETA_ORIENTACION } from './mapas'
+import { VistaEstancia } from './VistaEstancia'
+
+/** Lado máximo de una estancia de prueba, como el de la rejilla de la partida */
+const MAX_LADO = 16
+
+const TIPOS: TipoEstancia[] = ['sala', 'pasillo', 'exterior']
+
+const lado = (n: number) => Math.min(MAX_LADO, Math.max(1, Math.trunc(n) || 1))
+
+type Props = {
+  /** Mapa ya construido que recibe el proveedor; en la primera estancia no hay */
+  mapa?: Mapa
+  onCrear: (d: DescripcionEstancia) => void
+  onCancelar: () => void
+}
+
+/** Formulario para describir a mano una estancia nueva, con vista previa de puertas y objetos */
+export function DialogoEstancia({ mapa, onCrear, onCancelar }: Props) {
+  const ref = useRef<HTMLDialogElement>(null)
+  const [tipo, setTipo] = useState<TipoEstancia>('sala')
+  const [tamano, setTamano] = useState({ columnas: 6, filas: 4 })
+  const [orientacion, setOrientacion] = useState<Direccion>('abajo')
+  const [salidas, setSalidas] = useState(1)
+  const [elementos, setElementos] = useState<DescripcionElemento[]>([])
+
+  useEffect(() => ref.current?.showModal(), [])
+
+  const maxSalidas = largoMuro(tamano, orientacion)
+  const descripcion: DescripcionEstancia = { tipo, tamano, orientacion, salidas: Math.min(salidas, maxSalidas), elementos }
+  const cambiarElemento = (i: number, cambio: Partial<DescripcionElemento>) =>
+    setElementos(elementos.map((el, j) => (j === i ? { ...el, ...cambio } : el)))
+
+  function crear(e: FormEvent) {
+    e.preventDefault()
+    onCrear(descripcion)
+  }
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby="estancia-titulo" onClose={onCancelar}>
+      <form className="dialog-contenido map-debug-dialogo" onSubmit={crear}>
+        <header className="dialog-cabecera">
+          <h2 id="estancia-titulo">Nueva estancia</h2>
+          <button type="button" className="icon-button" onClick={onCancelar} aria-label="Cerrar">
+            <Icono nombre="cerrar" />
+          </button>
+        </header>
+        <p className="nota">
+          {mapa ? `El mapa ya tiene ${mapa.estancias.length} estancias.` : 'Primera estancia del mapa.'}
+        </p>
+
+        <div className="editor-numeros">
+          <label className="campo">
+            Tipo
+            <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoEstancia)}>
+              {TIPOS.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </label>
+          <label className="campo">
+            Columnas
+            <input
+              type="number"
+              min={1}
+              max={MAX_LADO}
+              value={tamano.columnas}
+              onChange={(e) => setTamano({ ...tamano, columnas: lado(e.target.valueAsNumber) })}
+            />
+          </label>
+          <label className="campo">
+            Filas
+            <input
+              type="number"
+              min={1}
+              max={MAX_LADO}
+              value={tamano.filas}
+              onChange={(e) => setTamano({ ...tamano, filas: lado(e.target.valueAsNumber) })}
+            />
+          </label>
+          <label className="campo">
+            Orientación
+            <select value={orientacion} onChange={(e) => setOrientacion(e.target.value as Direccion)}>
+              {Object.entries(ETIQUETA_ORIENTACION).map(([valor, etiqueta]) => (
+                <option key={valor} value={valor}>
+                  {etiqueta}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="campo">
+            Puertas de salida
+            <input
+              type="number"
+              min={0}
+              max={maxSalidas}
+              value={descripcion.salidas}
+              onChange={(e) => setSalidas(Math.max(0, Math.trunc(e.target.valueAsNumber) || 0))}
+            />
+          </label>
+        </div>
+
+        <fieldset className="map-debug-elementos">
+          <legend>Objetos</legend>
+          {elementos.map((el, i) => (
+            <div key={i} className="map-debug-elemento">
+              <label className="campo">
+                Nombre
+                <input type="text" required value={el.nombre} onChange={(e) => cambiarElemento(i, { nombre: e.target.value })} />
+              </label>
+              <label className="campo">
+                Columnas
+                <input type="number" min={1} max={MAX_LADO} value={el.columnas} onChange={(e) => cambiarElemento(i, { columnas: lado(e.target.valueAsNumber) })} />
+              </label>
+              <label className="campo">
+                Filas
+                <input type="number" min={1} max={MAX_LADO} value={el.filas} onChange={(e) => cambiarElemento(i, { filas: lado(e.target.valueAsNumber) })} />
+              </label>
+              <button type="button" className="icon-button" aria-label={`Quitar ${el.nombre || 'objeto'}`} onClick={() => setElementos(elementos.filter((_, j) => j !== i))}>
+                <Icono nombre="cerrar" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => setElementos([...elementos, { tipo: 'objeto', nombre: `Objeto ${elementos.length + 1}`, columnas: 1, filas: 1 }])}
+          >
+            <Icono nombre="mas" />
+            Añadir objeto
+          </button>
+        </fieldset>
+
+        <VistaEstancia estancia={construirEstancia('vista-previa', descripcion)} />
+        <p className="nota">Se entra por el muro contrario a la orientación y se sale por el de la orientación. Los objetos que no caben quedan en la zona de espera.</p>
+
+        <div className="fila-botones">
+          <button type="button" className="button secondary" onClick={onCancelar}>
+            Cancelar
+          </button>
+          <button type="submit" className="button">
+            Crear estancia
+          </button>
+        </div>
+      </form>
+    </dialog>
+  )
+}

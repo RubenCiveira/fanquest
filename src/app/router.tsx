@@ -24,6 +24,8 @@ import { ImprimirPage } from '../features/imprimir/ImprimirPage'
 import { cargarFichasHeroes } from '../features/imprimir/rutas'
 import { cargarAliados, cargarBestiario } from '../lib/personajes'
 import { ImprimirTipoPage } from '../features/imprimir/ImprimirTipoPage'
+import { MapaPage } from '../modules/map-debug-imp/MapaPage'
+import { MapDebugPage } from '../modules/map-debug-imp/MapDebugPage'
 
 export const router = createBrowserRouter([
   {
@@ -66,6 +68,9 @@ export const router = createBrowserRouter([
       { path: 'imprimir/monstruos', loader: () => cargarBestiario(), element: <FichasMonstruosPage /> },
       { path: 'imprimir/aliados', loader: () => cargarAliados(), element: <FichasAliadosPage /> },
       { path: 'imprimir/:tipo', element: <ImprimirTipoPage /> },
+      // banco de pruebas del motor de mapas (modules/gamemap), sin enlace en la navegación
+      { path: 'map-debug', element: <MapDebugPage /> },
+      { path: 'map-debug/:id', element: <MapaPage /> },
       { path: '*', element: <Navigate to="/aventuras" replace /> },
     ],
   },

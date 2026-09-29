@@ -1,0 +1,240 @@
+.map-debug {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.vista-estancia {
+  width: 100%;
+  max-width: 720px;
+  height: auto;
+}
+
+.vista-casilla {
+  stroke: var(--trazo-suave);
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+.vista-casilla.exterior {
+  fill: var(--musgo-velo);
+}
+
+.vista-casilla.sala {
+  fill: var(--vitela);
+}
+
+.vista-casilla.pasillo {
+  fill: var(--pergamino-oscuro);
+}
+
+.vista-casilla.activa {
+  fill: var(--rubrica);
+  fill-opacity: 0.5;
+}
+
+.vista-muros rect {
+  fill: none;
+  stroke: var(--tinta);
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.vista-muros text {
+  font-family: var(--versalitas);
+  font-size: 10px;
+  fill: var(--tinta);
+  pointer-events: none;
+}
+
+.vista-puerta {
+  stroke: var(--tinta);
+  stroke-width: 1.5;
+}
+
+.vista-puerta.entrada {
+  fill: var(--musgo);
+}
+
+.vista-puerta.salida {
+  fill: var(--rubrica);
+}
+
+.vista-elemento rect {
+  fill: var(--pergamino);
+  stroke: var(--grafito);
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.vista-elemento.activo rect {
+  stroke: var(--rubrica);
+  stroke-width: 3;
+}
+
+.vista-elemento text {
+  font-family: var(--texto);
+  font-size: 11px;
+  text-anchor: middle;
+  fill: var(--tinta);
+  pointer-events: none;
+}
+
+.map-debug-dialogo {
+  display: grid;
+  gap: 12px;
+}
+
+.map-debug-elementos {
+  display: grid;
+  gap: 8px;
+  border: 1.5px solid var(--trazo-suave);
+  border-radius: var(--boceto-2);
+}
+
+.map-debug-elemento {
+  display: grid;
+  grid-template-columns: 1fr 5rem 5rem auto;
+  gap: 8px;
+  align-items: end;
+}
+
+.map-debug-estancia {
+  display: grid;
+  gap: 8px;
+}
+
+.map-debug-espera {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.vista-elemento.heroe > circle {
+  fill: var(--vitela);
+  stroke: var(--tinta);
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.vista-elemento.heroe.activo > circle {
+  stroke: var(--rubrica);
+  stroke-width: 3;
+}
+
+.vista-elemento.heroe image {
+  pointer-events: none;
+}
+
+.vista-badge circle {
+  fill: var(--vitela);
+  stroke-width: 1.5;
+}
+
+.vista-badge text {
+  font-family: var(--versalitas);
+  font-size: 8px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.vista-badge.agresivo circle {
+  stroke: var(--rubrica);
+}
+
+.vista-badge.agresivo text {
+  fill: var(--rubrica);
+}
+
+.vista-badge.sigiloso circle {
+  stroke: var(--musgo);
+}
+
+.vista-badge.sigiloso text {
+  fill: var(--musgo);
+}
+
+.vista-badge.normal circle {
+  stroke: var(--tinta);
+}
+
+.vista-badge.normal text {
+  fill: var(--tinta);
+}
+
+/* activación completa: badge relleno con la letra en claro */
+.vista-badge.terminada.agresivo circle {
+  fill: var(--rubrica);
+}
+
+.vista-badge.terminada.sigiloso circle {
+  fill: var(--musgo);
+}
+
+.vista-badge.terminada.normal circle {
+  fill: var(--tinta);
+}
+
+.vista-badge.terminada text {
+  fill: var(--vitela);
+}
+
+.map-debug-turno {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* aún sin activar este turno: el último modo, discontinuo y apagado */
+.vista-badge.anterior {
+  opacity: 0.7;
+}
+
+.vista-badge.anterior circle {
+  stroke-dasharray: 2 2;
+}
+
+.map-debug-escuadras {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* la corona puede salir del mapa por los bordes */
+.vista-estancia {
+  overflow: visible;
+}
+
+.vista-corona > circle {
+  fill: none;
+  stroke: var(--rubrica);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.vista-corona-accion {
+  cursor: pointer;
+}
+
+.vista-corona-accion rect {
+  fill: var(--vitela);
+  stroke: var(--rubrica);
+  stroke-width: 1.5;
+}
+
+.vista-corona-accion:hover rect {
+  fill: var(--pergamino);
+}
+
+.vista-corona-accion text {
+  font-family: var(--versalitas);
+  font-size: 10px;
+  text-anchor: middle;
+  fill: var(--tinta);
+  pointer-events: none;
+}
