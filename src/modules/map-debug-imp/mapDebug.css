@@ -28,10 +28,6 @@
   fill: var(--pergamino-oscuro);
 }
 
-.vista-casilla.activa {
-  fill: var(--rubrica);
-  fill-opacity: 0.5;
-}
 
 .vista-muros rect {
   fill: none;
@@ -219,29 +215,51 @@
 
 .vista-corona-accion {
   cursor: pointer;
+  outline: none;
 }
 
-.vista-corona-accion rect {
+.vista-corona-accion circle {
   fill: var(--vitela);
   stroke: var(--rubrica);
   stroke-width: 1.5;
 }
 
-.vista-corona-accion:hover rect {
+.vista-corona-accion:hover circle,
+.vista-corona-accion:focus-visible circle {
   fill: var(--pergamino);
+  stroke-width: 2.5;
 }
 
-.vista-corona-accion text {
-  font-family: var(--versalitas);
-  font-size: 10px;
+.vista-corona-accion text,
+.vista-corona-etiqueta text.icono {
+  font-size: 13px;
   text-anchor: middle;
-  fill: var(--tinta);
   pointer-events: none;
+}
+
+.vista-corona-etiqueta {
+  pointer-events: none;
+}
+
+.vista-corona-etiqueta rect {
+  fill: var(--vitela);
+  stroke: var(--rubrica);
+  stroke-width: 2;
+  filter: drop-shadow(0 1px 2px rgb(42 28 16 / 0.25));
+}
+
+.vista-corona-etiqueta text {
+  font-family: var(--versalitas);
+  font-size: 11px;
+  fill: var(--tinta);
 }
 
 /* arrastrar la ficha no desplaza la página en pantallas táctiles */
 .vista-elemento.heroe {
   touch-action: none;
+  transition:
+    opacity 0.2s var(--ease),
+    filter 0.2s var(--ease);
 }
 
 .vista-recorrido polyline {
@@ -296,4 +314,16 @@
 
 .vista-recorrido-punta.invalido {
   fill: var(--grafito);
+}
+
+/* héroes de otras escuadras mientras una se activa: apagados hasta que termine */
+.vista-elemento.heroe.esperando {
+  opacity: 0.45;
+  filter: blur(0.6px) grayscale(0.6);
+}
+
+/* puerta ya abierta: hueco en el muro, solo el contorno */
+.vista-puerta.abierta {
+  fill: var(--vitela);
+  stroke-dasharray: 3 2;
 }

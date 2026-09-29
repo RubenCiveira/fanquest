@@ -22,7 +22,8 @@ y `../map-debug-imp/escuadras.ts`.
 | `ProveedorHeroes` | `listarEscuadras()` | La primera vez que necesita las escuadras (una sola vez por gestor) |
 | `Escuadra` | `heroes()` | Al crear la estancia inicial |
 | `Escuadra` | `modoActivacion()` | Al crear la estancia inicial, con modo agresivo o sigiloso, si la escuadra aún no tiene modo |
-| `Escuadra` | `acciones(estado)` | En cada `accionesDisponibles()` y `ejecutarAccion()` |
+| `Escuadra` | `acciones(estado, mapa, heroe?)` | Al pulsar una ficha (`accionesDisponibles(escuadra, heroe)`) y en `ejecutarAccion()` |
+| `Comando` | `exec()` | Al elegir una acción que es un comando |
 | `Escuadra` | `activar(acciones)` | Tras cada acción o movimiento de la escuadra, mientras se activa |
 | `Heroe` | `opcionesMovimiento(estado)` | Al empezar a arrastrar su ficha (`opcionesMovimiento()`) y al soltarla (`moverHeroe()`) |
 
@@ -58,11 +59,13 @@ pruebas lo resuelve con un diálogo de confirmar o cancelar.
 ## ProveedorEstancias
 
 ```ts
-describirEstancia(mapa?: Mapa): Promise<DescripcionEstancia>
+describirEstancia(mapa?: Mapa, entrada?: Direccion): Promise<DescripcionEstancia>
 ```
 
 Se llama cada vez que hay que generar una estancia. Recibe el mapa ya
-construido (`undefined` en la primera estancia) y devuelve cómo es la nueva:
+construido (`undefined` en la primera estancia) y, si se abre desde una
+puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve cómo es
+la nueva:
 
 ```ts
 {
@@ -74,8 +77,8 @@ construido (`undefined` en la primera estancia) y devuelve cómo es la nueva:
 }
 ```
 
-- La entrada va en el muro contrario a `orientacion` y las `salidas` se
-  reparten por el muro de `orientacion`: no puede haber más salidas que
+- La entrada va en el muro `entrada` (si no hay, en el contrario a
+  `orientacion`) y las `salidas` se reparten por el muro de `orientacion`: no puede haber más salidas que
   casillas tiene ese muro.
 - Los elementos no llevan posición: el gestor busca un hueco para cada uno y,
   si no cabe, lo deja en la zona de espera para colocarlo a mano.
@@ -99,7 +102,7 @@ interface Escuadra {
   nombre: string
   heroes(): Promise<Heroe[]>
   modoActivacion(): Promise<'agresivo' | 'sigiloso'>
-  acciones(estado: EstadoEscuadra): Promise<Accion[]>
+  acciones(estado: EstadoEscuadra, mapa: MapaEnJuego, heroe?: HeroeEnMapa): Promise<Accion[]> // pueden ser Comando
   activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
 }
 
@@ -117,8 +120,10 @@ interface Heroe {
 - `modoActivacion()`: el modo con el que empieza la escuadra. Solo se llama
   con `modosActivacion: 'agresivo-sigiloso'`, pero hay que implementarlo
   siempre.
-- `acciones(estado)`: lo que la escuadra puede hacer ahora. Devuelve solo las
-  propias del juego (`{ id, nombre }`, con `nombre` como texto del botón); el
+- `acciones(estado, mapa, heroe?)`: lo que la escuadra puede hacer ahora.
+  Devuelve solo las propias del juego (`{ id, nombre, icono }`: la corona
+  pinta solo el `icono`, que interpreta la vista, en el banco de pruebas un
+  emoji, y despliega el `nombre` al señalarlo o al primer toque); el
   gestor añade detrás las suyas: «Cambiar a agresivo/sigiloso» (si hay modos)
   y «Terminar turno» (id `terminar-turno`). No uses sus ids (`cambiar-modo`,
   `terminar-turno`) para acciones propias.
@@ -150,6 +155,60 @@ Sin `posicion`, el héroe está en la zona de espera de su estancia. De momento
 el gestor solo apunta las acciones propias en `acciones`: su efecto en el
 juego aún corre a cargo del proyecto.
 
+## Acciones con código: comandos
+
+Al pulsar una ficha, el gestor pregunta a su escuadra por sus acciones con
+el mapa y el héroe pulsado, con su posición (`acciones(estado, mapa, heroe)`).
+La escuadra decide qué puede hacer ese héroe donde está (abrir la puerta que
+pisa…). Una acción puede ser un **comando**: una acción con su código ya
+empaquetado en `exec`. Al elegirla, el gestor llama a `exec()`, la apunta
+(como del héroe pulsado) y pregunta a la escuadra si su activación está
+completa. Si `exec` falla (o se cancela un diálogo que abre), no se apunta.
+
+```ts
+interface Comando extends Accion {
+  exec(): Promise<void>
+}
+
+type HeroeEnMapa = { id: string; nombre: string; escuadra: string; posicion: Ubicacion }
+type Ubicacion = { estancia: string; casilla: { x: number; y: number } }
+
+interface MapaEnJuego {
+  readonly mapa: Mapa                                  // el mapa tal como está
+  puertaEn(ubicacion: Ubicacion): Puerta | undefined   // la puerta de esa casilla
+  abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // pide la estancia de detrás y la deja abierta
+}
+```
+
+`abrirPuerta` llama a `describirEstancia` del proveedor (con el mapa
+construido), añade la estancia y marca la puerta `abierta` con su `destino`.
+El proveedor recibe en `entrada` el muro de la estancia nueva que encaja con
+la puerta: ahí va su entrada, sea cual sea su `orientacion` (hacia donde
+están las salidas, que no puede ser ese muro: si lo es, no se abre). La
+estancia se pega a la puerta: su entrada comparte arista con ella y queda
+abierta hacia la estancia de la que se viene; si choca con otra, se desliza a
+lo largo de su muro. Falla si no hay puerta, si ya está abierta o si el
+proveedor rechaza: entonces la puerta sigue cerrada.
+
+Las estancias del mapa tienen su sitio en casillas comunes (`posicion`): la
+primera en 0,0, las que se abren desde una puerta pegadas a ella y las que se
+piden con `nuevaEstancia()`, aparte a la derecha de todo.
+
+En el banco de pruebas, `accionesDeEscuadra` ofrece la clase `AbrirPuerta`
+cuando el héroe pulsado está en una salida cerrada:
+
+```ts
+class AbrirPuerta implements Comando {
+  readonly id = 'abrir-puerta'
+  readonly nombre = 'Abrir puerta'
+  readonly icono = '🚪'
+  #donde: Ubicacion
+  #mapa: MapaEnJuego
+  constructor(donde: Ubicacion, mapa: MapaEnJuego) { this.#donde = donde; this.#mapa = mapa }
+  async exec() { await this.#mapa.abrirPuerta(this.#donde) }
+}
+```
+
 ## Movimiento: Heroe.opcionesMovimiento
 
 Al arrastrar una ficha, el gestor pregunta al héroe cómo puede moverse ahora,
@@ -180,9 +239,12 @@ Ejemplos: mover 6 sin acercarse a enemigos es `tramos: [{ distancia: 6 }]` con
 y `terminarJuntoAEnemigo: true`; mover 6 y deslizar 3 más es
 `tramos: [{ distancia: 6 }, { distancia: 3, accion: deslizar }]`.
 
-- El recorrido se hace casilla a casilla en ortogonal, sin atravesar objetos
-  ni estancias interiores. Puede pasar por encima de otros héroes, pero no
-  terminar encima.
+- El recorrido va en las casillas comunes del mapa, casilla a casilla en
+  ortogonal, sin atravesar objetos ni estancias interiores. Entre dos
+  estancias solo se pasa por una puerta abierta; cualquier otro muro corta el
+  paso aunque las estancias se toquen. Al terminar en otra estancia, la ficha
+  pasa a ella. Puede pasar por encima de otros héroes, pero no terminar
+  encima.
 - Al soltar vale la primera opción que permite el recorrido: la base y
   después las variaciones, en el orden en que vienen. Ordénalas de la más
   barata a la más cara.
@@ -211,7 +273,7 @@ al proveedor, que debe devolver las mismas (mismos ids).
 ```ts
 import { GestorMapa, type Escuadra, type ProveedorMapa } from '../gamemap'
 
-const mover = { id: 'mover', nombre: 'Mover' }
+const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
 
 const grupo: Escuadra = {
   id: 'grupo',
@@ -231,7 +293,10 @@ const grupo: Escuadra = {
     },
   ],
   modoActivacion: async () => 'sigiloso',
-  acciones: async () => [],
+  acciones: async (_estado, mapa, heroe) => {
+    const puerta = heroe && mapa.puertaEn(heroe.posicion)
+    return heroe && puerta && !puerta.abierta ? [new AbrirPuerta(heroe.posicion, mapa)] : []
+  },
   activar: async (acciones) => ({ completo: acciones.some((a) => a.accion === 'mover') }),
 }
 

@@ -3,6 +3,7 @@ import { Navigate, useParams } from 'react-router'
 import { Icono } from '../../components/Icono'
 import { PageHeader } from '../../components/PageHeader'
 import {
+  escuadraActiva,
   escuadrasDelMapa,
   estanciaEn,
   GestorMapa,
@@ -16,7 +17,7 @@ import {
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION, guardarMapa, obtenerMapa } from './mapas'
 import { esCancelacion, useProveedorDebug } from './useProveedorDebug'
-import { VistaEstancia } from './VistaEstancia'
+import { VistaMapa } from './VistaMapa'
 import './mapDebug.css'
 
 /** Un mapa de prueba: pulsa una casilla para ver de qué estancia es */
@@ -59,17 +60,23 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
   useEffect(() => {
     if (!escuadraElegida) return
     let vigente = true
-    gestor.accionesDisponibles(escuadraElegida).then((lista) => vigente && setAcciones({ escuadra: escuadraElegida, mapa, lista }))
+    gestor.accionesDisponibles(escuadraElegida, seleccion?.elemento).then((lista) => vigente && setAcciones({ escuadra: escuadraElegida, mapa, lista }))
     return () => {
       vigente = false
     }
-  }, [gestor, escuadraElegida, mapa])
+  }, [gestor, escuadraElegida, seleccion?.elemento, mapa])
 
   // las de otra escuadra o de un mapa anterior ya no valen
   const accionesVigentes = acciones?.escuadra === escuadraElegida && acciones?.mapa === mapa ? acciones.lista : []
 
+  /** Ejecuta la acción de la corona; si abre un diálogo (una puerta pide una estancia nueva) y se cancela, no pasa nada */
   async function accionar(accion: string) {
-    if (escuadraElegida) setNota(await gestor.ejecutarAccion(escuadraElegida, accion))
+    if (!escuadraElegida) return
+    try {
+      setNota(await gestor.ejecutarAccion(escuadraElegida, accion, seleccion?.elemento))
+    } catch (error) {
+      if (!esCancelacion(error)) throw error
+    }
   }
 
   async function nuevaEstancia() {
@@ -137,6 +144,22 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
       </ul>
       {nota && <p className="nota">{nota}</p>}
 
+      <VistaMapa
+        estancias={mapa.estancias}
+        elemento={seleccion?.elemento}
+        onElegir={elegirCasilla}
+        onElegirElemento={(elemento) => {
+          const estancia = mapa.estancias.find((e) => e.elementos.some((el) => el.id === elemento))
+          if (estancia) setSeleccion({ estancia: estancia.id, elemento })
+        }}
+        activaciones={turno.activaciones}
+        ultimosModos={turno.ultimosModos}
+        corona={escuadraElegida ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
+        opcionesMovimiento={(heroe) => gestor.opcionesMovimiento(heroe)}
+        onMover={async (heroe, recorrido) => setNota(await gestor.moverHeroe(heroe, recorrido))}
+        escuadraActiva={escuadraActiva(mapa)?.id}
+      />
+
       {mapa.estancias.map((e) => {
         const enEspera = e.elementos.filter((el) => !el.posicion)
         const elegido = seleccion?.estancia === e.id ? seleccion.elemento : undefined
@@ -146,17 +169,6 @@ function Gestionado({ id, inicial, proveedor }: { id: string; inicial: Mapa; pro
               {e.id} · {e.tipo} {e.columnas} × {e.filas}
               {e.orientacion && ` · ${ETIQUETA_ORIENTACION[e.orientacion]}`}
             </h2>
-            <VistaEstancia
-              estancia={e}
-              elemento={elegido}
-              onElegir={(c) => elegirCasilla(e, c)}
-              onElegirElemento={(elemento) => setSeleccion({ estancia: e.id, elemento })}
-              activaciones={turno.activaciones}
-              ultimosModos={turno.ultimosModos}
-              corona={seleccion?.estancia === e.id && escuadraElegida ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
-              opcionesMovimiento={(heroe) => gestor.opcionesMovimiento(heroe)}
-              onMover={async (heroe, recorrido) => setNota(await gestor.moverHeroe(heroe, recorrido))}
-            />
             <div className="map-debug-espera">
               <span className="nota">Zona de espera:</span>
               {enEspera.length === 0 && <span className="nota">vacía</span>}

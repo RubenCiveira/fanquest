@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
-import type { Configuracion, DescripcionEstancia, Mapa, ProveedorMapa } from '../gamemap'
+import type { Configuracion, DescripcionEstancia, Direccion, Mapa, ProveedorMapa } from '../gamemap'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
 
@@ -10,7 +10,7 @@ const CONFIGURACION: Configuracion = { ordenActivaciones: 'alternas', modosActiv
 /** Pregunta de `confirmar` pendiente de respuesta */
 type Confirmacion = { mensaje: string; responder: (si: boolean) => void }
 
-type Peticion = { mapa?: Mapa; responder: (d: DescripcionEstancia) => void; cancelar: () => void }
+type Peticion = { mapa?: Mapa; entrada?: Direccion; responder: (d: DescripcionEstancia) => void; cancelar: () => void }
 
 /** Si el error es que se canceló el diálogo: no hay estancia nueva y no es un fallo */
 export const esCancelacion = (error: unknown) => error instanceof DOMException && error.name === 'AbortError'
@@ -32,10 +32,11 @@ export function useProveedorDebug() {
       confirmar: (mensaje) =>
         new Promise((resolve) => setConfirmacion({ mensaje, responder: (si) => (setConfirmacion(undefined), resolve(si)) })),
       ...escuadrasDePrueba,
-      describirEstancia: (mapa) =>
+      describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>
           setPeticion({
             mapa,
+            entrada,
             responder: (d) => (setPeticion(undefined), resolve(d)),
             cancelar: () => (setPeticion(undefined), reject(new DOMException('Estancia cancelada', 'AbortError'))),
           }),
@@ -46,7 +47,7 @@ export function useProveedorDebug() {
 
   const dialogo = (
     <>
-      {peticion && <DialogoEstancia mapa={peticion.mapa} onCrear={peticion.responder} onCancelar={peticion.cancelar} />}
+      {peticion && <DialogoEstancia mapa={peticion.mapa} entrada={peticion.entrada} onCrear={peticion.responder} onCancelar={peticion.cancelar} />}
       {confirmacion && (
         // al confirmar, el diálogo también se cierra: la segunda respuesta ya no cuenta
         <ConfirmarDialog

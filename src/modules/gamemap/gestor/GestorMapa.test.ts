@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AccionEjecutada } from '../modelo/accionEjecutada'
+import type { HeroeEnMapa } from '../modelo/heroeEnMapa'
+import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
+import type { Direccion } from '../modelo/direccion'
+import type { Mapa } from '../modelo/mapa'
 import type { EstadoEscuadra } from '../modelo/estadoEscuadra'
 import type { MovimientoGastado } from '../modelo/movimientoGastado'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
@@ -14,7 +18,7 @@ const sala: DescripcionEstancia = {
   elementos: [{ tipo: 'objeto', nombre: 'Cofre', columnas: 1, filas: 1 }],
 }
 
-const mover = { id: 'mover', nombre: 'Mover' }
+const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
 const opciones: OpcionesMovimiento = {
   base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 2 }] },
   variaciones: [
@@ -23,26 +27,32 @@ const opciones: OpcionesMovimiento = {
       nombre: 'Mover y deslizar',
       tipo: 'normal',
       accion: mover,
-      tramos: [{ distancia: 2 }, { distancia: 1, accion: { id: 'deslizar', nombre: 'Deslizar' } }],
+      tramos: [{ distancia: 2 }, { distancia: 1, accion: { id: 'deslizar', nombre: 'Deslizar', icono: '💨' } }],
     },
   ],
 }
 /** Por defecto, ninguna activación queda completa tras una acción */
 const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
 
+/** Comando de los rojos que solo dan con un héroe pulsado */
+const gritar = { id: 'gritar', nombre: 'Gritar', icono: '📣', exec: vi.fn(async () => {}) }
+
 const opcionesMovimiento = vi.fn(async (_estado: EstadoEscuadra, _gastado: MovimientoGastado) => opciones)
 
 const proveedor = () => ({
   confirmar: vi.fn(async () => true),
   configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' } as const,
-  describirEstancia: vi.fn(async () => sala),
+  describirEstancia: vi.fn(async (_mapa?: Mapa, _entrada?: Direccion) => sala),
   listarEscuadras: vi.fn(async () => [
     {
       id: 'rojos',
       nombre: 'Rojos',
       heroes: async () => [{ id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', opcionesMovimiento }],
       modoActivacion: async () => 'agresivo' as const,
-      acciones: vi.fn(async () => [{ id: 'mover', nombre: 'Mover' }]),
+      acciones: vi.fn(async (_estado: EstadoEscuadra, _mapa: MapaEnJuego, heroe?: HeroeEnMapa) => [
+        { id: 'mover', nombre: 'Mover', icono: '🥾' },
+        ...(heroe ? [gritar] : []),
+      ]),
       activar,
     },
     {
@@ -60,7 +70,7 @@ describe('gestor del mapa', () => {
   it('en la primera estancia, el proveedor no recibe mapa', async () => {
     const p = proveedor()
     await new GestorMapa(p).nuevaEstancia()
-    expect(p.describirEstancia).toHaveBeenCalledWith(undefined)
+    expect(p.describirEstancia.mock.lastCall?.[0]).toBeUndefined()
   })
 
   it('en las siguientes, el proveedor recibe el mapa ya construido', async () => {
@@ -69,7 +79,7 @@ describe('gestor del mapa', () => {
     await gestor.nuevaEstancia()
     const construido = gestor.mapa
     await gestor.nuevaEstancia()
-    expect(p.describirEstancia).toHaveBeenLastCalledWith(construido)
+    expect(p.describirEstancia.mock.lastCall?.[0]).toBe(construido)
   })
 
   it('añade cada estancia nueva al mapa con un id propio', async () => {
@@ -217,7 +227,7 @@ describe('gestor del mapa', () => {
     await gestor.ejecutarAccion('rojos', 'mover')
     const [rojos] = await p.listarEscuadras.mock.results[0].value
     await gestor.accionesDisponibles('rojos')
-    expect(rojos.acciones).toHaveBeenLastCalledWith(expect.objectContaining({ escuadra: 'rojos', turno: 1, modo: 'agresivo', acciones: [{ accion: 'mover' }] }))
+    expect(rojos.acciones.mock.lastCall?.[0]).toEqual(expect.objectContaining({ escuadra: 'rojos', turno: 1, modo: 'agresivo', acciones: [{ accion: 'mover' }] }))
   })
 
   it('pide las escuadras al proveedor una sola vez', async () => {
@@ -252,7 +262,7 @@ describe('gestor del mapa', () => {
     const gestor = new GestorMapa(p)
     await gestor.nuevaEstancia()
     const posicion = gestor.mapa.estancias[0].elementos.find((el) => el.id === 'barbaro')?.posicion ?? { x: -1, y: -1 }
-    return { gestor, posicion, confirmar: p.confirmar }
+    return { gestor, posicion, confirmar: p.confirmar, proveedor: p }
   }
 
   it('pregunta al héroe cómo puede moverse, con el estado de su escuadra y sin nada gastado', async () => {
@@ -364,5 +374,120 @@ describe('gestor del mapa', () => {
   it('un héroe colocado tampoco vuelve a mano a la zona de espera', async () => {
     const { gestor } = await conBarbaro()
     expect(gestor.colocarElemento('estancia-1', 'barbaro')).toBe('Bárbaro se mueve arrastrando su ficha')
+  })
+
+  it('al pulsar un héroe, la escuadra da también las acciones que dependen de él', async () => {
+    const gestor = new GestorMapa(proveedor())
+    await gestor.nuevaEstancia()
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['mover', 'gritar', 'cambiar-modo', 'terminar-turno'])
+  })
+
+  it('la escuadra recibe el mapa y el héroe pulsado, con su posición', async () => {
+    const { gestor, posicion, proveedor: p } = await conBarbaro()
+    await gestor.accionesDisponibles('rojos', 'barbaro')
+    const [rojos] = await p.listarEscuadras.mock.results[0].value
+    expect(rojos.acciones.mock.lastCall?.slice(1)).toEqual([
+      gestor,
+      { id: 'barbaro', nombre: 'Bárbaro', escuadra: 'rojos', posicion: { estancia: 'estancia-1', casilla: posicion } },
+    ])
+  })
+
+  it('un comando se ejecuta con su propio código', async () => {
+    const { gestor } = await conBarbaro()
+    gritar.exec.mockClear()
+    await gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')
+    expect(gritar.exec).toHaveBeenCalledOnce()
+  })
+
+  it('una acción de la escuadra con un héroe pulsado queda apuntada como suya', async () => {
+    const { gestor } = await conBarbaro()
+    await gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')
+    expect(gestor.mapa.turno?.acciones?.rojos).toEqual([{ accion: 'gritar', heroe: 'barbaro' }])
+  })
+
+  it('si el comando falla, no se apunta', async () => {
+    const { gestor } = await conBarbaro()
+    gritar.exec.mockRejectedValueOnce(new Error('cancelada'))
+    await expect(gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')).rejects.toThrow('cancelada')
+    expect(gestor.mapa.turno?.acciones?.rojos).toBeUndefined()
+  })
+
+  /** La salida de la sala de prueba (4 × 3, hacia abajo): en medio del muro de abajo */
+  const salida = { estancia: 'estancia-1', casilla: { x: 2, y: 2 } }
+
+  it('abrir una puerta pide una estancia nueva y la deja abierta hacia ella', async () => {
+    const gestor = new GestorMapa(proveedor())
+    await gestor.nuevaEstancia()
+    await gestor.abrirPuerta(salida)
+    expect([gestor.mapa.estancias.map((e) => e.id), gestor.puertaEn(salida)]).toEqual([
+      ['estancia-1', 'estancia-2'],
+      expect.objectContaining({ id: 'salida-1', abierta: true, destino: 'estancia-2' }),
+    ])
+  })
+
+  it('una puerta abierta no se vuelve a abrir', async () => {
+    const gestor = new GestorMapa(proveedor())
+    await gestor.nuevaEstancia()
+    await gestor.abrirPuerta(salida)
+    await expect(gestor.abrirPuerta(salida)).rejects.toThrow('ya está abierta')
+  })
+
+  it('si no se da la estancia nueva, la puerta sigue cerrada', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    p.describirEstancia.mockRejectedValueOnce(new Error('cancelada'))
+    await expect(gestor.abrirPuerta(salida)).rejects.toThrow('cancelada')
+    expect(gestor.puertaEn(salida)?.abierta).toBeUndefined()
+  })
+
+  it('la estancia inicial va en la esquina del mapa y la siguiente sin puerta, aparte a su derecha', async () => {
+    const gestor = new GestorMapa(proveedor())
+    await gestor.nuevaEstancia()
+    await gestor.nuevaEstancia()
+    expect(gestor.mapa.estancias.map((e) => e.posicion)).toEqual([
+      { x: 0, y: 0 },
+      { x: 5, y: 0 },
+    ])
+  })
+
+  it('la estancia que se abre queda con su entrada junto a la puerta, al otro lado del muro', async () => {
+    const gestor = new GestorMapa(proveedor())
+    await gestor.nuevaEstancia()
+    const nueva = await gestor.abrirPuerta(salida)
+    const entrada = nueva.puertas.find((p) => p.tipo === 'entrada')
+    expect(entrada && { x: (nueva.posicion?.x ?? 0) + entrada.casilla.x, y: (nueva.posicion?.y ?? 0) + entrada.casilla.y }).toEqual({ x: 2, y: 3 })
+  })
+
+  it('al abrir una puerta, el proveedor sabe por qué muro se entrará', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    await gestor.abrirPuerta(salida)
+    expect(p.describirEstancia.mock.lastCall?.[1]).toBe('arriba')
+  })
+
+  it('la estancia que se abre mantiene su orientación y pone la entrada en el muro de la puerta', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    p.describirEstancia.mockResolvedValueOnce({ ...sala, orientacion: 'derecha' })
+    const nueva = await gestor.abrirPuerta(salida)
+    expect([nueva.orientacion, nueva.puertas.map((pu) => [pu.tipo, pu.lado])]).toEqual([
+      'derecha',
+      [
+        ['entrada', 'arriba'],
+        ['salida', 'derecha'],
+      ],
+    ])
+  })
+
+  it('si la estancia pide salir por el muro de la entrada, no se abre y la puerta sigue cerrada', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    p.describirEstancia.mockResolvedValueOnce({ ...sala, orientacion: 'arriba' })
+    await expect(gestor.abrirPuerta(salida)).rejects.toThrow('no puede salir por el muro de arriba')
+    expect(gestor.puertaEn(salida)?.abierta).toBeUndefined()
   })
 })

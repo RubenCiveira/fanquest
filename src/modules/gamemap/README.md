@@ -92,9 +92,15 @@ await gestor.nuevaEstancia()
 - **Movimiento**: al arrastrar una ficha, el gestor pregunta al héroe sus
   `OpcionesMovimiento` (movimiento base y variaciones, cada una en tramos que
   pueden consumir acciones adicionales). El recorrido vale con la primera
-  opción que lo permite; si consume una acción adicional, antes se pide
+  opción que lo permite (por todo el mapa, cruzando puertas abiertas); si
+  consume una acción adicional, antes se pide
   confirmación. El movimiento y sus acciones quedan apuntados en el turno de
   la escuadra (ver `PROVEEDORES.md`).
+- **Comandos**: al pulsar una ficha, la escuadra recibe el héroe y el mapa
+  (`MapaEnJuego`) y puede dar comandos, acciones con su código en `exec`:
+  p. ej., abrir la puerta que pisa el héroe, que pide una estancia nueva al
+  proveedor, la pega a la puerta (su entrada enfrente) y deja las dos
+  puertas abiertas una hacia la otra.
 - **Descripción de estancia**: lo que el proyecto devuelve al pedirle una
   estancia nueva: tipo, tamaño, orientación, número de salidas y elementos.
 - **Puerta**: va en una arista del muro exterior, no dentro de una casilla:

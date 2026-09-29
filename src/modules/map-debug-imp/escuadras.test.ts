@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { activacionDePrueba, escuadrasDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './escuadras'
+import { describe, expect, it, vi } from 'vitest'
+import type { MapaEnJuego, Puerta } from '../gamemap'
+import { AbrirPuerta, accionesDeEscuadra, activacionDePrueba, escuadrasDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './escuadras'
 
 describe('escuadras de prueba', () => {
   it('una escuadra con el bárbaro y otra con el enano, con su ficha VTT', async () => {
@@ -47,5 +48,33 @@ describe('escuadras de prueba', () => {
 
   it('usar una acción sin moverse no completa la activación', () => {
     expect(activacionDePrueba([{ accion: 'cambiar-modo' }])).toEqual({ completo: false })
+  })
+
+  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', escuadra: 'escuadra-barbaro', posicion: { estancia: 'estancia-1', casilla: { x: 2, y: 3 } } }
+  const salida: Puerta = { id: 'salida-1', tipo: 'salida', casilla: { x: 2, y: 3 }, lado: 'abajo' }
+  const mapaCon = (puerta?: Puerta): MapaEnJuego => ({ mapa: { estancias: [] }, puertaEn: () => puerta, abrirPuerta: vi.fn() })
+  const estado = { escuadra: 'escuadra-barbaro', turno: 1, heroes: [], modo: 'sigiloso' as const, acciones: [], movimientos: [] }
+
+  it('si el héroe pulsado está en una salida cerrada, la escuadra ofrece abrirla', async () => {
+    expect((await accionesDeEscuadra(estado, mapaCon(salida), barbaro)).map((a) => [a.id, a instanceof AbrirPuerta])).toEqual([['abrir-puerta', true]])
+  })
+
+  it('sobre una puerta ya abierta, o sin puerta, no hay nada que abrir', async () => {
+    const acciones = [await accionesDeEscuadra(estado, mapaCon({ ...salida, abierta: true }), barbaro), await accionesDeEscuadra(estado, mapaCon(), barbaro)]
+    expect(acciones).toEqual([[], []])
+  })
+
+  it('la entrada no se abre: es por donde se llegó', async () => {
+    expect(await accionesDeEscuadra(estado, mapaCon({ ...salida, tipo: 'entrada' }), barbaro)).toEqual([])
+  })
+
+  it('sin un héroe pulsado, no hay puerta que abrir', async () => {
+    expect(await accionesDeEscuadra(estado, mapaCon(salida))).toEqual([])
+  })
+
+  it('el comando abre la puerta de la casilla del héroe', async () => {
+    const mapa = mapaCon(salida)
+    await new AbrirPuerta(barbaro.posicion, mapa).exec()
+    expect(mapa.abrirPuerta).toHaveBeenCalledWith(barbaro.posicion)
   })
 })

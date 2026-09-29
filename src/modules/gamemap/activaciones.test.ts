@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   activar,
+  escuadraActiva,
   escuadrasDelMapa,
   motivoParaNoActivar,
   motivoParaNoTerminarTurno,
@@ -56,7 +57,7 @@ describe('activaciones por escuadra', () => {
 
   it('no se activa otra escuadra hasta que termine la que está en curso', () => {
     expect(motivoParaNoActivar(activar(mapa, conModos, 'rojos', 'agresivo'), conModos, 'azules', 'sigiloso')).toBe(
-      'Rojos aún no ha terminado su activación',
+      'No se puede activar hasta terminar la activación de Rojos',
     )
   })
 
@@ -91,5 +92,13 @@ describe('activaciones por escuadra', () => {
 
   it('las activaciones normales no dejan último modo', () => {
     expect(turnoDe(terminarTurno(completas(mapa, normales, { rojos: 'normal', azules: 'normal' }))).ultimosModos).toEqual({})
+  })
+
+  it('sin nadie activándose, no hay escuadra activa', () => {
+    expect(escuadraActiva(completas(mapa, conModos, { rojos: 'agresivo' }))).toBeUndefined()
+  })
+
+  it('la escuadra activa es la que tiene la activación en curso', () => {
+    expect(escuadraActiva(activar(mapa, conModos, 'azules', 'sigiloso'))).toEqual({ id: 'azules', nombre: 'Azules' })
   })
 })

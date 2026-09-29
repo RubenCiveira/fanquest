@@ -14,7 +14,10 @@ export type TipoEstancia = 'exterior' | 'sala' | 'pasillo'
 export type Estancia = Medida & {
   id: string
   tipo: TipoEstancia
-  /** Casilla de la madre en la que queda su esquina superior izquierda; la raíz no tiene */
+  /**
+   * Casilla de la madre en la que queda su esquina superior izquierda. En las
+   * estancias del mapa, su sitio en las casillas comunes del mapa (sin ella, 0,0)
+   */
   posicion?: Casilla
   /** Hacia dónde se recorre: se entra por el muro contrario y se sale por este */
   orientacion?: Direccion

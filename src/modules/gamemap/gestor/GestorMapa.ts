@@ -4,12 +4,20 @@ import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situar } from '../elementos'
 import { estanciasDe } from '../estancias'
 import { accionesAdicionales, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
 import type { Casilla } from '../modelo/casilla'
 import type { FichaHeroe } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
+import { esComando } from '../modelo/comando'
+import type { Heroe } from '../modelo/heroe'
+import type { HeroeEnMapa } from '../modelo/heroeEnMapa'
+import type { MapaEnJuego } from '../modelo/mapaEnJuego'
+import type { Puerta } from '../modelo/puerta'
+import type { Ubicacion } from '../modelo/ubicacion'
 import type { Estancia } from '../modelo/estancia'
+import { OPUESTA } from '../modelo/direccion'
 import type { Mapa } from '../modelo/mapa'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
 import type { ProveedorMapa } from './ProveedorMapa'
@@ -23,7 +31,7 @@ const SIN_ENEMIGOS: Casilla[] = []
  * suscriba (para dibujarlo o guardarlo). El mapa es inmutable: cada cambio
  * crea uno nuevo
  */
-export class GestorMapa {
+export class GestorMapa implements MapaEnJuego {
   #proveedor: ProveedorMapa
   #mapa: Mapa
   #avisos = new Set<(mapa: Mapa) => void>()
@@ -52,17 +60,30 @@ export class GestorMapa {
 
   /**
    * Pide al proveedor la descripción de una estancia nueva y la añade al
-   * mapa. En la inicial coloca además a los héroes de todas las escuadras,
-   * guarda qué escuadras hay y, si hay modo agresivo o sigiloso, con qué modo
-   * empieza cada una que aún no lo tenga
+   * mapa, a la derecha de todo lo que hay (las que se abren desde una puerta
+   * se pegan a ella: `abrirPuerta`). En la inicial coloca además a los héroes
+   * de todas las escuadras, guarda qué escuadras hay y, si hay modo agresivo o
+   * sigiloso, con qué modo empieza cada una que aún no lo tenga
    */
-  async nuevaEstancia(): Promise<Estancia> {
+  nuevaEstancia(): Promise<Estancia> {
+    return this.#nuevaEstancia()
+  }
+
+  /**
+   * Estancia nueva: si sale de una puerta (`desde`), con su entrada en el muro
+   * que encaja con esa puerta (se lo dice al proveedor) y pegada a ella; si
+   * no, aparte
+   */
+  async #nuevaEstancia(desde?: Ubicacion): Promise<Estancia> {
     const inicial = !this.#mapa.estancias.length
-    const descripcion = await this.#proveedor.describirEstancia(inicial ? undefined : this.#mapa)
+    const puerta = desde && this.puertaEn(desde)
+    const entrada = puerta && OPUESTA[puerta.lado]
+    const descripcion = await this.#proveedor.describirEstancia(inicial ? undefined : this.#mapa, entrada)
     const escuadras = inicial ? await this.#listarEscuadras() : []
     const heroes = await this.#fichasDeHeroes(escuadras)
     const turno = await this.#conModosIniciales(escuadras)
-    const estancia = situar(construirEstancia(this.#idLibre(), descripcion), heroes)
+    const construida = situar(construirEstancia(this.#idLibre(), descripcion, entrada), heroes)
+    const estancia = desde ? pegar(this.#mapa, desde, construida) : { ...construida, posicion: aparte(this.#mapa) }
     this.#cambiar({
       ...this.#mapa,
       estancias: [...this.#mapa.estancias, estancia],
@@ -113,23 +134,45 @@ export class GestorMapa {
 
   /**
    * Acciones que puede hacer ahora la escuadra: las que dice ella, según su
-   * estado, y las del gestor (cambiar de modo, terminar turno). Ninguna si
-   * ya terminó su turno u otra escuadra se está activando
+   * estado, el mapa y el héroe cuya ficha se ha pulsado (`heroeId`), y detrás
+   * las del gestor (cambiar de modo, terminar turno). Ninguna si ya terminó su
+   * turno u otra escuadra se está activando
    */
-  async accionesDisponibles(escuadraId: string): Promise<Accion[]> {
+  async accionesDisponibles(escuadraId: string, heroeId?: string): Promise<Accion[]> {
     if (motivoParaNoActuar(this.#mapa, escuadraId)) return []
-    const escuadra = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
-    const propias = escuadra ? await escuadra.acciones(estadoDeEscuadra(this.#mapa, this.configuracion, escuadraId)) : []
-    return [...propias, ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
+    return [...(await this.#accionesDeEscuadra(escuadraId, heroeId)), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
   }
 
-  /** Ejecuta una de las acciones disponibles de la escuadra; si no puede, el mapa no cambia y devuelve el motivo */
-  async ejecutarAccion(escuadraId: string, accionId: string): Promise<string | undefined> {
+  /**
+   * Ejecuta una de las acciones disponibles de la escuadra (con el héroe
+   * `heroeId` pulsado). Si es un comando, antes ejecuta su código (`exec`): si
+   * falla o se cancela, no se apunta y el error sigue. Las de la escuadra con
+   * un héroe pulsado se apuntan como suyas. Si no puede, el mapa no cambia y
+   * devuelve el motivo
+   */
+  async ejecutarAccion(escuadraId: string, accionId: string, heroeId?: string): Promise<string | undefined> {
     const motivo = motivoParaNoActuar(this.#mapa, escuadraId)
     if (motivo) return motivo
-    if (!(await this.accionesDisponibles(escuadraId)).some((a) => a.id === accionId)) return `«${accionId}» no es una acción disponible ahora`
-    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId))
+    const deEscuadra = (await this.#accionesDeEscuadra(escuadraId, heroeId)).find((a) => a.id === accionId)
+    const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
+    if (!deEscuadra && !delGestor) return `«${accionId}» no es una acción disponible ahora`
+    if (deEscuadra && esComando(deEscuadra)) await deEscuadra.exec()
+    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, deEscuadra && heroeId))
     await this.#preguntarSiCompleta(escuadraId)
+  }
+
+  puertaEn(ubicacion: Ubicacion): Puerta | undefined {
+    return puertaEn(this.#mapa, ubicacion)
+  }
+
+  async abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> {
+    const puerta = this.puertaEn(ubicacion)
+    const { x, y } = ubicacion.casilla
+    if (!puerta) throw new Error(`No hay ninguna puerta en la casilla ${x},${y} de «${ubicacion.estancia}»`)
+    if (puerta.abierta) throw new Error(`La puerta «${puerta.id}» de «${ubicacion.estancia}» ya está abierta`)
+    const nueva = await this.#nuevaEstancia(ubicacion)
+    this.#cambiar(marcarAbierta(this.#mapa, ubicacion, nueva.id))
+    return nueva
   }
 
   /**
@@ -140,13 +183,13 @@ export class GestorMapa {
   async opcionesMovimiento(heroeId: string): Promise<OpcionesMovimiento | undefined> {
     const ficha = this.#fichaDe(heroeId)?.ficha
     if (!ficha?.posicion || motivoParaNoActuar(this.#mapa, ficha.escuadra)) return
-    const escuadra = (await this.#listarEscuadras()).find((e) => e.id === ficha.escuadra)
-    const heroe = (await escuadra?.heroes())?.find((h) => h.id === heroeId)
+    const heroe = await this.#heroeDe(ficha.escuadra, heroeId)
     return heroe?.opcionesMovimiento(estadoDeEscuadra(this.#mapa, this.configuracion, ficha.escuadra), gastadoPor(this.#mapa, ficha))
   }
 
   /**
-   * Mueve el héroe por el recorrido (de su casilla a la de destino) con la
+   * Mueve el héroe por el recorrido (en casillas del mapa, de la suya a la
+   * de destino; puede cruzar puertas abiertas a otras estancias) con la
    * primera de sus opciones de movimiento que lo permita y apunta en su
    * escuadra el movimiento y las acciones que consume. Si consume acciones
    * adicionales (deslizar…), antes pide confirmación al proveedor; sin ella no
@@ -157,9 +200,9 @@ export class GestorMapa {
     const evaluar = () => {
       const encontrada = this.#fichaDe(heroeId)
       if (!encontrada) return { motivo: `No hay ningún héroe «${heroeId}» colocado en el mapa` }
-      const { estancia, ficha } = encontrada
+      const { ficha } = encontrada
       if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, ficha.escuadra) ?? `${ficha.nombre} no puede moverse ahora` }
-      return { ficha, ...evaluarRecorrido(estancia, ficha, recorrido, opciones, SIN_ENEMIGOS) }
+      return { ficha, ...evaluarRecorrido(this.#mapa, ficha, recorrido, opciones, SIN_ENEMIGOS) }
     }
     const evaluado = evaluar()
     if ('motivo' in evaluado) return evaluado.motivo
@@ -182,6 +225,25 @@ export class GestorMapa {
     if (!escuadra || !enCurso()) return
     const { completo } = await escuadra.activar(turnoDe(this.#mapa).acciones?.[escuadraId] ?? [])
     if (completo && enCurso()) this.#cambiar(terminarActivacion(this.#mapa, escuadraId))
+  }
+
+  /** El héroe del proveedor con ese id, de su escuadra */
+  async #heroeDe(escuadraId: string, heroeId: string): Promise<Heroe | undefined> {
+    const escuadra = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
+    return (await escuadra?.heroes())?.find((h) => h.id === heroeId)
+  }
+
+  /** Lo que dice la escuadra que puede hacer, con el mapa y el héroe suyo pulsado (si está colocado) */
+  async #accionesDeEscuadra(escuadraId: string, heroeId?: string): Promise<Accion[]> {
+    const escuadra = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
+    if (!escuadra) return []
+    const encontrada = heroeId ? this.#fichaDe(heroeId) : undefined
+    const posicion = encontrada?.ficha.posicion
+    const heroe: HeroeEnMapa | undefined =
+      encontrada && posicion && encontrada.ficha.escuadra === escuadraId
+        ? { id: encontrada.ficha.id, nombre: encontrada.ficha.nombre, escuadra: escuadraId, posicion: { estancia: encontrada.estancia.id, casilla: posicion } }
+        : undefined
+    return escuadra.acciones(estadoDeEscuadra(this.#mapa, this.configuracion, escuadraId), this, heroe)
   }
 
   /** Ficha del héroe y la estancia (de las del mapa, no interiores) en que está */

@@ -1,8 +1,21 @@
 import { cargarHeroes, urlFichaVtt } from '../../lib/personajes'
-import type { AccionEjecutada, Escuadra, MovimientoGastado, OpcionesMovimiento, ProveedorHeroes, ResultadoActivacion } from '../gamemap'
+import type {
+  Accion,
+  AccionEjecutada,
+  Comando,
+  Escuadra,
+  EstadoEscuadra,
+  HeroeEnMapa,
+  MapaEnJuego,
+  MovimientoGastado,
+  OpcionesMovimiento,
+  ProveedorHeroes,
+  ResultadoActivacion,
+  Ubicacion,
+} from '../gamemap'
 
-const MOVER = { id: 'mover', nombre: 'Mover' }
-const DESLIZAR = { id: 'deslizar', nombre: 'Deslizar' }
+const MOVER = { id: 'mover', nombre: 'Mover', icono: '🥾' }
+const DESLIZAR = { id: 'deslizar', nombre: 'Deslizar', icono: '💨' }
 
 /** Casillas del movimiento de un héroe de prueba */
 const MOVIMIENTO = 6
@@ -14,7 +27,7 @@ const MOVIMIENTO = 6
 export const MOVIMIENTO_DE_PRUEBA: OpcionesMovimiento = {
   base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: MOVER, tramos: [{ distancia: MOVIMIENTO }], alejarseDeEnemigos: 1 },
   variaciones: [
-    { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar' }, tramos: [{ distancia: 8 }], terminarJuntoAEnemigo: true },
+    { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar', icono: '🐂' }, tramos: [{ distancia: 8 }], terminarJuntoAEnemigo: true },
     {
       id: 'mover-y-deslizar',
       nombre: 'Mover y deslizar',
@@ -42,6 +55,33 @@ export function movimientoDePrueba({ casillas, acciones }: MovimientoGastado): O
   }
 }
 
+/** Comando para abrir la puerta de una casilla: al ejecutarlo, el mapa pide la estancia que hay detrás */
+export class AbrirPuerta implements Comando {
+  readonly id = 'abrir-puerta'
+  readonly nombre = 'Abrir puerta'
+  readonly icono = '🚪'
+  #donde: Ubicacion
+  #mapa: MapaEnJuego
+
+  constructor(donde: Ubicacion, mapa: MapaEnJuego) {
+    this.#donde = donde
+    this.#mapa = mapa
+  }
+
+  async exec() {
+    await this.#mapa.abrirPuerta(this.#donde)
+  }
+}
+
+/**
+ * Acciones de una escuadra de prueba: si el héroe pulsado está en una salida
+ * que aún no se ha abierto, abrirla
+ */
+export async function accionesDeEscuadra(_estado: EstadoEscuadra, mapa: MapaEnJuego, heroe?: HeroeEnMapa): Promise<Accion[]> {
+  const puerta = heroe && mapa.puertaEn(heroe.posicion)
+  return heroe && puerta?.tipo === 'salida' && !puerta.abierta ? [new AbrirPuerta(heroe.posicion, mapa)] : []
+}
+
 /** La activación de una escuadra de prueba está completa cuando se ha movido y además ha hecho otra acción (deslizar…) */
 export const activacionDePrueba = (acciones: AccionEjecutada[]): ResultadoActivacion => ({
   completo: acciones.some((a) => a.accion === MOVER.id) && acciones.some((a) => a.accion !== MOVER.id),
@@ -49,9 +89,9 @@ export const activacionDePrueba = (acciones: AccionEjecutada[]): ResultadoActiva
 
 /**
  * Escuadra con los héroes de FetenQuest de esos ids, con su ficha VTT vista
- * desde arriba; empieza en modo sigiloso y por ahora no tiene acciones propias.
- * Sus héroes se mueven según `movimientoDePrueba` y su turno termina según
- * `activacionDePrueba`
+ * desde arriba; empieza en modo sigiloso.
+ * Sus héroes se mueven según `movimientoDePrueba`, abren puertas
+ * (`accionesDeEscuadra`) y su turno termina según `activacionDePrueba`
  */
 const escuadra = (id: string, nombre: string, ids: string[]): Escuadra => ({
   id,
@@ -66,7 +106,7 @@ const escuadra = (id: string, nombre: string, ids: string[]): Escuadra => ({
         opcionesMovimiento: async (_estado, gastado) => movimientoDePrueba(gastado),
       })),
   modoActivacion: async () => 'sigiloso',
-  acciones: async () => [],
+  acciones: accionesDeEscuadra,
   activar: async (acciones) => {
     const resultado = activacionDePrueba(acciones)
     // banco de pruebas: se ve en la consola qué recibe y qué responde cada escuadra

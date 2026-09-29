@@ -2,25 +2,28 @@ import { describe, expect, it } from 'vitest'
 import { crearEstancia } from './estancias'
 import type { Casilla } from './modelo/casilla'
 import type { FichaHeroe, Objeto } from './modelo/elemento'
-import type { Estancia } from './modelo/estancia'
+import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
-import { accionesConsumidas, evaluarRecorrido, extenderRecorrido } from './movimiento'
+import { accionesConsumidas, evaluarRecorrido, extenderRecorrido, mover as moverFicha } from './movimiento'
+import { orientar } from './orientacion'
 
 const barbaro: FichaHeroe = { id: 'barbaro', nombre: 'Bárbaro', tipo: 'heroe', escuadra: 'rojos', columnas: 1, filas: 1, posicion: { x: 0, y: 0 } }
 const mesa: Objeto = { id: 'mesa', nombre: 'Mesa', tipo: 'objeto', columnas: 1, filas: 2, posicion: { x: 1, y: 0 } }
-const sala = (...elementos: (FichaHeroe | Objeto)[]): Estancia => ({ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 12, filas: 4 }), elementos: [barbaro, ...elementos] })
+const sala = (...elementos: (FichaHeroe | Objeto)[]): Mapa => ({
+  estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 12, filas: 4 }), elementos: [barbaro, ...elementos] }],
+})
 
-const mover = { id: 'mover', nombre: 'Mover' }
+const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
 const opciones: OpcionesMovimiento = {
   base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 6 }], alejarseDeEnemigos: 1 },
   variaciones: [
-    { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar' }, tramos: [{ distancia: 8 }], terminarJuntoAEnemigo: true },
+    { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar', icono: '🐂' }, tramos: [{ distancia: 8 }], terminarJuntoAEnemigo: true },
     {
       id: 'deslizar',
       nombre: 'Mover y deslizar',
       tipo: 'normal',
       accion: mover,
-      tramos: [{ distancia: 6 }, { distancia: 3, accion: { id: 'deslizar', nombre: 'Deslizar' } }],
+      tramos: [{ distancia: 6 }, { distancia: 3, accion: { id: 'deslizar', nombre: 'Deslizar', icono: '💨' } }],
       alejarseDeEnemigos: 1,
     },
   ],
@@ -98,5 +101,49 @@ describe('opciones de movimiento', () => {
 
   it('sin llegar al tramo de deslizar, solo consume mover', () => {
     expect(accionesConsumidas({ opcion: opciones.variaciones[1], tramos: [0, 0] })).toEqual(['mover'])
+  })
+})
+
+describe('cruzar puertas', () => {
+  // la sala de 3 × 3 en 0,0 tiene su salida abajo en 1,2; el pasillo de 3 × 4 está pegado debajo, con su entrada arriba en 1,0 (1,3 del mapa)
+  const salaConSalida = (abierta: boolean): Mapa => {
+    const arriba = orientar(crearEstancia({ id: 'arriba', tipo: 'sala', columnas: 3, filas: 3 }), 'abajo', 1)
+    const abajo = orientar(crearEstancia({ id: 'abajo', tipo: 'pasillo', columnas: 3, filas: 4 }), 'abajo', 0)
+    return {
+      estancias: [
+        { ...arriba, elementos: [{ ...barbaro, posicion: { x: 1, y: 1 } }], puertas: arriba.puertas.map((p) => (p.tipo === 'salida' ? { ...p, abierta } : p)) },
+        { ...abajo, posicion: { x: 0, y: 3 } },
+      ],
+    }
+  }
+  const porLaPuerta = [
+    { x: 1, y: 1 },
+    { x: 1, y: 2 },
+    { x: 1, y: 3 },
+    { x: 1, y: 4 },
+  ]
+
+  it('con la puerta abierta, el recorrido pasa a la estancia de al lado', () => {
+    expect(evaluarRecorrido(salaConSalida(true), barbaro, porLaPuerta, opciones)).toMatchObject({ opcion: { id: 'mover' } })
+  })
+
+  it('con la puerta cerrada, el muro no se cruza', () => {
+    expect(evaluarRecorrido(salaConSalida(false), barbaro, porLaPuerta, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+  })
+
+  it('entre dos estancias pegadas solo se cruza por la puerta', () => {
+    const porElMuro = [{ x: 1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 }]
+    expect(evaluarRecorrido(salaConSalida(true), barbaro, porElMuro, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+  })
+
+  it('al arrastrar hasta la otra estancia, el camino pasa por la puerta abierta', () => {
+    expect(extenderRecorrido(salaConSalida(true), barbaro, [{ x: 1, y: 1 }], { x: 0, y: 4 })).toEqual([...porLaPuerta.slice(0, 3), { x: 0, y: 3 }, { x: 0, y: 4 }])
+  })
+
+  it('al mover a la otra estancia, la ficha pasa a ella con su casilla en ella', () => {
+    const m = salaConSalida(true)
+    const valido = { opcion: opciones.base, tramos: [0, 0, 0] }
+    const movido = moverFicha(m, { ordenActivaciones: 'alternas', modosActivacion: 'normal' }, { ...barbaro, posicion: { x: 1, y: 1 } }, porLaPuerta, valido)
+    expect(movido.estancias.map((e) => e.elementos.map((el) => [el.id, el.posicion]))).toEqual([[], [['barbaro', { x: 1, y: 1 }]]])
   })
 })

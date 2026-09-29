@@ -1,4 +1,4 @@
-import { escuadrasDelMapa, modosPermitidos, turnoDe } from './activaciones'
+import { escuadraActiva, escuadrasDelMapa, esperandoA, modosPermitidos, turnoDe } from './activaciones'
 import { estanciasDe } from './estancias'
 import type { Accion } from './modelo/accion'
 import type { ModoActivacion } from './modelo/activacion'
@@ -7,12 +7,15 @@ import type { EstadoEscuadra } from './modelo/estadoEscuadra'
 import type { Mapa } from './modelo/mapa'
 
 /** Acción del gestor que da por terminada la activación de la escuadra en este turno */
-export const TERMINAR_TURNO: Accion = { id: 'terminar-turno', nombre: 'Terminar turno' }
+export const TERMINAR_TURNO: Accion = { id: 'terminar-turno', nombre: 'Terminar turno', icono: '⌛' }
 
 /** Id de la acción del gestor que pasa de agresivo a sigiloso o al revés */
 export const CAMBIAR_MODO = 'cambiar-modo'
 
 const OTRO_MODO = { agresivo: 'sigiloso', sigiloso: 'agresivo' } as const
+
+/** Icono de la acción de cambiar a cada modo */
+const ICONO_MODO = { agresivo: '⚔️', sigiloso: '👣' }
 
 /** Modo de la escuadra: el de su activación en curso, si no el último y, si no hay, el primero permitido */
 export function modoActual(m: Mapa, config: Configuracion, id: string): ModoActivacion {
@@ -27,14 +30,14 @@ export function motivoParaNoActuar(m: Mapa, id: string): string | undefined {
   if (!escuadra) return `No hay ninguna escuadra «${id}» en el mapa`
   const { activaciones } = turnoDe(m)
   if (activaciones[id]?.terminada) return `${escuadra.nombre} ya ha terminado su turno`
-  const enCurso = escuadras.find((e) => e.id !== id && activaciones[e.id] && !activaciones[e.id].terminada)
-  if (enCurso) return `${enCurso.nombre} aún no ha terminado su activación`
+  const activa = escuadraActiva(m)
+  if (activa && activa.id !== id) return esperandoA(activa)
 }
 
 /** Acciones que el gestor añade a las de la escuadra: cambiar al otro modo (si hay modos) y terminar turno */
 export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): Accion[] {
   const modo = modoActual(m, config, id)
-  const cambiar = config.modosActivacion === 'agresivo-sigiloso' && modo !== 'normal' ? [{ id: CAMBIAR_MODO, nombre: `Cambiar a ${OTRO_MODO[modo]}` }] : []
+  const cambiar = config.modosActivacion === 'agresivo-sigiloso' && modo !== 'normal' ? [{ id: CAMBIAR_MODO, nombre: `Cambiar a ${OTRO_MODO[modo]}`, icono: ICONO_MODO[OTRO_MODO[modo]] }] : []
   return [...cambiar, TERMINAR_TURNO]
 }
 

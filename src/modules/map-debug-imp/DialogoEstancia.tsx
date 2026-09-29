@@ -3,6 +3,7 @@ import { Icono } from '../../components/Icono'
 import {
   construirEstancia,
   largoMuro,
+  OPUESTA,
   type DescripcionElemento,
   type DescripcionEstancia,
   type Direccion,
@@ -10,7 +11,7 @@ import {
   type TipoEstancia,
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION } from './mapas'
-import { VistaEstancia } from './VistaEstancia'
+import { VistaMapa } from './VistaMapa'
 
 /** Lado máximo de una estancia de prueba, como el de la rejilla de la partida */
 const MAX_LADO = 16
@@ -22,16 +23,19 @@ const lado = (n: number) => Math.min(MAX_LADO, Math.max(1, Math.trunc(n) || 1))
 type Props = {
   /** Mapa ya construido que recibe el proveedor; en la primera estancia no hay */
   mapa?: Mapa
+  /** Si se abre desde una puerta, el muro por el que se entra: la sala no puede orientarse hacia él */
+  entrada?: Direccion
   onCrear: (d: DescripcionEstancia) => void
   onCancelar: () => void
 }
 
 /** Formulario para describir a mano una estancia nueva, con vista previa de puertas y objetos */
-export function DialogoEstancia({ mapa, onCrear, onCancelar }: Props) {
+export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const [tipo, setTipo] = useState<TipoEstancia>('sala')
   const [tamano, setTamano] = useState({ columnas: 6, filas: 4 })
-  const [orientacion, setOrientacion] = useState<Direccion>('abajo')
+  // entrando desde una puerta, por defecto se sigue de frente
+  const [orientacion, setOrientacion] = useState<Direccion>(entrada ? OPUESTA[entrada] : 'abajo')
   const [salidas, setSalidas] = useState(1)
   const [elementos, setElementos] = useState<DescripcionElemento[]>([])
 
@@ -92,11 +96,13 @@ export function DialogoEstancia({ mapa, onCrear, onCancelar }: Props) {
           <label className="campo">
             Orientación
             <select value={orientacion} onChange={(e) => setOrientacion(e.target.value as Direccion)}>
-              {Object.entries(ETIQUETA_ORIENTACION).map(([valor, etiqueta]) => (
-                <option key={valor} value={valor}>
-                  {etiqueta}
-                </option>
-              ))}
+              {Object.entries(ETIQUETA_ORIENTACION)
+                .filter(([valor]) => valor !== entrada)
+                .map(([valor, etiqueta]) => (
+                  <option key={valor} value={valor}>
+                    {etiqueta}
+                  </option>
+                ))}
             </select>
           </label>
           <label className="campo">
@@ -142,8 +148,13 @@ export function DialogoEstancia({ mapa, onCrear, onCancelar }: Props) {
           </button>
         </fieldset>
 
-        <VistaEstancia estancia={construirEstancia('vista-previa', descripcion)} />
-        <p className="nota">Se entra por el muro contrario a la orientación y se sale por el de la orientación. Los objetos que no caben quedan en la zona de espera.</p>
+        <VistaMapa estancias={[construirEstancia('vista-previa', descripcion, entrada)]} />
+        <p className="nota">
+          {entrada
+            ? `Se entra por el muro de ${entrada}, el de la puerta que se abre, y se sale por el de la orientación.`
+            : 'Se entra por el muro contrario a la orientación y se sale por el de la orientación.'}{' '}
+          Los objetos que no caben quedan en la zona de espera.
+        </p>
 
         <div className="fila-botones">
           <button type="button" className="button secondary" onClick={onCancelar}>

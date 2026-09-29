@@ -19,6 +19,15 @@ export const heroesDelMapa = (m: Mapa): FichaHeroe[] =>
 export const escuadrasDelMapa = (m: Mapa): DatosEscuadra[] =>
   [...new Set(heroesDelMapa(m).map((h) => h.escuadra))].map((id) => m.escuadras?.find((e) => e.id === id) ?? { id, nombre: id })
 
+/** Escuadra con la activación en curso, si la hay: hasta que termine, las demás no pueden actuar */
+export function escuadraActiva(m: Mapa): DatosEscuadra | undefined {
+  const { activaciones } = turnoDe(m)
+  return escuadrasDelMapa(m).find((e) => activaciones[e.id] && !activaciones[e.id].terminada)
+}
+
+/** Por qué una escuadra no puede actuar mientras otra se activa */
+export const esperandoA = (activa: DatosEscuadra) => `No se puede activar hasta terminar la activación de ${activa.nombre}`
+
 /** Modos entre los que elige una escuadra al activarse */
 export const modosPermitidos = ({ modosActivacion }: Configuracion): ModoActivacion[] =>
   modosActivacion === 'agresivo-sigiloso' ? ['agresivo', 'sigiloso'] : ['normal']
@@ -35,8 +44,8 @@ export function motivoParaNoActivar(m: Mapa, config: Configuracion, id: string, 
   if (!modosPermitidos(config).includes(modo)) return `El modo ${modo} no está permitido: ${modosPermitidos(config).join(' o ')}`
   const { activaciones } = turnoDe(m)
   if (activaciones[id]) return `${escuadra.nombre} ya se ha activado este turno`
-  const enCurso = escuadras.find((e) => activaciones[e.id] && !activaciones[e.id].terminada)
-  if (enCurso) return `${enCurso.nombre} aún no ha terminado su activación`
+  const activa = escuadraActiva(m)
+  if (activa) return esperandoA(activa)
 }
 
 /** Empieza la activación de la escuadra en ese modo; falla si no puede */

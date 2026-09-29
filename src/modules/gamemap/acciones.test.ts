@@ -30,7 +30,7 @@ const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion
 
 describe('acciones de las escuadras', () => {
   it('con modos, el gestor ofrece cambiar al otro modo y terminar turno', () => {
-    expect(accionesDelGestor(mapa, conModos, 'rojos')).toEqual([{ id: CAMBIAR_MODO, nombre: 'Cambiar a sigiloso' }, TERMINAR_TURNO])
+    expect(accionesDelGestor(mapa, conModos, 'rojos')).toEqual([{ id: CAMBIAR_MODO, nombre: 'Cambiar a sigiloso', icono: '👣' }, TERMINAR_TURNO])
   })
 
   it('sin modos, el gestor solo ofrece terminar turno', () => {
@@ -65,7 +65,9 @@ describe('acciones de las escuadras', () => {
   })
 
   it('mientras una escuadra se activa, las demás no pueden actuar', () => {
-    expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', 'mover'), 'azules')).toBe('Rojos aún no ha terminado su activación')
+    expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', 'mover'), 'azules')).toBe(
+      'No se puede activar hasta terminar la activación de Rojos',
+    )
   })
 
   it('el turno siguiente recuerda el modo al que se cambió y olvida las acciones', () => {

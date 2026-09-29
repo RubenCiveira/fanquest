@@ -31,4 +31,15 @@ describe('orientación y puertas', () => {
   it('no caben más salidas que casillas tiene el muro', () => {
     expect(() => orientar(sala, 'derecha', 5)).toThrow('caben de 0 a 4 salidas')
   })
+
+  it('al entrar desde otra puerta, la entrada va en su muro y las salidas en el de la orientación', () => {
+    expect(orientar(sala, 'derecha', 1, 'arriba').puertas.map((p) => [p.tipo, p.lado, p.casilla])).toEqual([
+      ['entrada', 'arriba', { x: 3, y: 0 }],
+      ['salida', 'derecha', { x: 6, y: 2 }],
+    ])
+  })
+
+  it('no se sale por el muro de la entrada', () => {
+    expect(() => orientar(sala, 'arriba', 1, 'arriba')).toThrow('no puede salir por el muro de arriba')
+  })
 })
