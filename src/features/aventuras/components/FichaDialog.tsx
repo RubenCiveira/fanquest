@@ -10,11 +10,13 @@ type Props = {
   nota?: string
   /** «Atacar» cierra la ficha y el enemigo se elige en el diálogo de combate */
   onAtacar: (clave: string) => void
+  /** Con mapa, para terminar el turno de quien solo se mueve o solo hace su acción */
+  turno?: { terminado: boolean; onTerminar: () => void }
   onCerrar: () => void
 }
 
 /** La carta entera de un personaje, con sus Puntos de Cuerpo y sus acciones */
-export function FichaDialog({ ficha, onVida, nota, onAtacar, onCerrar }: Props) {
+export function FichaDialog({ ficha, onVida, nota, onAtacar, turno, onCerrar }: Props) {
   const [pestana, setPestana] = useState<'ficha' | 'inventario' | 'hechizos'>('ficha')
   const [panel, setPanel] = useState<PanelFicha | null>(null)
 
@@ -49,6 +51,14 @@ export function FichaDialog({ ficha, onVida, nota, onAtacar, onCerrar }: Props) 
           </div>
           {ficha.resumen}
           {nota && <p className="nota">{nota}</p>}
+          {turno &&
+            (turno.terminado ? (
+              <p className="nota">Ha terminado su turno.</p>
+            ) : (
+              <button type="button" className="button secondary" onClick={turno.onTerminar}>
+                Terminar su turno
+              </button>
+            ))}
           {ficha.acciones ?? (ficha.pc > 0 && (
             <button
               type="button"

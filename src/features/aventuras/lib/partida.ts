@@ -38,7 +38,9 @@ import {
   type SeleccionMonstruos,
 } from './monstruos'
 import { claveAliado, heroesSeleccionados, type Configuracion } from './preparacion'
+import type { Anclaje } from './mazmorra'
 import type { Rejilla } from './rejilla'
+import type { Turno } from './turno'
 
 /** Lo que la partida necesita saber de la aventura */
 export type Contexto = {
@@ -112,6 +114,8 @@ export type Zona = {
   sinPuertas?: boolean
   /** Casillas y lo colocado en ellas, con la regla «Usar mapa» */
   rejilla?: Rejilla
+  /** Con mapa, la puerta abierta a la que se pega en el mapa */
+  anclaje?: Anclaje
 }
 
 /** Monstruo sobre la mesa con sus Puntos de Cuerpo */
@@ -177,6 +181,8 @@ export type Partida = {
   suelo?: Record<number, BotinSuelo[]>
   efectosActivos?: Record<string, EfectoActivo[]>
   reglasDescargadas?: Record<string, ReglaDescargada[]>
+  /** Con mapa, quién ha terminado su turno y quién ha tirado ya el Dado de Trampa */
+  turno?: Turno
   fin?: FinPartida
 }
 

@@ -4,7 +4,7 @@ import { estadoAventura } from './asistente'
 import { actualizarAventura } from './aventuras'
 import type { Partida } from './partida'
 import { reglas } from './preparacion'
-import { fijarRejilla } from './rejilla'
+import { retirarCaidos, situar } from './mazmorra'
 
 /** Acciones que se pueden deshacer (solo en esta visita a la página) */
 const MAX_DESHACER = 20
@@ -15,8 +15,9 @@ export function usePartida({ aventura }: DatosPartida) {
   const [anteriores, setAnteriores] = useState<Partida[]>([])
 
   const guardar = (accion: Partida) => {
-    // con mapa, cada zona guarda su tamaño en cuanto se llega a ella
-    const nueva = reglas(aventura.configuracion).usarMapa ? fijarRejilla(accion) : accion
+    // con mapa, cada zona guarda su tamaño y su sitio en el mapa en cuanto se llega a ella, y quien muere
+    // deja libre su casilla
+    const nueva = reglas(aventura.configuracion).usarMapa ? situar(retirarCaidos(accion)) : accion
     setPartida(nueva)
     void actualizarAventura({ ...aventura, estado: estadoAventura(aventura.configuracion, nueva), partida: nueva })
   }

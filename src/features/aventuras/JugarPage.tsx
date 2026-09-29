@@ -16,7 +16,7 @@ import { CartaMonstruo } from '../../components/CartaMonstruo'
 import { BarraFichas, type Ficha, type PanelFicha } from './components/BarraFichas'
 import { FichaDialog } from './components/FichaDialog'
 import { CombateDialog, type Participante } from './components/CombateDialog'
-import { MapaZona, type Ocupante } from './components/MapaZona'
+import { MapaZona, Medida, type Ocupante, type SalaMapa } from './components/MapaZona'
 import { perdidas, recuentoRecarga } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
@@ -49,6 +49,7 @@ import {
   elegirAtrezo,
   entrar,
   entrarPorPuertaSecreta,
+  irA,
   monstruosAlAzar,
   gastarPergamino,
   anadirPuerta,
@@ -76,11 +77,14 @@ import {
   perderEquipo,
   type FinPartida,
   type Miembro,
+  type Partida,
   type Paso,
   type TipoZona,
 } from './lib/partida'
 import { reglas as reglasPartida } from './lib/preparacion'
-import { conRejilla, rejillaDe } from './lib/rejilla'
+import { aLocal, conZona, moverEnMapa, quitarDelMapa, salaEn, salas, situar, type Anclaje } from './lib/mazmorra'
+import { adyacentes, conRejilla, fijarTamano, girar, pared, redimensionar, rejillaDe, renombrar, type Pieza } from './lib/rejilla'
+import { actua, haTerminado, nuevoTurno, seMueve, sinTerminar, terminarTurno, tiroTrampa, yaTiroTrampa } from './lib/turno'
 import { cartasHechizosSeleccionadas, HABILIDADES_MAGIA } from './lib/hechizos'
 import { reglasDeHeroe, type ReglaEspecial } from './lib/reglasEspeciales'
 import { usePartida } from './lib/usePartida'
@@ -118,7 +122,7 @@ const FIN: Record<FinPartida, { accion: string; titulo: string; texto: string }>
 
 type EfectoSala = Extract<EfectoEspecial, { tipo: 'sala' }>
 type DadoEfecto = 'D4' | 'D6' | 'D8' | 'D10' | 'D12' | 'D20' | 'DC'
-type TiradaEfecto = { clave: string; cantidad: number; dado: DadoEfecto; resultado?: string[] }
+type TiradaEfecto = { clave: string; cantidad: number; dado: DadoEfecto }
 
 const DADOS_EFECTO: DadoEfecto[] = ['D4', 'D6', 'D8', 'D10', 'D12', 'D20', 'DC']
 const AVISO_MONSTRUOS_ACTIVOS = 'No se pueden ejecutar estas acciones habiendo un monstruo activo.'
@@ -133,11 +137,22 @@ const etiquetaMultilinea = (texto: string) =>
 
 function AccionDialog({ titulo, children, onCerrar }: { titulo: string; children: ReactNode; onCerrar: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
+  // se cierra al pulsar fuera, pero no con el clic que termina un arrastre por el mapa y lo abre
+  const pulsadoFuera = useRef(false)
 
   useEffect(() => ref.current?.showModal(), [])
 
   return (
-    <dialog ref={ref} className="dialog" aria-labelledby="accion-titulo" onClose={onCerrar} onClick={(e) => e.target === ref.current && onCerrar()}>
+    <dialog
+      ref={ref}
+      className="dialog"
+      aria-labelledby="accion-titulo"
+      onClose={onCerrar}
+      onPointerDown={(e) => {
+        pulsadoFuera.current = e.target === ref.current
+      }}
+      onClick={(e) => e.target === ref.current && pulsadoFuera.current && onCerrar()}
+    >
       <div className="dialog-contenido">
         <header className="dialog-cabecera">
           <h2 id="accion-titulo">{titulo}</h2>
@@ -148,6 +163,35 @@ function AccionDialog({ titulo, children, onCerrar }: { titulo: string; children
         {children}
       </div>
     </dialog>
+  )
+}
+
+/** Al descubrir una zona con mapa: su tamaño en casillas, que después ya no cambia */
+function TamanoDialog({
+  titulo,
+  inicial,
+  onFijar,
+  onCerrar,
+}: {
+  titulo: string
+  inicial: { columnas: number; filas: number }
+  onFijar: (columnas: number, filas: number) => void
+  onCerrar: () => void
+}) {
+  const [medida, setMedida] = useState({ columnas: inicial.columnas, filas: inicial.filas })
+  return (
+    <AccionDialog titulo={titulo} onCerrar={onCerrar}>
+      <p>¿Cuántas casillas tiene? Parte del tamaño habitual de la carta; después ya no se podrá cambiar.</p>
+      <div className="mapa-medidas">
+        <Medida etiqueta="Columnas" valor={medida.columnas} onCambiar={(columnas) => setMedida({ ...medida, columnas })} />
+        <Medida etiqueta="Filas" valor={medida.filas} onCambiar={(filas) => setMedida({ ...medida, filas })} />
+      </div>
+      <div className="fila-botones">
+        <button type="button" className="button" onClick={() => onFijar(medida.columnas, medida.filas)}>
+          Fijar tamaño
+        </button>
+      </div>
+    </AccionDialog>
   )
 }
 
@@ -296,6 +340,35 @@ function AccionesRegla({ reglas, descargadas, onActivar, onDescargar }: { reglas
   )
 }
 
+/**
+ * Resultado de una acción en un popup encima de la ficha: el suceso anotado en esa posición de la zona
+ * (buscar trampas) o un texto (tirar dados)
+ */
+type ResultadoAccion = { titulo: string } & ({ zona: number; suceso: number } | { texto: string })
+
+/** Lo que se sugiere tras mover a alguien por el mapa */
+type AvisoMapa =
+  | { tipo: 'trampa'; clave: string }
+  | { tipo: 'atrezo'; clave: string; carta: string }
+  /** Resultado de la tirada recién hecha, que se anotó en esa posición de los sucesos */
+  | { tipo: 'resultado'; suceso: number }
+  /** En tablero, qué hay tras la puerta pisada; la zona nueva se pegará a ella */
+  | { tipo: 'destino'; puerta: string; anclaje: Anclaje }
+
+/** Puerta de una zona como pieza del mapa */
+type PuertaMapa = {
+  id: string
+  nombre: string
+  /** Lo que se lee en la pieza */
+  rotulo: string
+  /** Solo las puertas sin explorar se abren al pisarlas; las demás se cruzan andando */
+  abrir?: (p: Partida, seccion: 'sala' | 'pasillo') => Partida
+  /** En tablero, qué hay tras ella se elige al cruzarla */
+  eligeSeccion?: boolean
+  /** La puerta nueva o secreta pasa a ser una salida más: su pieza la sigue marcando */
+  pasaASalida?: boolean
+}
+
 export function JugarPage() {
   const datos = useLoaderData<DatosPartida>()
   const { aventura, contexto, miembros, habilidades, monstruos, equipo } = datos
@@ -311,7 +384,17 @@ export function JugarPage() {
   const [miembroAcciones, setMiembroAcciones] = useState<string | null>(null)
   /** Con mapa no hay barras laterales: la ficha se abre tocándola en el mapa */
   const [fichaMapa, setFichaMapa] = useState<string | null>(null)
-  const [accionMiembro, setAccionMiembro] = useState<{ clave: string; tipo: 'tesoro' | 'equipo' | 'encontrado' } | null>(null)
+  /** Lo que se sugiere, en orden, tras mover a alguien por el mapa de esta zona */
+  const [avisosMapa, setAvisosMapa] = useState<{ zona: number; avisos: AvisoMapa[] }>({ zona: -1, avisos: [] })
+  /** Se ha intentado mover a quien ya terminó su turno: se propone empezar otro */
+  const [turnoAcabado, setTurnoAcabado] = useState<string | null>(null)
+  /**
+   * Descubrimiento de la zona en popups: en qué zona va (visto ya su tipo), el resultado del último paso por
+   * enseñar (desde esa posición de los sucesos) o si se cerró para seguir en la página
+   */
+  const [descubrimiento, setDescubrimiento] = useState<{ zona: number; resultado?: number; cerrado?: boolean } | null>(null)
+  const [resultadoAccion, setResultadoAccion] = useState<ResultadoAccion | null>(null)
+  const [accionMiembro, setAccionMiembro] = useState<{ clave: string; tipo: 'equipo' | 'encontrado' } | null>(null)
   const [volverAccionesMiembro, setVolverAccionesMiembro] = useState<string | null>(null)
   const [avisoAccion, setAvisoAccion] = useState<string | null>(null)
   const [equipoAUsar, setEquipoAUsar] = useState('')
@@ -327,6 +410,19 @@ export function JugarPage() {
   const porExplorar = (z: Zona) =>
     z.salidas.filter((s) => s.destino === undefined && p.caminos[s.camino ?? -1]?.length).length
   const { movimientoFijo, habilidadesEspeciales, usarMapa } = reglasPartida(aventura.configuracion)
+  /** Con mapa, anota la acción del turno de esa ficha (atacar, buscar…); si ya se movió, su turno termina */
+  const accion = (a: Partida, clave: string) => (usarMapa ? actua(a, clave) : a)
+  // la carta robada se enseña encima de la ficha, con sus opciones
+  const robarTesoroPara = (clave: string) => {
+    const [id, nueva] = robarTesoro(p, contexto)
+    hacer(() => accion(nueva, clave))
+    if (id) setTesoroRobado({ clave, id })
+  }
+  // la tirada se anota al final de los sucesos de la zona y se enseña aparte
+  const buscarTrampasCon = (clave: string, nombre: string) => {
+    setResultadoAccion({ zona: zona.id, suceso: zona.sucesos.length, titulo: `Buscar trampas: ${nombre}` })
+    hacer((a) => accion(buscarTrampas(a, contexto), clave))
+  }
   const [paso] = zona.pendientes
   const onVerCarta = (mazo: IdMazo, id: string) => setVerCarta({ mazo, id })
   const reglas = reglasDeZona(mision, zona).map((e) => describirSala(e, mazos)).filter(Boolean)
@@ -494,7 +590,10 @@ export function JugarPage() {
             type="button"
             className="button secondary"
             disabled={!puedeActuar || (!p.hayMonstruos && !puedeCaerEnTrampa(zona))}
-            onClick={() => (p.hayMonstruos ? setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS) : hacer((a) => buscarTrampas(a, contexto)))}
+            onClick={() => {
+              if (p.hayMonstruos) return setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS)
+              buscarTrampasCon(m.clave, nombre)
+            }}
           >
             Buscar trampas
           </button>
@@ -502,7 +601,7 @@ export function JugarPage() {
             type="button"
             className="button secondary"
             disabled={!puedeActuar || (!p.hayMonstruos && !puedeCogerCartaTesoro)}
-            onClick={() => (p.hayMonstruos ? setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS) : setAccionMiembro({ clave: m.clave, tipo: 'tesoro' }))}
+            onClick={() => (p.hayMonstruos ? setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS) : robarTesoroPara(m.clave))}
           >
             Coger carta de tesoro
           </button>
@@ -585,6 +684,56 @@ export function JugarPage() {
   const miembroEnSubaccion = miembros.find((m) => m.clave === accionMiembro?.clave)
   const miembroEnTirada = miembros.find((m) => m.clave === tiradaEfecto?.clave)
   const nombreMiembro = (m: Miembro) => ('heroe' in m ? m.heroe.nombre : m.aliado.nombre)
+  /**
+   * Puertas de una zona como piezas del mapa. Con la mazmorra entera en el mapa, solo las que están sin
+   * explorar se abren (y la zona nueva se pega a ellas); las demás se cruzan andando de sala en sala
+   */
+  const puertasDe = (z: Zona): PuertaMapa[] => {
+    const lista = z.salidas.map((salida, i): PuertaMapa => {
+      const destino = salida.destino === undefined ? undefined : seccion(salida.destino)
+      const sinSalida = !destino && !p.caminos[salida.camino ?? -1]?.length
+      const rotulo = salida.secreta ? 'Secreta' : String(i + 1)
+      return {
+        id: `salida-${i}`,
+        nombre: destino ? `Puerta a ${nombreZona(destino)}` : `Puerta ${rotulo}${sinSalida ? ' (sin salida)' : ''}`,
+        rotulo,
+        abrir: destino || sinSalida ? undefined : (a) => entrar(a, contexto, { puerta: i }),
+      }
+    })
+    const anterior = z.padre === undefined ? undefined : seccion(z.padre)
+    if (anterior) lista.unshift({ id: 'entrada', nombre: `Entrada (desde ${nombreZona(anterior)})`, rotulo: 'Entrada' })
+    if (z.puertaSecreta) {
+      lista.push({
+        id: 'secreta',
+        nombre: 'Puerta secreta',
+        rotulo: 'Secreta',
+        abrir: (a, s) => entrarPorPuertaSecreta(a, contexto, s),
+        eligeSeccion: modo === 'tablero',
+        pasaASalida: true,
+      })
+    }
+    // con tablero, las puertas sin explorar las marca el tablero: una pieza basta para todas
+    if (modo === 'tablero' && !z.sinPuertas) {
+      lista.push({
+        id: 'nueva',
+        nombre: 'Puerta sin explorar',
+        rotulo: '?',
+        abrir: (a, s) => entrar(a, contexto, { seccion: s }),
+        eligeSeccion: true,
+        pasaASalida: true,
+      })
+    }
+    return lista
+  }
+  // la misma carta puede salir dos veces: cada copia es una pieza
+  const atrezoDe = (z: Zona): Ocupante[] =>
+    atrezoColocado(z).flatMap((id, i, lista) => {
+      const c = carta(mazos.atrezo, id)
+      const copia = lista.slice(0, i).filter((otra) => otra === id).length
+      return c.tipo === 'sin-atrezo' ? [] : [{ id: copia ? `${id}#${copia}` : id, tipo: 'atrezo', atrezo: c.tipo, nombre: c.titulo, zona: z.id }]
+    })
+  // con mapa, la zona actual siempre tiene sitio en él (se guarda con la siguiente acción)
+  const salasMapa: SalaMapa[] = usarMapa ? salas(situar(p)).map((s) => ({ ...s, nombre: nombreZona(seccion(s.zona) ?? zona) })) : []
   // en el mapa, la figura vista desde arriba o, si no la hay, el retrato recortado en redondo
   const ocupantes: Ocupante[] = usarMapa
     ? [
@@ -598,6 +747,7 @@ export function JugarPage() {
             imagen: vtt ?? grupo.find((f) => f.clave === m.clave)?.retrato,
             vtt: Boolean(vtt),
             caido: !(p.vidas[m.clave] ?? m.cuerpo),
+            terminado: haTerminado(p, m.clave),
           }
         }),
         ...(p.monstruos ?? []).flatMap((m): Ocupante[] => {
@@ -613,29 +763,279 @@ export function JugarPage() {
               alias: m.nombre ?? String(m.numero),
               imagen: vtt ?? urlRetrato('monstruos', datos),
               vtt: Boolean(vtt),
+              terminado: haTerminado(p, m.id),
             },
           ]
         }),
-        // la misma carta puede salir dos veces: cada copia es una pieza
-        ...atrezoColocado(zona).flatMap((id, i, lista): Ocupante[] => {
-          const c = carta(mazos.atrezo, id)
-          const copia = lista.slice(0, i).filter((otra) => otra === id).length
-          return c.tipo === 'sin-atrezo' ? [] : [{ id: copia ? `${id}#${copia}` : id, tipo: 'atrezo', atrezo: c.tipo, nombre: c.titulo }]
+        // el atrezo y las puertas de cada sala del mapa
+        ...salasMapa.flatMap((s): Ocupante[] => {
+          const z = seccion(s.zona)
+          return z
+            ? [...atrezoDe(z), ...puertasDe(z).map((pu): Ocupante => ({ id: pu.id, tipo: 'puerta', nombre: pu.nombre, alias: pu.rotulo, zona: z.id }))]
+            : []
         }),
       ]
     : []
   const vidaGrupo = (clave: string, delta: 1 | -1) =>
     hacer((a) => cambiarVida(a, clave, delta, grupo.find((f) => f.clave === clave)?.cuerpo ?? 0))
   const vidaMonstruo = (id: string, delta: 1 | -1) => hacer((a) => cambiarVidaMonstruo(a, id, delta))
+  // cada aviso sigue en pie mientras tenga sentido: sin buscar trampas, sin monstruos, sin paso pendiente…
+  const avisosZona = avisosMapa.zona === zona.id ? avisosMapa.avisos : []
+  const aviso = avisosZona.find((av) =>
+    av.tipo === 'trampa'
+      ? puedeCaerEnTrampa(zona) && !yaTiroTrampa(p, av.clave)
+      : av.tipo === 'atrezo'
+        ? !p.hayMonstruos
+        : av.tipo === 'destino'
+          ? !paso && !p.fin
+          : Boolean(zona.sucesos[av.suceso]),
+  )
+  /** Quita el aviso a la vista y pone delante los nuevos (p. ej. el resultado de su tirada) */
+  const siguienteAviso = (...nuevos: AvisoMapa[]) =>
+    setAvisosMapa({ zona: zona.id, avisos: [...nuevos, ...avisosZona.filter((av) => av !== aviso)] })
+  const nombreEnMapa = (clave: string) => {
+    const monstruo = p.monstruos?.find((m) => m.id === clave)
+    if (monstruo) return monstruo.nombre ?? `${monstruos[monstruo.monstruo]?.nombre ?? ''} ${monstruo.numero}`
+    return grupo.find((f) => f.clave === clave)?.nombre ?? ''
+  }
+  // colocarlo y anotar que se ha movido (con su acción ya hecha, su turno termina); a un héroe que entra en
+  // otra sala, esa pasa a ser la zona actual, y se le sugiere el dado de trampa (una vez por turno) y revisar
+  // el atrezo que tiene al lado
+  const alMoverse = (clave: string, pieza: Pieza) => {
+    const sala = salaEn(salasMapa, pieza.x, pieza.y)
+    const destino = sala && seccion(sala.zona)
+    if (!sala || !destino) return
+    const esMonstruo = p.monstruos?.some((m) => m.id === clave)
+    hacer((a) => {
+      const movida = seMueve(moverEnMapa(situar(a), pieza), clave)
+      return !esMonstruo && sala.zona !== movida.zona.id ? irA(movida, sala.zona) : movida
+    })
+    if (esMonstruo) return
+    const junto = adyacentes(sala.rejilla, aLocal(sala, pieza)).map((j) => j.id.split('#')[0])
+    const revisables =
+      destino.tipo === 'inicial' ? [] : [...new Set(atrezoColocado(destino))].filter((id) => junto.includes(id) && sePuedeTirar(carta(mazos.atrezo, id)))
+    setAvisosMapa({
+      zona: sala.zona,
+      avisos: [
+        ...(puedeCaerEnTrampa(destino) && !yaTiroTrampa(p, clave) ? [{ tipo: 'trampa' as const, clave }] : []),
+        ...revisables.map((id) => ({ tipo: 'atrezo' as const, clave, carta: id })),
+      ],
+    })
+  }
+  // la zona de la puerta es la actual; la nueva queda anclada a la puerta para pegarse a ella en el mapa
+  const abrirPuerta = (a: Partida, puerta: PuertaMapa, seccionNueva: 'sala' | 'pasillo', anclaje: Anclaje) => {
+    if (!puerta.abrir) return a
+    // la puerta nueva o secreta pasa a ser una salida más y su pieza la sigue marcando
+    const marcada = puerta.pasaASalida
+      ? conZona(a, anclaje.zona, (z) => ({ ...z, rejilla: renombrar(rejillaDe(z), puerta.id, `salida-${z.salidas.length}`) }))
+      : a
+    const nueva = puerta.abrir(marcada, seccionNueva)
+    return nueva.zona.id === a.zona.id ? nueva : { ...nueva, zona: { ...nueva.zona, anclaje } }
+  }
+  // pisar una puerta sin explorar es abrirla, salvo con la exploración a medias; quien la abre se queda en
+  // ella, en su sala
+  const alPisarPuerta = (id: string, zonaPuerta: number, clave: string, pieza: Pieza) => {
+    const sala = salasMapa.find((s) => s.zona === zonaPuerta)
+    const z = seccion(zonaPuerta)
+    const puerta = z && puertasDe(z).find((pu) => pu.id === id)
+    if (!sala || !puerta?.abrir || paso || p.fin) return alMoverse(clave, pieza)
+    const anclaje: Anclaje = { zona: zonaPuerta, puerta: { x: pieza.x, y: pieza.y }, pared: pared(sala.rejilla, aLocal(sala, pieza)) }
+    const enLaPuerta = (a: Partida) => {
+      const movida = seMueve(moverEnMapa(situar(a), pieza), clave)
+      return movida.zona.id === zonaPuerta ? movida : irA(movida, zonaPuerta)
+    }
+    if (!puerta.eligeSeccion) return hacer((a) => abrirPuerta(enLaPuerta(a), puerta, 'sala', anclaje))
+    hacer(enLaPuerta)
+    setAvisosMapa({ zona: zonaPuerta, avisos: [{ tipo: 'destino', puerta: id, anclaje }] })
+  }
+  // quienes siguen en pie, héroes y monstruos, y aún no han jugado su turno
+  const faltanPorTerminar = sinTerminar(p, [
+    ...miembros.filter((m) => (p.vidas[m.clave] ?? m.cuerpo) > 0).map((m) => m.clave),
+    ...(p.monstruos ?? []).map((m) => m.id),
+  ])
+  const puertaDestino = aviso?.tipo === 'destino' ? puertasDe(zona).find((pu) => pu.id === aviso.puerta) : undefined
+  const anclajeDestino = aviso?.tipo === 'destino' ? aviso.anclaje : undefined
   // con mapa, héroes y monstruos están en él: tocarlos abre su ficha
   const mapaZona = usarMapa && (
-    <MapaZona
-      rejilla={rejillaDe(zona)}
-      ocupantes={ocupantes}
-      onCambiar={(cambio) => hacer((a) => conRejilla(a, cambio))}
-      onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
-      onFicha={setFichaMapa}
-    />
+    <>
+      <MapaZona
+        salas={salasMapa}
+        actual={zona.id}
+        ocupantes={ocupantes}
+        onColocar={(pieza, z) => hacer((a) => moverEnMapa(situar(a), pieza, z))}
+        onQuitar={(id, z) => hacer((a) => quitarDelMapa(a, id, z))}
+        onGirar={(id, z) => hacer((a) => conZona(a, z, (zz) => ({ ...zz, rejilla: girar(rejillaDe(zz), id) })))}
+        onRedimensionar={(columnas, filas) => hacer((a) => conRejilla(situar(a), (r) => redimensionar(r, columnas, filas)))}
+        onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
+        onFicha={setFichaMapa}
+        onMovido={alMoverse}
+        onPuerta={alPisarPuerta}
+        onTerminado={setTurnoAcabado}
+      />
+      {/* un popup por aviso: cada uno se abre al cerrarse el anterior */}
+      {aviso && (
+        <AccionDialog
+          key={JSON.stringify(aviso)}
+          titulo={
+            aviso.tipo === 'resultado'
+              ? 'Resultado'
+              : aviso.tipo === 'trampa'
+                ? `Dado de trampa: ${nombreEnMapa(aviso.clave)}`
+                : aviso.tipo === 'atrezo'
+                  ? `Revisar ${carta(mazos.atrezo, aviso.carta).titulo}`
+                  : '¿Qué hay tras la puerta?'
+          }
+          onCerrar={() => siguienteAviso()}
+        >
+          {aviso.tipo === 'resultado' ? (
+            <>
+              <ol className="sucesos">
+                <SucesoPartida suceso={zona.sucesos[aviso.suceso]} contexto={contexto} monstruos={monstruos} onVerCarta={onVerCarta} onVerTabla={setTabla} />
+              </ol>
+              <div className="fila-botones">
+                <button type="button" className="button secondary" onClick={() => siguienteAviso()}>
+                  Entendido
+                </button>
+              </div>
+            </>
+          ) : aviso.tipo === 'trampa' ? (
+            <>
+              <p className="nota">
+                {nombreEnMapa(aviso.clave)} se ha movido y aquí nadie ha buscado trampas: tira el dado de trampa, una vez en
+                su turno.
+              </p>
+              <div className="fila-botones">
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    const nueva = tiroTrampa(moverse(p, contexto), aviso.clave)
+                    const tirada = nueva.zona.sucesos.at(-1)
+                    // con la trampa activada se detiene y su turno acaba ahí: ya no revisa nada
+                    const activada = tirada?.tipo === 'trampa' && tirada.carta !== undefined
+                    setAvisosMapa({
+                      zona: zona.id,
+                      avisos: [
+                        // la tirada se anota al final de los sucesos de la zona
+                        { tipo: 'resultado', suceso: zona.sucesos.length },
+                        ...avisosZona.filter((av) => av !== aviso && !(activada && av.tipo === 'atrezo')),
+                      ],
+                    })
+                    hacer(() => nueva)
+                  }}
+                >
+                  <Icono nombre="dado" />
+                  Tirar dado de trampa ({p.dadoTrampa})
+                </button>
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => {
+                    siguienteAviso()
+                    hacer((a) => tiroTrampa(a, aviso.clave))
+                  }}
+                >
+                  Ya tiró este turno
+                </button>
+              </div>
+            </>
+          ) : aviso.tipo === 'atrezo' ? (
+            <>
+              <p className="nota">
+                {nombreEnMapa(aviso.clave)} está junto a {carta(mazos.atrezo, aviso.carta).titulo}: revisarlo es una acción
+                gratuita.
+              </p>
+              <div className="fila-botones">
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    siguienteAviso({ tipo: 'resultado', suceso: zona.sucesos.length })
+                    hacer((a) => tirarCarta(a, contexto, 'atrezo', aviso.carta))
+                  }}
+                >
+                  <Icono nombre="dado" />
+                  Revisar {carta(mazos.atrezo, aviso.carta).titulo}
+                </button>
+                <button type="button" className="button secondary" onClick={() => siguienteAviso()}>
+                  Ahora no
+                </button>
+              </div>
+            </>
+          ) : (
+            puertaDestino && (
+              <>
+                <p className="nota">¿Qué hay tras {puertaDestino.nombre.toLowerCase()}?</p>
+                <div className="fila-botones">
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={puertaDestino.id === 'nueva' && !p.caminos[0]?.length}
+                    onClick={() => {
+                      siguienteAviso()
+                      if (anclajeDestino) hacer((a) => abrirPuerta(a, puertaDestino, 'sala', anclajeDestino))
+                    }}
+                  >
+                    Una sala nueva
+                  </button>
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={() => {
+                      siguienteAviso()
+                      if (anclajeDestino) hacer((a) => abrirPuerta(a, puertaDestino, 'pasillo', anclajeDestino))
+                    }}
+                  >
+                    Un pasillo nuevo
+                  </button>
+                  <button type="button" className="button secondary" onClick={() => siguienteAviso()}>
+                    No cruzar
+                  </button>
+                </div>
+              </>
+            )
+          )}
+        </AccionDialog>
+      )}
+      {turnoAcabado && (
+        <AccionDialog titulo="Turno terminado" onCerrar={() => setTurnoAcabado(null)}>
+          {faltanPorTerminar.length ? (
+            <>
+              <p>
+                {nombreEnMapa(turnoAcabado)} ya ha terminado su turno. Aún no han terminado:{' '}
+                {faltanPorTerminar.map(nombreEnMapa).join(', ')}.
+              </p>
+              <div className="fila-botones">
+                <button type="button" className="button secondary" onClick={() => setTurnoAcabado(null)}>
+                  Entendido
+                </button>
+              </div>
+            </>
+          ) : (
+            // solo con héroes y monstruos terminados se puede pasar al turno siguiente
+            <>
+              <p>Todos, héroes y monstruos, han terminado su turno. ¿Empezáis un turno nuevo?</p>
+              <p className="nota">Quita las marcas y cada héroe vuelve a tirar el dado de trampa al moverse.</p>
+              <div className="fila-botones">
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    setTurnoAcabado(null)
+                    hacer(nuevoTurno)
+                  }}
+                >
+                  Empezar un turno nuevo
+                </button>
+                <button type="button" className="button secondary" onClick={() => setTurnoAcabado(null)}>
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
+        </AccionDialog>
+      )}
+    </>
   )
   const fichaDelGrupo = grupo.find((f) => f.clave === fichaMapa)
   const fichaEnMapa = fichaDelGrupo ?? enJuego.find((f) => f.clave === fichaMapa)
@@ -649,6 +1049,8 @@ export function JugarPage() {
   const equipoSeleccionado = equipoSubaccion.find((id) => id === equipoAUsar || nombreItem(equipo, id) === equipoAUsar) ?? ''
   const encontradoSeleccionado = opcionesEquipoEncontrado.find((item) => item.id === equipoEncontrado || item.nombre === equipoEncontrado)?.id ?? ''
   const cartaTesoroRobado = tesoroRobado ? carta(mazos.tesoros, tesoroRobado.id) : undefined
+  const sucesoResultado =
+    resultadoAccion && 'suceso' in resultadoAccion && resultadoAccion.zona === zona.id ? zona.sucesos[resultadoAccion.suceso] : undefined
   const botinTesoroRobado = tesoroRobado ? botinDeTesoro(contexto, tesoroRobado.id) : undefined
   const botinActual = botinSuelo.find((b) => b.id === botinElegido?.id)
   const volverADialogoAcciones = () => {
@@ -671,6 +1073,37 @@ export function JugarPage() {
   const finalizarAccionMiembro = () => {
     setAccionMiembro(null)
     setVolverAccionesMiembro(null)
+  }
+  const resolverPaso = (siguiente: Paso) => {
+    const nueva = avanzar(p, contexto)
+    hacer(() => nueva)
+    // la tirada en una tabla de monstruos se muestra con la tabla entera
+    const tirada = nueva.zona.sucesos.findLast((s): s is TiradaEnTabla => s.tipo === 'encuentro' || s.tipo === 'errantes')
+    if (tirada && (siguiente.tipo === 'encuentro' || siguiente.tipo === 'errantes')) setTabla(tirada)
+  }
+  // al entrar en una zona nueva: su tipo, con mapa su tamaño y después cada paso de la exploración con su
+  // resultado, en popups; cerrarlos deja la secuencia en la página
+  const enDescubrimiento = descubrimiento?.zona === zona.id ? descubrimiento : undefined
+  const nuevosSucesos = enDescubrimiento?.resultado === undefined ? [] : zona.sucesos.slice(enDescubrimiento.resultado)
+  const faseDescubrimiento =
+    p.fin || enDescubrimiento?.cerrado
+      ? undefined
+      : !enDescubrimiento
+        ? zona.pendientes.length
+          ? 'tipo'
+          : undefined
+        : nuevosSucesos.length
+          ? 'resultado'
+          : usarMapa && zona.tipo !== 'inicial' && !zona.rejilla?.fija
+            ? 'tamano'
+            : paso
+              ? 'paso'
+              : undefined
+  const continuarDescubrimiento = () => setDescubrimiento({ zona: zona.id })
+  const cerrarDescubrimiento = () => setDescubrimiento({ zona: zona.id, cerrado: true })
+  const hacerPaso = (accionPaso: () => void) => {
+    setDescubrimiento({ zona: zona.id, resultado: zona.sucesos.length })
+    accionPaso()
   }
 
   return (
@@ -868,19 +1301,7 @@ export function JugarPage() {
                     ))}
                   </div>
                 ) : (
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => {
-                      const nueva = avanzar(p, contexto)
-                      hacer(() => nueva)
-                      // la tirada en una tabla de monstruos se muestra con la tabla entera
-                      const tirada = nueva.zona.sucesos.findLast(
-                        (s): s is TiradaEnTabla => s.tipo === 'encuentro' || s.tipo === 'errantes',
-                      )
-                      if (tirada && (paso.tipo === 'encuentro' || paso.tipo === 'errantes')) setTabla(tirada)
-                    }}
-                  >
+                  <button type="button" className="button" onClick={() => resolverPaso(paso)}>
                     <Icono nombre="dado" />
                     {explicarPaso(paso, p.dadoTrampa, p.peligro)[0]}
                   </button>
@@ -1155,6 +1576,7 @@ export function JugarPage() {
           ficha={fichaEnMapa}
           onVida={fichaDelGrupo ? vidaGrupo : vidaMonstruo}
           nota={fichaDelGrupo ? undefined : 'A 0 PC el monstruo muere y sale del mapa.'}
+          turno={{ terminado: haTerminado(p, fichaEnMapa.clave), onTerminar: () => hacer((a) => terminarTurno(a, fichaEnMapa.clave)) }}
           onAtacar={(atacante) => setAtaque({ atacante })}
           onCerrar={() => setFichaMapa(null)}
         />
@@ -1209,7 +1631,7 @@ export function JugarPage() {
                       setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS)
                       return
                     }
-                    hacer((a) => buscarTrampas(a, contexto))
+                    buscarTrampasCon(miembroEnAcciones.clave, nombreMiembro(miembroEnAcciones))
                     setMiembroAcciones(null)
                   }}
                 >
@@ -1224,8 +1646,7 @@ export function JugarPage() {
                       setAvisoAccion(AVISO_MONSTRUOS_ACTIVOS)
                       return
                     }
-                    setVolverAccionesMiembro(miembroEnAcciones.clave)
-                    setAccionMiembro({ clave: miembroEnAcciones.clave, tipo: 'tesoro' })
+                    robarTesoroPara(miembroEnAcciones.clave)
                     setMiembroAcciones(null)
                   }}
                 >
@@ -1269,26 +1690,6 @@ export function JugarPage() {
             <p className="aviso-partida">{avisoAccion}</p>
             <button type="button" className="button" onClick={() => setAvisoAccion(null)}>
               Entendido
-            </button>
-          </div>
-        </AccionDialog>
-      )}
-
-      {miembroEnSubaccion && accionMiembro?.tipo === 'tesoro' && (
-        <AccionDialog titulo={`Robar tesoro: ${nombreMiembro(miembroEnSubaccion)}`} onCerrar={cerrarAccionMiembro}>
-          <div className="acciones-dialogo">
-            <p className="nota">Roba la siguiente carta del Mazo de Tesoros para {nombreMiembro(miembroEnSubaccion)}.</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                const [id, nueva] = robarTesoro(p, contexto)
-                hacer(() => nueva)
-                if (id) setTesoroRobado({ clave: miembroEnSubaccion.clave, id })
-                finalizarAccionMiembro()
-              }}
-            >
-              Robar carta de tesoro
             </button>
           </div>
         </AccionDialog>
@@ -1449,13 +1850,13 @@ export function JugarPage() {
       )}
 
       {miembroEnTirada && tiradaEfecto && (
-        <AccionDialog titulo={`Tirada de efecto: ${nombreMiembro(miembroEnTirada)}`} onCerrar={cerrarTiradaEfecto}>
+        <AccionDialog titulo={`Tirada de efecto: ${nombreEnMapa(miembroEnTirada.clave)}`} onCerrar={cerrarTiradaEfecto}>
           <div className="acciones-dialogo tirada-efecto">
             <label>
               <span>Cantidad</span>
               <select
                 value={tiradaEfecto.cantidad}
-                onChange={(e) => setTiradaEfecto({ ...tiradaEfecto, cantidad: Number(e.target.value), resultado: undefined })}
+                onChange={(e) => setTiradaEfecto({ ...tiradaEfecto, cantidad: Number(e.target.value) })}
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                   <option key={n} value={n}>
@@ -1466,7 +1867,7 @@ export function JugarPage() {
             </label>
             <label>
               <span>Tipo de dado</span>
-              <select value={tiradaEfecto.dado} onChange={(e) => setTiradaEfecto({ ...tiradaEfecto, dado: e.target.value as DadoEfecto, resultado: undefined })}>
+              <select value={tiradaEfecto.dado} onChange={(e) => setTiradaEfecto({ ...tiradaEfecto, dado: e.target.value as DadoEfecto })}>
                 {DADOS_EFECTO.map((dado) => (
                   <option key={dado} value={dado}>
                     {dado === 'DC' ? 'Dado de combate' : dado}
@@ -1482,18 +1883,15 @@ export function JugarPage() {
                   const valor = entre(1, carasDado(tiradaEfecto.dado))
                   return tiradaEfecto.dado === 'DC' ? caraDC(valor) : String(valor)
                 })
-                setTiradaEfecto({ ...tiradaEfecto, resultado })
+                const total = tiradaEfecto.dado === 'DC' ? '' : ` = ${resultado.reduce((suma, valor) => suma + Number(valor), 0)}`
+                // el resultado, en su propio popup encima de la ficha
+                setResultadoAccion({ titulo: `Tirada de efecto: ${nombreEnMapa(tiradaEfecto.clave)}`, texto: `${resultado.join(' · ')}${total}` })
+                cerrarTiradaEfecto()
               }}
             >
               <Icono nombre="dado" />
               Tirar
             </button>
-            {tiradaEfecto.resultado && (
-              <p className="tirada-efecto-resultado">
-                Resultado: <strong>{tiradaEfecto.resultado.join(' · ')}</strong>
-                {tiradaEfecto.dado !== 'DC' && ` = ${tiradaEfecto.resultado.reduce((total, valor) => total + Number(valor), 0)}`}
-              </p>
-            )}
           </div>
         </AccionDialog>
       )}
@@ -1517,21 +1915,93 @@ export function JugarPage() {
           }}
           onAplicar={(c) =>
             hacer((a) =>
-              aplicarCombate(
-                a,
-                c.atacante.nombre,
-                c.defensor.nombre,
-                perdidas(c).map((x) => ({
-                  ...x,
-                  monstruo: participante(x.clave)?.bando === 'monstruos',
-                  cuerpo: grupo.find((f) => f.clave === x.clave)?.cuerpo ?? 0,
-                })),
-                recuentoRecarga(c),
+              accion(
+                aplicarCombate(
+                  a,
+                  c.atacante.nombre,
+                  c.defensor.nombre,
+                  perdidas(c).map((x) => ({
+                    ...x,
+                    monstruo: participante(x.clave)?.bando === 'monstruos',
+                    cuerpo: grupo.find((f) => f.clave === x.clave)?.cuerpo ?? 0,
+                  })),
+                  recuentoRecarga(c),
+                ),
+                c.atacante.clave,
               ),
             )
           }
           onCerrar={cerrarAtaque}
         />
+      )}
+      {resultadoAccion && ('texto' in resultadoAccion || sucesoResultado) && (
+        <AccionDialog titulo={resultadoAccion.titulo} onCerrar={() => setResultadoAccion(null)}>
+          {'texto' in resultadoAccion ? (
+            <p className="tirada-efecto-resultado">
+              Resultado: <strong>{resultadoAccion.texto}</strong>
+            </p>
+          ) : (
+            sucesoResultado && (
+              <ol className="sucesos">
+                <SucesoPartida suceso={sucesoResultado} contexto={contexto} monstruos={monstruos} onVerCarta={onVerCarta} onVerTabla={setTabla} />
+              </ol>
+            )
+          )}
+          <div className="fila-botones">
+            <button type="button" className="button" onClick={() => setResultadoAccion(null)}>
+              Entendido
+            </button>
+          </div>
+        </AccionDialog>
+      )}
+      {faseDescubrimiento === 'tamano' ? (
+        <TamanoDialog
+          titulo={`${nombreZona(zona)}: tamaño`}
+          inicial={rejillaDe(zona)}
+          onFijar={(columnas, filas) => {
+            // con su tamaño definitivo, la sala se vuelve a pegar a la puerta por la que se entró
+            hacer((a) => situar(conRejilla(a, (r) => fijarTamano(r, columnas, filas)), true))
+            continuarDescubrimiento()
+          }}
+          onCerrar={cerrarDescubrimiento}
+        />
+      ) : (
+        faseDescubrimiento && (
+          <AccionDialog key={`${faseDescubrimiento}-${zona.sucesos.length}`} titulo={nombreZona(zona)} onCerrar={cerrarDescubrimiento}>
+            {faseDescubrimiento === 'paso' && paso ? (
+              <>
+                <p>{explicarPaso(paso, p.dadoTrampa, p.peligro)[1]}</p>
+                <div className="fila-botones">
+                  {paso.tipo === 'elegir-atrezo' ? (
+                    [...new Set(paso.cartas)].map((id) => (
+                      <button key={id} type="button" className="button" onClick={() => hacerPaso(() => hacer((a) => elegirAtrezo(a, id)))}>
+                        {carta(mazos.atrezo, id).titulo}
+                      </button>
+                    ))
+                  ) : (
+                    <button type="button" className="button" onClick={() => hacerPaso(() => resolverPaso(paso))}>
+                      <Icono nombre="dado" />
+                      {explicarPaso(paso, p.dadoTrampa, p.peligro)[0]}
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <ol className="sucesos">
+                  {(faseDescubrimiento === 'tipo' ? zona.sucesos : nuevosSucesos).map((s, i) => (
+                    <SucesoPartida key={i} suceso={s} contexto={contexto} monstruos={monstruos} onVerCarta={onVerCarta} onVerTabla={setTabla} />
+                  ))}
+                </ol>
+                <div className="fila-botones">
+                  <button type="button" className="button" onClick={continuarDescubrimiento}>
+                    Continuar
+                  </button>
+                </div>
+              </>
+            )}
+          </AccionDialog>
+        )
       )}
       {exportar && <ExportarDialog mision={mision} onCerrar={() => setExportar(false)} />}
       {anadirMonstruos && (
