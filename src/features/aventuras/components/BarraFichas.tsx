@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import { Icono } from '../../../components/Icono'
-import { NaipeDialog } from '../../../components/NaipeDialog'
+import { FichaDialog } from './FichaDialog'
 
 export type PanelFicha = {
   id: string
@@ -72,8 +72,6 @@ function enemigoEn(x: number, y: number, bando: string): HTMLElement | undefined
 
 export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', bando, onAtacar }: Props) {
   const [abierta, setAbierta] = useState<string | null>(null)
-  const [pestana, setPestana] = useState<'ficha' | 'inventario' | 'hechizos'>('ficha')
-  const [panel, setPanel] = useState<PanelFicha | null>(null)
   const ficha = fichas.find((f) => f.clave === abierta)
   const barra = useRef<HTMLElement>(null)
   const lista = useRef<HTMLDivElement>(null)
@@ -155,11 +153,7 @@ export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', ba
           <button
             type="button"
             className={f.pc ? 'miembro' : 'miembro caido'}
-            onClick={() => {
-              setAbierta(f.clave)
-              setPestana('ficha')
-              setPanel(null)
-            }}
+            onClick={() => setAbierta(f.clave)}
             aria-label={`${f.alias ? `${f.alias}, ` : ''}${f.nombre}: ${f.pc} de ${f.cuerpo} PC`}
           >
             {f.alias && <span className="miembro-alias">{f.alias}</span>}
@@ -191,111 +185,14 @@ export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', ba
       )}
 
       {ficha && (
-        <NaipeDialog
-          etiqueta={ficha.nombre}
-          onCerrar={() => {
-            setPanel(null)
-            setAbierta(null)
-          }}
-          acciones={
-            <div className="ficha-dialog-acciones">
-              <div className="fila-copias">
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Perder 1 PC"
-                  disabled={!ficha.pc}
-                  onClick={() => onVida(ficha.clave, -1)}
-                >
-                  <Icono nombre="menos" />
-                </button>
-                <span>
-                  {ficha.pc} / {ficha.cuerpo} PC
-                </span>
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label="Recuperar 1 PC"
-                  disabled={ficha.pc >= ficha.cuerpo}
-                  onClick={() => onVida(ficha.clave, 1)}
-                >
-                  <Icono nombre="mas" />
-                </button>
-              </div>
-              {ficha.resumen}
-              {nota && <p className="nota">{nota}</p>}
-              {ficha.acciones ?? (ficha.pc > 0 && (
-                <button
-                  type="button"
-                  className="button"
-                  onClick={() => {
-                    setAbierta(null)
-                    onAtacar(ficha.clave)
-                  }}
-                >
-                  <Icono nombre="espada" />
-                  Atacar
-                </button>
-              ))}
-            </div>
-          }
-        >
-          {ficha.panelesIzquierda?.length || ficha.panelesDerecha?.length ? (
-            <div className="ficha-popup-marco">
-              {ficha.panelesIzquierda?.length ? (
-                <div className="ficha-pestanas ficha-pestanas-izquierda" aria-label="Objetos del inventario">
-                  {ficha.panelesIzquierda.map((p) => (
-                    <button key={p.id} type="button" className={`${panel?.id === p.id ? 'activo' : ''} ${p.tipo ?? ''}`} onClick={() => setPanel(p)} title={p.titulo}>
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <div className="ficha-popup-centro">{ficha.carta}</div>
-              {ficha.panelesDerecha?.length ? (
-                <div className="ficha-pestanas ficha-pestanas-derecha" aria-label="Habilidades y hechizos">
-                  {ficha.panelesDerecha.map((p) => (
-                    <button key={p.id} type="button" className={`${panel?.id === p.id ? 'activo' : ''} ${p.tipo ?? ''}`} onClick={() => setPanel(p)} title={p.titulo}>
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {panel && (
-                <div className="ficha-panel-popover" role="dialog" aria-label={panel.titulo}>
-                  <header>
-                    <h3>{panel.titulo}</h3>
-                    <button type="button" className="icon-button" onClick={() => setPanel(null)} aria-label="Cerrar">
-                      <Icono nombre="cerrar" />
-                    </button>
-                  </header>
-                  {panel.children}
-                </div>
-              )}
-            </div>
-          ) : ficha.inventario || ficha.hechizos ? (
-            <>
-              <div className="naipes-tabs" role="tablist" aria-label={`Contenido de ${ficha.nombre}`}>
-                <button type="button" role="tab" aria-selected={pestana === 'ficha'} className={pestana === 'ficha' ? 'activo' : undefined} onClick={() => setPestana('ficha')}>
-                  Ficha
-                </button>
-                {ficha.inventario && (
-                  <button type="button" role="tab" aria-selected={pestana === 'inventario'} className={pestana === 'inventario' ? 'activo' : undefined} onClick={() => setPestana('inventario')}>
-                    Inventario
-                  </button>
-                )}
-                {ficha.hechizos && (
-                  <button type="button" role="tab" aria-selected={pestana === 'hechizos'} className={pestana === 'hechizos' ? 'activo' : undefined} onClick={() => setPestana('hechizos')}>
-                    Hechizos
-                  </button>
-                )}
-              </div>
-              {pestana === 'ficha' ? ficha.carta : pestana === 'inventario' ? ficha.inventario : ficha.hechizos}
-            </>
-          ) : (
-            ficha.carta
-          )}
-        </NaipeDialog>
+        <FichaDialog
+          key={ficha.clave}
+          ficha={ficha}
+          onVida={onVida}
+          nota={nota}
+          onAtacar={onAtacar}
+          onCerrar={() => setAbierta(null)}
+        />
       )}
 
       {fantasma && (

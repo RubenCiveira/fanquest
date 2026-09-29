@@ -37,9 +37,16 @@ export type Reglas = {
   tesorosYSucesos: boolean
   /** Usa habilidades especiales de héroes que no sean selección o lanzamiento de hechizos */
   habilidadesEspeciales: boolean
+  /** Dibuja la zona en casillas para mover las fichas por ella */
+  usarMapa: boolean
 }
 
-export const REGLAS_POR_DEFECTO: Reglas = { movimientoFijo: true, tesorosYSucesos: false, habilidadesEspeciales: false }
+export const REGLAS_POR_DEFECTO: Reglas = {
+  movimientoFijo: true,
+  tesorosYSucesos: false,
+  habilidadesEspeciales: false,
+  usarMapa: false,
+}
 
 export type HeroeSeleccionado = {
   /** Identificador único de este héroe concreto, para progreso entre aventuras */

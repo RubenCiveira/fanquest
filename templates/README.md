@@ -146,7 +146,10 @@ partir de las hojas `<id>-<hombre|mujer>.png`: `papermini/`, `vtt-face/` y
 `vtt-heroe/`, con el mismo nombre de archivo. En la partida, la barra de
 héroes usa la ficha de `vtt-face/` del sexo elegido al añadir el héroe, si la
 hay, en lugar de la ilustración. Los monstruos hacen lo mismo con
-`monstruos/printables/vtt-face/<id>.png`.
+`monstruos/printables/vtt-face/<id>.png`. Con la regla «Usar mapa», las fichas
+del mapa son `vtt-heroe/<id>-<sexo>.png` para los héroes y
+`monstruos/printables/vtt/<id>.png` para los monstruos; sin ellas, el retrato
+recortado en redondo.
 
 `habilidades` son los ids de `habilidades/` con los que empieza; `opcionales`,
 las que el manual marca como opcionales, y `eligeUna`, las que se eligen de una

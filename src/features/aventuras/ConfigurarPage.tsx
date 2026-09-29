@@ -38,7 +38,7 @@ export function ConfigurarPage() {
   const idsBarajados = mazosDePartida(config)
   const conAvisos = ids.filter((id) => avisos(mazos[id], mision, seleccion(config, id)).length)
   const paso = pasoActual(config)
-  const { movimientoFijo, tesorosYSucesos, habilidadesEspeciales } = reglas(config)
+  const { movimientoFijo, tesorosYSucesos, habilidadesEspeciales, usarMapa } = reglas(config)
   const grupo = heroesSeleccionados(config, heroes)
   const elegidos = config.aliados ?? []
   const nombresGrupo = [
@@ -141,6 +141,20 @@ export function ConfigurarPage() {
                 <span className="nota">
                   Si se desactiva, solo se usarán las habilidades que habilitan o seleccionan hechizos. Las demás no
                   aparecerán en ficha ni se sugerirán en combate.
+                </span>
+              </span>
+            </label>
+            <label className="regla-opcion">
+              <input
+                type="checkbox"
+                checked={usarMapa}
+                onChange={() => asistente.cambiarReglas({ ...reglas(config), usarMapa: !usarMapa })}
+              />
+              <span>
+                <strong>Usar mapa</strong>
+                <span className="nota">
+                  Dibuja en la aplicación la sala o pasillo en que estáis, en casillas, para mover por ella a héroes,
+                  monstruos y atrezo.
                 </span>
               </span>
             </label>

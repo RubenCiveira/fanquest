@@ -3,6 +3,8 @@ import type { DatosPartida } from '../rutas'
 import { estadoAventura } from './asistente'
 import { actualizarAventura } from './aventuras'
 import type { Partida } from './partida'
+import { reglas } from './preparacion'
+import { fijarRejilla } from './rejilla'
 
 /** Acciones que se pueden deshacer (solo en esta visita a la página) */
 const MAX_DESHACER = 20
@@ -12,7 +14,9 @@ export function usePartida({ aventura }: DatosPartida) {
   const [partida, setPartida] = useState(aventura.partida)
   const [anteriores, setAnteriores] = useState<Partida[]>([])
 
-  const guardar = (nueva: Partida) => {
+  const guardar = (accion: Partida) => {
+    // con mapa, cada zona guarda su tamaño en cuanto se llega a ella
+    const nueva = reglas(aventura.configuracion).usarMapa ? fijarRejilla(accion) : accion
     setPartida(nueva)
     void actualizarAventura({ ...aventura, estado: estadoAventura(aventura.configuracion, nueva), partida: nueva })
   }

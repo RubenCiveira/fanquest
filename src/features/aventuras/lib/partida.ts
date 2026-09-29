@@ -38,6 +38,7 @@ import {
   type SeleccionMonstruos,
 } from './monstruos'
 import { claveAliado, heroesSeleccionados, type Configuracion } from './preparacion'
+import type { Rejilla } from './rejilla'
 
 /** Lo que la partida necesita saber de la aventura */
 export type Contexto = {
@@ -109,6 +110,8 @@ export type Zona = {
   puertaSecreta?: boolean
   /** Sin puertas hacia delante: solo se vuelve por la entrada o por una puerta secreta */
   sinPuertas?: boolean
+  /** Casillas y lo colocado en ellas, con la regla «Usar mapa» */
+  rejilla?: Rejilla
 }
 
 /** Monstruo sobre la mesa con sus Puntos de Cuerpo */

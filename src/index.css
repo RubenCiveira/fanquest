@@ -17,6 +17,9 @@
   --trazo-suave: rgb(62 52 40 / 0.3);
   --rubrica: #9a2b17;
   --rubrica-velo: rgb(154 43 23 / 0.06);
+  /* verde para lo que sí se puede hacer, p. ej. la casilla de destino */
+  --musgo: #3a6e3c;
+  --musgo-velo: rgb(58 110 60 / 0.28);
 
   --gotica: 'Grenze Gotisch', 'Alegreya', serif;
   --texto: 'Alegreya', Georgia, serif;
@@ -2099,6 +2102,11 @@ input[type='checkbox'] {
   grid-template-columns: 62px minmax(0, 1fr) 62px;
 }
 
+/* con mapa, las fichas están en él: sin barras laterales, todo el ancho es suyo */
+.partida.con-mapa {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .partida-fichas {
   position: sticky;
   top: calc(var(--header-h) + env(safe-area-inset-top) + 12px);
@@ -2200,6 +2208,273 @@ input[type='checkbox'] {
 .miembro.caido .miembro-iniciales {
   opacity: 0.45;
   filter: grayscale(1);
+}
+
+/* mapa de la zona: rejilla de casillas con las fichas y el atrezo */
+.mapa-zona {
+  display: grid;
+  gap: 10px;
+  margin-block: 12px;
+}
+
+.mapa-medidas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.mapa-medida {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--versalitas);
+  color: var(--grafito);
+}
+
+.mapa-medida strong {
+  min-width: 2ch;
+  color: var(--tinta);
+  text-align: center;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* el mapa y, si no cabe, sus flechas de desplazamiento a los lados */
+.rejilla-vista {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.rejilla-marco {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.rejilla-marco::-webkit-scrollbar {
+  display: none;
+}
+
+.rejilla-flecha {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  padding: 0;
+  color: var(--tinta);
+  background: var(--vitela);
+  border: 1.5px solid var(--trazo);
+  border-radius: var(--boceto-2);
+  cursor: pointer;
+}
+
+.rejilla-flecha:hover:not(:disabled) {
+  color: var(--rubrica);
+  border-color: var(--rubrica);
+}
+
+.rejilla-flecha:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.rejilla-flecha svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* en móvil el mapa ocupa también el margen de la página (el de .app-main) */
+@media (max-width: 560px) {
+  .rejilla-vista {
+    gap: 4px;
+    margin-inline: -16px;
+  }
+
+  .rejilla-flecha {
+    width: 26px;
+  }
+
+  .rejilla-flecha:first-child {
+    border-left: 0;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .rejilla-flecha:last-child {
+    border-right: 0;
+    border-radius: 12px 0 0 12px;
+  }
+
+  /* sin flechas, el mapa no llega a tocar el borde de la pantalla */
+  .rejilla-marco:only-child {
+    padding-inline: 16px;
+  }
+}
+
+/* casillas de 64 px si caben y nunca de menos de 50: más estrecho, se desplaza */
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(var(--columnas), 1fr);
+  grid-template-rows: repeat(var(--filas), 1fr);
+  width: max(calc(var(--columnas) * 50px), min(100%, calc(var(--columnas) * 64px)));
+  aspect-ratio: var(--columnas) / var(--filas);
+  background-color: var(--vitela);
+  background-image:
+    linear-gradient(to right, var(--trazo-suave) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--trazo-suave) 1px, transparent 1px);
+  background-size: calc(100% / var(--columnas)) calc(100% / var(--filas));
+  border: 2px solid var(--tinta);
+  border-radius: 3px;
+}
+
+.pieza {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--tinta);
+  background: none;
+  border: 0;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.rejilla .pieza-miembro,
+.rejilla .pieza-monstruo {
+  z-index: 2;
+  padding: 6%;
+}
+
+.pieza img,
+.pieza .miembro-iniciales {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  border: 1.5px solid var(--trazo);
+  border-radius: 50%;
+}
+
+.pieza img.pieza-vtt {
+  object-fit: contain;
+  border: 0;
+}
+
+.pieza-monstruo img:not(.pieza-vtt),
+.pieza-monstruo .miembro-iniciales {
+  border-color: var(--rubrica);
+}
+
+.pieza .miembro-alias {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  color: var(--vitela);
+  background: var(--rubrica);
+  border-radius: 8px;
+}
+
+.pieza-atrezo {
+  z-index: 1;
+  margin: 2px;
+  padding: 2px 4px;
+  background: var(--pergamino-oscuro);
+  border: 1.5px solid var(--trazo);
+  border-radius: var(--boceto-2);
+}
+
+.pieza-nombre {
+  overflow: hidden;
+  font-family: var(--versalitas);
+  font-size: 0.75rem;
+  line-height: 1;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.rejilla-destino {
+  z-index: 3;
+  background: var(--musgo-velo);
+  border: 2px solid var(--musgo);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.rejilla-destino.no-cabe {
+  background: var(--rubrica-velo);
+  border-color: var(--rubrica);
+  border-style: dashed;
+}
+
+.pieza.elegida {
+  outline: 2px solid var(--rubrica);
+  outline-offset: -2px;
+}
+
+.pieza.caido img,
+.pieza.caido .miembro-iniciales {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.mapa-seleccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mapa-seleccion .button {
+  width: auto;
+}
+
+.mapa-bandeja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 60px;
+  padding: 8px;
+  border: 1.5px dashed var(--trazo-suave);
+  border-radius: var(--boceto-1);
+}
+
+.mapa-bandeja .pieza-miembro,
+.mapa-bandeja .pieza-monstruo {
+  width: 48px;
+  height: 48px;
+}
+
+.mapa-bandeja .pieza-atrezo {
+  min-height: 48px;
+  margin: 0;
+  padding-inline: 10px;
+}
+
+.mapa-bandeja .nota {
+  margin: auto 0;
+}
+
+.mapa-fantasma {
+  position: fixed;
+  z-index: 30;
+  width: 48px;
+  height: 48px;
+  transform: translate(-50%, -50%);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.mapa-fantasma.pieza-atrezo {
+  width: auto;
+  height: auto;
+  min-height: 36px;
 }
 
 .partida-centro {
@@ -2767,7 +3042,9 @@ input[type='checkbox'] {
 }
 
 .objetivo .miembro img,
-.objetivo .miembro-iniciales {
+.objetivo .miembro-iniciales,
+.pieza.objetivo img,
+.pieza.objetivo .miembro-iniciales {
   border-color: var(--rubrica);
   box-shadow: 0 0 0 3px var(--rubrica-velo), 0 0 0 5px var(--rubrica);
 }

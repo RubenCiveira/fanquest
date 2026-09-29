@@ -26,6 +26,7 @@ const trazos = {
     </>
   ),
   volver: <path d="M14.6 5.4 8.2 12l6.4 6.6" />,
+  derecha: <path d="M9.4 5.4 15.8 12l-6.4 6.6" />,
   arriba: <path d="M5.4 14.6 12 8.2l6.6 6.4" />,
   abajo: <path d="M5.4 9.4 12 15.8l6.6-6.4" />,
   cerrar: <path d="M6.4 6.2 17.8 17.6M17.6 6.4 6.2 17.8" />,

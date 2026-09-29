@@ -46,7 +46,7 @@ describe('héroes de templates/heroes', () => {
   })
 
   it('usa la ficha VTT del sexo del héroe', () => {
-    expect([urlFichaVtt('heroes', 'druida', 'mujer'), urlFichaVtt('heroes', 'druida', 'hombre')]).toEqual([
+    expect([urlFichaVtt('heroes', 'druida', 'mujer'), urlFichaVtt('heroes', 'sin-ficha', 'mujer')]).toEqual([
       expect.stringContaining('druida-mujer.png'),
       undefined,
     ])

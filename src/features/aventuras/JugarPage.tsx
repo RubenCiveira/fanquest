@@ -14,7 +14,9 @@ import type { EfectoEspecial } from '../generar/lib/tipos'
 import { CartaAliado } from '../../components/CartaAliado'
 import { CartaMonstruo } from '../../components/CartaMonstruo'
 import { BarraFichas, type Ficha, type PanelFicha } from './components/BarraFichas'
+import { FichaDialog } from './components/FichaDialog'
 import { CombateDialog, type Participante } from './components/CombateDialog'
+import { MapaZona, type Ocupante } from './components/MapaZona'
 import { perdidas, recuentoRecarga } from './lib/combate'
 import { ReglasMisionDialog } from './components/ReglasMisionDialog'
 import { SucesoPartida } from './components/SucesoPartida'
@@ -78,6 +80,7 @@ import {
   type TipoZona,
 } from './lib/partida'
 import { reglas as reglasPartida } from './lib/preparacion'
+import { conRejilla, rejillaDe } from './lib/rejilla'
 import { cartasHechizosSeleccionadas, HABILIDADES_MAGIA } from './lib/hechizos'
 import { reglasDeHeroe, type ReglaEspecial } from './lib/reglasEspeciales'
 import { usePartida } from './lib/usePartida'
@@ -306,6 +309,8 @@ export function JugarPage() {
   const [exportar, setExportar] = useState(false)
   const [ataque, setAtaque] = useState<{ atacante: string; defensor?: string } | null>(null)
   const [miembroAcciones, setMiembroAcciones] = useState<string | null>(null)
+  /** Con mapa no hay barras laterales: la ficha se abre tocándola en el mapa */
+  const [fichaMapa, setFichaMapa] = useState<string | null>(null)
   const [accionMiembro, setAccionMiembro] = useState<{ clave: string; tipo: 'tesoro' | 'equipo' | 'encontrado' } | null>(null)
   const [volverAccionesMiembro, setVolverAccionesMiembro] = useState<string | null>(null)
   const [avisoAccion, setAvisoAccion] = useState<string | null>(null)
@@ -321,7 +326,7 @@ export function JugarPage() {
   const nombreZona = (z: Zona) => z.nombre ?? (z.tipo === 'inicial' ? NOMBRE_ZONA.inicial : `${NOMBRE_ZONA[z.tipo]} ${z.id}`)
   const porExplorar = (z: Zona) =>
     z.salidas.filter((s) => s.destino === undefined && p.caminos[s.camino ?? -1]?.length).length
-  const { movimientoFijo, habilidadesEspeciales } = reglasPartida(aventura.configuracion)
+  const { movimientoFijo, habilidadesEspeciales, usarMapa } = reglasPartida(aventura.configuracion)
   const [paso] = zona.pendientes
   const onVerCarta = (mazo: IdMazo, id: string) => setVerCarta({ mazo, id })
   const reglas = reglasDeZona(mision, zona).map((e) => describirSala(e, mazos)).filter(Boolean)
@@ -580,6 +585,60 @@ export function JugarPage() {
   const miembroEnSubaccion = miembros.find((m) => m.clave === accionMiembro?.clave)
   const miembroEnTirada = miembros.find((m) => m.clave === tiradaEfecto?.clave)
   const nombreMiembro = (m: Miembro) => ('heroe' in m ? m.heroe.nombre : m.aliado.nombre)
+  // en el mapa, la figura vista desde arriba o, si no la hay, el retrato recortado en redondo
+  const ocupantes: Ocupante[] = usarMapa
+    ? [
+        ...miembros.map((m): Ocupante => {
+          const vtt = 'heroe' in m ? urlFichaVtt('heroes', m.heroe.id, m.sexo, 'vtt-heroe') : undefined
+          return {
+            id: m.clave,
+            tipo: 'miembro',
+            bando: 'grupo',
+            nombre: m.nombre ?? nombreMiembro(m),
+            imagen: vtt ?? grupo.find((f) => f.clave === m.clave)?.retrato,
+            vtt: Boolean(vtt),
+            caido: !(p.vidas[m.clave] ?? m.cuerpo),
+          }
+        }),
+        ...(p.monstruos ?? []).flatMap((m): Ocupante[] => {
+          const datos = monstruos[m.monstruo]
+          if (!datos) return []
+          const vtt = urlFichaVtt('monstruos', datos.id, undefined, 'vtt')
+          return [
+            {
+              id: m.id,
+              tipo: 'monstruo',
+              bando: 'monstruos',
+              nombre: datos.nombre,
+              alias: m.nombre ?? String(m.numero),
+              imagen: vtt ?? urlRetrato('monstruos', datos),
+              vtt: Boolean(vtt),
+            },
+          ]
+        }),
+        // la misma carta puede salir dos veces: cada copia es una pieza
+        ...atrezoColocado(zona).flatMap((id, i, lista): Ocupante[] => {
+          const c = carta(mazos.atrezo, id)
+          const copia = lista.slice(0, i).filter((otra) => otra === id).length
+          return c.tipo === 'sin-atrezo' ? [] : [{ id: copia ? `${id}#${copia}` : id, tipo: 'atrezo', atrezo: c.tipo, nombre: c.titulo }]
+        }),
+      ]
+    : []
+  const vidaGrupo = (clave: string, delta: 1 | -1) =>
+    hacer((a) => cambiarVida(a, clave, delta, grupo.find((f) => f.clave === clave)?.cuerpo ?? 0))
+  const vidaMonstruo = (id: string, delta: 1 | -1) => hacer((a) => cambiarVidaMonstruo(a, id, delta))
+  // con mapa, héroes y monstruos están en él: tocarlos abre su ficha
+  const mapaZona = usarMapa && (
+    <MapaZona
+      rejilla={rejillaDe(zona)}
+      ocupantes={ocupantes}
+      onCambiar={(cambio) => hacer((a) => conRejilla(a, cambio))}
+      onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
+      onFicha={setFichaMapa}
+    />
+  )
+  const fichaDelGrupo = grupo.find((f) => f.clave === fichaMapa)
+  const fichaEnMapa = fichaDelGrupo ?? enJuego.find((f) => f.clave === fichaMapa)
   const inventarioSubaccion = miembroEnSubaccion ? p.inventario?.[miembroEnSubaccion.clave] : undefined
   const equipoSubaccion = [...(inventarioSubaccion?.equipo ?? []), ...(inventarioSubaccion?.artefactos ?? [])]
   const busquedaEquipoAUsar = equipoAUsar.trim().toLocaleLowerCase('es')
@@ -631,17 +690,17 @@ export function JugarPage() {
       </PageHeader>
       <p className="configurar-mision">{mision.titulo}</p>
 
-      <div className={enJuego.length ? 'partida con-monstruos' : 'partida'}>
-        <BarraFichas
-          etiqueta="Grupo"
-          className="partida-grupo"
-          fichas={grupo}
-          bando="grupo"
-          onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
-          onVida={(clave, delta) =>
-            hacer((a) => cambiarVida(a, clave, delta, grupo.find((f) => f.clave === clave)?.cuerpo ?? 0))
-          }
-        />
+      <div className={usarMapa ? 'partida con-mapa' : enJuego.length ? 'partida con-monstruos' : 'partida'}>
+        {!usarMapa && (
+          <BarraFichas
+            etiqueta="Grupo"
+            className="partida-grupo"
+            fichas={grupo}
+            bando="grupo"
+            onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
+            onVida={vidaGrupo}
+          />
+        )}
 
         <div className="partida-centro">
           <dl className="marcador boceto">
@@ -844,12 +903,14 @@ export function JugarPage() {
               )}
               <p className="nota">Si os habéis equivocado, podéis deshacer.</p>
             </section>
+          ) : paso ? (
+            // con un paso pendiente no hay acciones, pero el mapa sigue bajo los sucesos
+            mapaZona
           ) : (
-            !paso && (
               <section className="acciones" aria-labelledby="acciones-titulo">
                 <h2 id="acciones-titulo">Qué podéis hacer</h2>
 
-                <div className="acciones-heroes" aria-label="Acciones por héroe">
+                {mapaZona || <div className="acciones-heroes" aria-label="Acciones por héroe">
                   {miembros.map((m) => {
                     const ficha = grupo.find((f) => f.clave === m.clave)
                     const nombre = nombreMiembro(m)
@@ -876,7 +937,7 @@ export function JugarPage() {
                       </button>
                     )
                   })}
-                </div>
+                </div>}
 
                 {p.hayMonstruos && zona.tipo !== 'inicial' && (
                   <p className="aviso-partida">
@@ -1072,22 +1133,32 @@ export function JugarPage() {
                   </div>
                 </details>
               </section>
-            )
           )}
         </div>
 
-        {enJuego.length > 0 && (
+        {!usarMapa && enJuego.length > 0 && (
           <BarraFichas
             etiqueta="Monstruos en juego"
             className="partida-monstruos"
             fichas={enJuego}
             bando="monstruos"
             onAtacar={(atacante, defensor) => setAtaque({ atacante, defensor })}
-            onVida={(id, delta) => hacer((a) => cambiarVidaMonstruo(a, id, delta))}
+            onVida={vidaMonstruo}
             nota="A 0 PC el monstruo muere y sale de la barra."
           />
         )}
       </div>
+
+      {fichaEnMapa && (
+        <FichaDialog
+          key={fichaEnMapa.clave}
+          ficha={fichaEnMapa}
+          onVida={fichaDelGrupo ? vidaGrupo : vidaMonstruo}
+          nota={fichaDelGrupo ? undefined : 'A 0 PC el monstruo muere y sale del mapa.'}
+          onAtacar={(atacante) => setAtaque({ atacante })}
+          onCerrar={() => setFichaMapa(null)}
+        />
+      )}
 
       {miembroEnAcciones && (
         <AccionDialog
