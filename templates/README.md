@@ -141,6 +141,13 @@ e `imagenes/` con su ilustración del manual. Cada héroe tiene `id`, `nombre`,
 `cita`, `descripcion`, `ataque`, `defensa`, `cuerpo`, `mente`, `equipo`,
 `limitaciones` e `imagen`.
 
+`printables/` guarda los recortables que genera `pnpm heroes:recortar` a
+partir de las hojas `<id>-<hombre|mujer>.png`: `papermini/`, `vtt-face/` y
+`vtt-heroe/`, con el mismo nombre de archivo. En la partida, la barra de
+héroes usa la ficha de `vtt-face/` del sexo elegido al añadir el héroe, si la
+hay, en lugar de la ilustración. Los monstruos hacen lo mismo con
+`monstruos/printables/vtt-face/<id>.png`.
+
 `habilidades` son los ids de `habilidades/` con los que empieza; `opcionales`,
 las que el manual marca como opcionales, y `eligeUna`, las que se eligen de una
 en una (las marcas de los Dioses del Caos).

@@ -2165,6 +2165,17 @@ input[type='checkbox'] {
   transition: border-color 200ms var(--ease);
 }
 
+.miembro img.miembro-vtt {
+  object-fit: contain;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+}
+
+.miembro:hover img.miembro-vtt {
+  outline: 2px solid var(--rubrica);
+}
+
 .miembro-iniciales {
   display: grid;
   place-items: center;
@@ -2372,7 +2383,7 @@ input[type='checkbox'] {
 
 .acciones-heroes {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
   gap: 8px;
 }
 
@@ -2412,7 +2423,7 @@ input[type='checkbox'] {
 .acciones-heroe-cabecera strong {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.76rem;
+  font-size: 0.85rem;
   line-height: 0.95;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2420,12 +2431,17 @@ input[type='checkbox'] {
 
 .acciones-heroe-cabecera img,
 .acciones-heroe-cabecera .miembro-iniciales {
-  width: 44px;
-  height: 44px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
   object-position: top;
   border: 1px solid var(--trazo-suave);
   border-radius: 50%;
+}
+
+.acciones-heroe-cabecera img.miembro-vtt {
+  object-fit: contain;
+  border: 0;
 }
 
 .acciones-heroe-panel {

@@ -8,7 +8,7 @@ import {
   type Modo,
 } from '../config/mazos'
 import type { CartaMazo, IdMazo, Mazo, Mazos } from '../../../lib/mazos'
-import type { Heroe } from '../../../lib/personajes'
+import type { Heroe, Sexo } from '../../../lib/personajes'
 import { hechizosInicialesHeroe } from './hechizos'
 import type { SeleccionMonstruos } from './monstruos'
 
@@ -48,6 +48,8 @@ export type HeroeSeleccionado = {
   tipo: string
   /** Nombre propio usado durante la aventura */
   nombre: string
+  /** Las aventuras antiguas no lo tienen */
+  sexo?: Sexo
 }
 
 export type Configuracion = {
@@ -283,12 +285,12 @@ const idHeroe = (tipo: string) => {
  * Añade un héroe al grupo; con el grupo completo no añade. Los
  * monstruos vuelven a la propuesta, que depende de cuántos héroes hay.
  */
-export function anadirHeroe(c: Configuracion, tipo: string, nombre: string, heroes: Heroe[] = [], hechizos?: Mazo): Configuracion {
+export function anadirHeroe(c: Configuracion, tipo: string, nombre: string, sexo: Sexo, heroes: Heroe[] = [], hechizos?: Mazo): Configuracion {
   const grupo = heroesSeleccionados(c, heroes)
   if (grupo.length >= MAX_HEROES) return c
   const heroe = heroes.find((h) => h.id === tipo)
   if (!heroe) return c
-  const seleccionado = { id: idHeroe(tipo), tipo, nombre: nombre.trim() || heroe.nombre }
+  const seleccionado = { id: idHeroe(tipo), tipo, nombre: nombre.trim() || heroe.nombre, sexo }
   const iniciales = heroe && hechizos ? hechizosInicialesHeroe(heroe, hechizos) : []
   return {
     ...c,

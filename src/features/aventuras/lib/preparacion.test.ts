@@ -177,10 +177,10 @@ describe('grupo de héroes', () => {
   const vacia: Configuracion = { modo: 'losetas', mazos: {} }
 
   it('añade héroes al grupo', () => {
-    const c = anadirHeroe(anadirHeroe(vacia, 'enano', 'Borin', heroes), 'elfo', 'Lethiel', heroes)
+    const c = anadirHeroe(anadirHeroe(vacia, 'enano', 'Borin', 'hombre', heroes), 'elfo', 'Lethiel', 'mujer', heroes)
     expect(c.heroes).toMatchObject([
-      { tipo: 'enano', nombre: 'Borin' },
-      { tipo: 'elfo', nombre: 'Lethiel' },
+      { tipo: 'enano', nombre: 'Borin', sexo: 'hombre' },
+      { tipo: 'elfo', nombre: 'Lethiel', sexo: 'mujer' },
     ])
   })
 
@@ -191,16 +191,16 @@ describe('grupo de héroes', () => {
   })
 
   it('cambiar el grupo devuelve los monstruos a la propuesta', () => {
-    expect(anadirHeroe({ ...vacia, monstruos: { orco: 9 } }, 'enano', 'Borin', heroes).monstruos).toBeUndefined()
+    expect(anadirHeroe({ ...vacia, monstruos: { orco: 9 } }, 'enano', 'Borin', 'hombre', heroes).monstruos).toBeUndefined()
   })
 
   it('no pasa de 4 héroes', () => {
     const completo = { ...vacia, heroes: ['barbaro', 'enano', 'elfo', 'mago'] }
-    expect(anadirHeroe(completo, 'bardo', 'Lino', heroes).heroes).toEqual(completo.heroes)
+    expect(anadirHeroe(completo, 'bardo', 'Lino', 'hombre', heroes).heroes).toEqual(completo.heroes)
   })
 
   it('añade los grupos de hechizos iniciales del héroe', () => {
-    const c = anadirHeroe(vacia, 'bardo', 'Lino', heroes, mazos.hechizos)
+    const c = anadirHeroe(vacia, 'bardo', 'Lino', 'hombre', heroes, mazos.hechizos)
     const id = typeof c.heroes?.[0] === 'string' ? c.heroes[0] : c.heroes?.[0]?.id
     expect(id ? c.hechizos?.[id] : undefined).toEqual(['canto-inspirador-1', 'cancion-curativa-1', 'cancion-de-cuna-1'])
   })

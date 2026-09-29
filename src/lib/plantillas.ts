@@ -14,8 +14,9 @@ const locales = import.meta.glob<unknown>('/templates/**/*.json', {
   import: 'default',
 })
 
-// las imágenes se publican como archivos aparte; aquí solo sus URL
-const recursos = import.meta.glob<string>('/templates/**/*.webp', {
+// las imágenes se publican como archivos aparte; aquí solo sus URL (de los
+// imprimibles, solo las fichas VTT: la app no usa el resto)
+const recursos = import.meta.glob<string>(['/templates/**/*.webp', '/templates/*/printables/vtt-*/*.png'], {
   eager: true,
   query: '?url',
   import: 'default',

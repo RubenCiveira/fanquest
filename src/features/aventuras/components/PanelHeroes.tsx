@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CartaHeroe } from '../../../components/CartaHeroe'
 import { Icono } from '../../../components/Icono'
 import { NaipeDialog } from '../../../components/NaipeDialog'
-import type { Habilidades, Heroe } from '../../../lib/personajes'
+import type { Habilidades, Heroe, Sexo } from '../../../lib/personajes'
 import { HABILIDADES_MAGIA, puedeLanzarHechizos } from '../lib/hechizos'
 import { MAX_HEROES, type HeroeSeleccionado } from '../lib/preparacion'
 
@@ -10,15 +10,16 @@ type Props = {
   heroes: Heroe[]
   habilidades: Habilidades
   grupo: HeroeSeleccionado[]
-  onAnadir: (tipo: string, nombre: string) => void
+  onAnadir: (tipo: string, nombre: string, sexo: Sexo) => void
   onQuitar: (id: string) => void
   movimientoFijo: boolean
   habilidadesEspeciales: boolean
 }
 
-function DialogNombreHeroe({ heroe, onAnadir, onCerrar }: { heroe: Heroe; onAnadir: (nombre: string) => void; onCerrar: () => void }) {
+function DialogNombreHeroe({ heroe, onAnadir, onCerrar }: { heroe: Heroe; onAnadir: (nombre: string, sexo: Sexo) => void; onCerrar: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const [nombre, setNombre] = useState(heroe.nombre)
+  const [sexo, setSexo] = useState<Sexo>()
 
   useEffect(() => ref.current?.showModal(), [])
 
@@ -29,7 +30,7 @@ function DialogNombreHeroe({ heroe, onAnadir, onCerrar }: { heroe: Heroe; onAnad
         onSubmit={(e) => {
           e.preventDefault()
           const limpio = nombre.trim()
-          if (limpio) onAnadir(limpio)
+          if (limpio && sexo) onAnadir(limpio, sexo)
         }}
       >
         <header className="dialog-cabecera">
@@ -42,11 +43,20 @@ function DialogNombreHeroe({ heroe, onAnadir, onCerrar }: { heroe: Heroe; onAnad
           <span>Nombre propio de {heroe.nombre}</span>
           <input type="text" value={nombre} autoFocus onChange={(e) => setNombre(e.target.value)} />
         </label>
+        <fieldset className="modo">
+          <legend>Sexo</legend>
+          {(['hombre', 'mujer'] as const).map((opcion) => (
+            <label key={opcion}>
+              <input type="radio" name="sexo" checked={sexo === opcion} onChange={() => setSexo(opcion)} />
+              {opcion === 'hombre' ? 'Hombre' : 'Mujer'}
+            </label>
+          ))}
+        </fieldset>
         {puedeLanzarHechizos(heroe) && (
           <p className="nota">La selección de hechizos se realizará más adelante, cuando todo el grupo esté listo.</p>
         )}
         <div className="fila-botones">
-          <button type="submit" className="button" disabled={!nombre.trim()}>
+          <button type="submit" className="button" disabled={!nombre.trim() || !sexo}>
             Añadir héroe
           </button>
           <button type="button" className="button secondary" onClick={onCerrar}>
@@ -70,9 +80,9 @@ export function PanelHeroes({ heroes, habilidades, grupo, onAnadir, onQuitar, mo
     setNombrando(heroe)
   }
 
-  const confirmarNombre = (nombre: string) => {
+  const confirmarNombre = (nombre: string, sexo: Sexo) => {
     if (!nombrando) return
-    onAnadir(nombrando.id, nombre)
+    onAnadir(nombrando.id, nombre, sexo)
     setNombrando(null)
   }
 

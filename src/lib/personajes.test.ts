@@ -7,6 +7,7 @@ import {
   FAMILIAS_MONSTRUOS,
   GRUPOS_ALIADOS,
   PERFILES_MOVIMIENTO,
+  urlFichaVtt,
   urlRetrato,
   type GrupoAliados,
   type Habilidades,
@@ -42,6 +43,23 @@ describe('héroes de templates/heroes', () => {
 
   it('cada héroe tiene su retrato', () => {
     expect(heroes.filter((h) => !urlRetrato('heroes', h)).map((h) => h.id)).toEqual([])
+  })
+
+  it('usa la ficha VTT del sexo del héroe', () => {
+    expect([urlFichaVtt('heroes', 'druida', 'mujer'), urlFichaVtt('heroes', 'druida', 'hombre')]).toEqual([
+      expect.stringContaining('druida-mujer.png'),
+      undefined,
+    ])
+  })
+
+  it('usa la figura VTT del héroe vista desde arriba', () => {
+    expect(urlFichaVtt('heroes', 'druida', 'mujer', 'vtt-heroe')).toContain('vtt-heroe/druida-mujer.png')
+  })
+
+  it('cada ficha VTT es de un héroe y un sexo', () => {
+    const ids = new Set(heroes.flatMap((h) => [`${h.id}-hombre`, `${h.id}-mujer`]))
+    const archivos = Object.keys(import.meta.glob('/templates/heroes/printables/vtt-*/*.png'))
+    expect(archivos.map((ruta) => ruta.replace(/^.*\/|\.png$/g, '')).filter((id) => !ids.has(id))).toEqual([])
   })
 
   it('cada héroe tiene un perfil de movimiento de la tabla', () => {

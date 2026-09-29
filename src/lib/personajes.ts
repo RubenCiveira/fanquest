@@ -188,6 +188,24 @@ export function version(m: Monstruo, avanzado = false): Estadisticas & { reglas:
   return avanzado && m.avanzado ? m.avanzado : m
 }
 
+/** Sexo del héroe: elige su ficha VTT */
+export type Sexo = 'hombre' | 'mujer'
+
+/**
+ * Ficha VTT de `templates/<coleccion>/printables/<carpeta>/`, si la hay:
+ * `<id>-<sexo>.png` para los héroes y `<id>.png` para los monstruos.
+ * `vtt-face` es el retrato y `vtt-heroe`, la figura vista desde arriba
+ */
+export function urlFichaVtt(
+  coleccion: 'heroes' | 'monstruos',
+  id: string,
+  sexo?: Sexo,
+  carpeta: 'vtt-face' | 'vtt-heroe' = 'vtt-face',
+  fuente: FuentePlantillas = fuenteLocal,
+): string | undefined {
+  return fuente.url(coleccion, `printables/${carpeta}/${sexo ? `${id}-${sexo}` : id}.png`)
+}
+
 export function urlRetrato(
   coleccion: 'heroes' | 'monstruos' | 'aliados',
   personaje: { imagen?: string },

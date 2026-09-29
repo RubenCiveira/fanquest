@@ -1,7 +1,7 @@
 import { barajar, caraDC, enResultado, rnd, tirable, tirar } from '../../../lib/dados'
 import { objetoEquipable, type Equipo } from '../../../lib/equipo'
 import type { CartaMazo, IdMazo, Mazo, Mazos, TiradaCarta } from '../../../lib/mazos'
-import { DADOS_MOVIMIENTO, version, type Aliado, type Heroe, type Monstruos } from '../../../lib/personajes'
+import { DADOS_MOVIMIENTO, version, type Aliado, type Heroe, type Monstruos, type Sexo } from '../../../lib/personajes'
 import { PREPARACION } from '../../generar/config/preparacion'
 import type { EfectoEspecial, Mision, Sala } from '../../generar/lib/tipos'
 import { TABLAS_ENCUENTROS, type Encuentro } from '../config/encuentros'
@@ -178,14 +178,14 @@ export type Partida = {
 }
 
 /** Héroe o aliado del grupo con su clave en `vidas` */
-export type Miembro = { clave: string; cuerpo: number; nombre?: string } & ({ heroe: Heroe } | { aliado: Aliado })
+export type Miembro = { clave: string; cuerpo: number; nombre?: string } & ({ heroe: Heroe; sexo?: Sexo } | { aliado: Aliado })
 
 export function miembrosDelGrupo(c: Configuracion, heroes: Heroe[], grupos: { id: string; aliados: Aliado[] }[]): Miembro[] {
   return [
     ...heroesSeleccionados(c, heroes).flatMap((seleccionado) =>
       heroes
         .filter((h) => h.id === seleccionado.tipo)
-        .map((heroe) => ({ clave: seleccionado.id, cuerpo: heroe.cuerpo, nombre: seleccionado.nombre, heroe })),
+        .map((heroe) => ({ clave: seleccionado.id, cuerpo: heroe.cuerpo, nombre: seleccionado.nombre, heroe, sexo: seleccionado.sexo })),
     ),
     ...grupos.flatMap((g) =>
       g.aliados

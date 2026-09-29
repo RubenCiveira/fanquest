@@ -5,6 +5,7 @@ import { avanzar, estadoAventura, volverA } from './asistente'
 import { actualizarAventura } from './aventuras'
 import type { SeleccionMonstruos } from './monstruos'
 import type { IdMazo } from '../../../lib/mazos'
+import type { Sexo } from '../../../lib/personajes'
 import {
   alternarAliado,
   anadirHeroe,
@@ -34,7 +35,8 @@ export function useConfiguracion({ aventura, configuracion, mazos, heroes }: Dat
       guardar({ ...config, mazos: { ...config.mazos, [id]: seleccion }, barajado: undefined }),
     cambiarModo: (modo: Modo) => guardar({ ...config, modo, barajado: undefined }),
     cambiarReglas: (reglas: Reglas) => guardar({ ...config, reglas }),
-    anadirHeroe: (tipo: string, nombre: string) => guardar(anadirHeroe(config, tipo, nombre, heroes, mazos.hechizos)),
+    anadirHeroe: (tipo: string, nombre: string, sexo: Sexo) =>
+      guardar(anadirHeroe(config, tipo, nombre, sexo, heroes, mazos.hechizos)),
     quitarHeroe: (id: string) => guardar(quitarHeroe(config, id, heroes)),
     cambiarHechizosHeroe: (id: string, hechizos: string[]) =>
       guardar({ ...config, hechizos: { ...config.hechizos, [id]: hechizos }, barajado: undefined }),

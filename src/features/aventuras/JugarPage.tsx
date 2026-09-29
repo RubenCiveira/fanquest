@@ -8,7 +8,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { caraDC, entre } from '../../lib/dados'
 import { itemPorId, nombreItem, type ItemEquipo } from '../../lib/equipo'
 import { registrarEvento } from '../../lib/matomo'
-import { DADOS_MOVIMIENTO, PERFILES_MOVIMIENTO, puntosMovimiento, urlRetrato, version, type Heroe } from '../../lib/personajes'
+import { DADOS_MOVIMIENTO, PERFILES_MOVIMIENTO, puntosMovimiento, urlFichaVtt, urlRetrato, version, type Heroe } from '../../lib/personajes'
 import type { IdMazo, Mazos } from '../../lib/mazos'
 import type { EfectoEspecial } from '../generar/lib/tipos'
 import { CartaAliado } from '../../components/CartaAliado'
@@ -447,6 +447,7 @@ export function JugarPage() {
       clave: m.clave,
       nombre,
       retrato: 'heroe' in m ? urlRetrato('heroes', m.heroe) : undefined,
+      vtt: 'heroe' in m ? urlFichaVtt('heroes', m.heroe.id, m.sexo) : undefined,
       pc: p.vidas[m.clave] ?? m.cuerpo,
       cuerpo: m.cuerpo,
       panelesIzquierda,
@@ -541,6 +542,7 @@ export function JugarPage() {
             nombre: m.nombre ? datos.nombre : `${datos.nombre} ${m.numero}`,
             alias: m.nombre ?? String(m.numero),
             retrato: urlRetrato('monstruos', datos),
+            vtt: urlFichaVtt('monstruos', datos.id),
             pc: m.pc,
             cuerpo: m.cuerpo,
             carta: <CartaMonstruo monstruo={datos} avanzado={m.avanzado} variante="completa" papel={m.nombre ?? `Nº ${m.numero}`} />,
@@ -852,6 +854,7 @@ export function JugarPage() {
                     const ficha = grupo.find((f) => f.clave === m.clave)
                     const nombre = nombreMiembro(m)
                     const puedeActuar = (p.vidas[m.clave] ?? m.cuerpo) > 0
+                    const vtt = 'heroe' in m ? urlFichaVtt('heroes', m.heroe.id, m.sexo, 'vtt-heroe') : undefined
                     return (
                       <button
                         key={m.clave}
@@ -861,7 +864,13 @@ export function JugarPage() {
                         onClick={() => setMiembroAcciones(m.clave)}
                       >
                         <span className="acciones-heroe-cabecera">
-                          {ficha?.retrato ? <img src={ficha.retrato} alt="" /> : <span className="miembro-iniciales">{nombre.slice(0, 2)}</span>}
+                          {vtt ? (
+                            <img className="miembro-vtt" src={vtt} alt="" />
+                          ) : ficha?.retrato ? (
+                            <img src={ficha.retrato} alt="" />
+                          ) : (
+                            <span className="miembro-iniciales">{nombre.slice(0, 2)}</span>
+                          )}
                           <strong>{nombre}</strong>
                         </span>
                       </button>

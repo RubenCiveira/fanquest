@@ -15,6 +15,8 @@ export type Ficha = {
   clave: string
   nombre: string
   retrato?: string
+  /** Ficha VTT redonda: en la barra sustituye al retrato */
+  vtt?: string
   pc: number
   cuerpo: number
   /** Nombre corto para distinguir miniaturas iguales */
@@ -161,7 +163,13 @@ export function BarraFichas({ etiqueta, fichas, onVida, nota, className = '', ba
             aria-label={`${f.alias ? `${f.alias}, ` : ''}${f.nombre}: ${f.pc} de ${f.cuerpo} PC`}
           >
             {f.alias && <span className="miembro-alias">{f.alias}</span>}
-            {f.retrato ? <img src={f.retrato} alt="" /> : <span className="miembro-iniciales">{iniciales(f.nombre)}</span>}
+            {f.vtt ? (
+              <img className="miembro-vtt" src={f.vtt} alt="" />
+            ) : f.retrato ? (
+              <img src={f.retrato} alt="" />
+            ) : (
+              <span className="miembro-iniciales">{iniciales(f.nombre)}</span>
+            )}
           </button>
           <span className="ficha-pie">
             <span className="miembro-vida">
