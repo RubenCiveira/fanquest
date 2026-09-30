@@ -43,3 +43,24 @@ export function AvisoFinTurno({ onTerminar }: { onTerminar: () => void }) {
     </dialog>
   )
 }
+
+/** Aviso del resultado de buscar trampas en una estancia */
+export function AvisoTrampas({ titulo, texto, onCerrar }: { titulo: string; texto: string; onCerrar: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => ref.current?.showModal(), [])
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby="trampas-titulo" onClose={onCerrar}>
+      <form method="dialog" className="dialog-contenido">
+        <h2 id="trampas-titulo">{titulo}</h2>
+        <p>{texto}</p>
+        <div className="fila-botones">
+          <button type="submit" className="button" autoFocus>
+            Entendido
+          </button>
+        </div>
+      </form>
+    </dialog>
+  )
+}

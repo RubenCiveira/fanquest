@@ -11,17 +11,20 @@ import {
   jugadorEnTurno,
   numeroDeTurno,
   personajesNoJugadoresDe,
+  BUSCAR_TRAMPAS,
   type Accion,
   type Casilla,
   type Estancia,
   type Mapa,
 } from '../gamemap'
 import { FormularioConfiguracion } from './FormularioConfiguracion'
+import { AvisoTrampas } from './AvisoTurno'
 import { ETIQUETA_ORIENTACION, guardarMapa, obtenerMapa } from './mapas'
 import { PanelJugadores } from './PanelJugadores'
 import { esCancelacion, useProveedorDebug } from './useProveedorDebug'
 import { VistaMapa } from './VistaMapa'
 import { movimientoDePrueba } from './modelo/personaje'
+import { tieneEnemigosActivosEnEstancia } from './trampas'
 import './mapDebug.css'
 
 /** Un mapa de prueba: pulsa una casilla para ver de qué estancia es */
@@ -57,6 +60,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   const mapa = useSyncExternalStore(gestor.suscribir, () => gestor.mapa)
   const [seleccion, setSeleccion] = useState<Seleccion>()
   const [nota, setNota] = useState<string>()
+  const [avisoTrampas, setAvisoTrampas] = useState<{ titulo: string; texto: string }>()
 
   useEffect(() => gestor.suscribir((m) => guardarMapa(id, m)), [gestor, id])
 
@@ -86,8 +90,14 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   /** Ejecuta la acción de la corona; si abre un diálogo (una puerta pide una estancia nueva) y se cancela, no pasa nada */
   async function accionar(accion: string) {
     if (!actorElegido) return
+    if (accion === BUSCAR_TRAMPAS.id && seleccion?.elemento && tieneEnemigosActivosEnEstancia(mapa, seleccion.elemento)) {
+      setAvisoTrampas({ titulo: 'No se pueden buscar trampas', texto: 'Con enemigos activos no se pueden buscar trampas.' })
+      return
+    }
     try {
-      setNota(escuadraElegida ? await gestor.ejecutarAccion(escuadraElegida, accion, seleccion?.elemento) : gestor.ejecutarAccionNoJugador(actorElegido, accion))
+      const motivo = escuadraElegida ? await gestor.ejecutarAccion(escuadraElegida, accion, seleccion?.elemento) : gestor.ejecutarAccionNoJugador(actorElegido, accion)
+      setNota(motivo)
+      if (accion === BUSCAR_TRAMPAS.id && !motivo) setAvisoTrampas({ titulo: 'Trampas buscadas', texto: 'Se han buscado trampas en esta estancia.' })
     } catch (error) {
       if (!esCancelacion(error)) throw error
     }
@@ -198,6 +208,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         jugadorEnTurno={enTurno}
       />
 
+      {avisoTrampas && <AvisoTrampas {...avisoTrampas} onCerrar={() => setAvisoTrampas(undefined)} />}
       {mapa.estancias.map((e) => {
         const enEspera = [
           ...e.elementos.filter((el) => !el.posicion).map((el) => ({ id: el.id, texto: `${el.nombre} (${el.columnas} × ${el.filas})` })),

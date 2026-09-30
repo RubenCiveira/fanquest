@@ -24,6 +24,8 @@ export type Estancia = Medida & {
   orientacion?: Direccion
   puertas: Puerta[]
   elementos: Elemento[]
+  /** Marcas de estado de la estancia que cambian durante la partida */
+  flags?: string[]
   /** Zonas de terreno difícil o impasable (sin ellas, todo es terreno normal) */
   terrenos?: Terreno[]
   estancias: Estancia[]

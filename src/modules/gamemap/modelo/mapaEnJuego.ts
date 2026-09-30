@@ -12,6 +12,10 @@ export interface MapaEnJuego {
   readonly mapa: Mapa
   /** Puerta de esa casilla, si la hay */
   puertaEn(ubicacion: Ubicacion): Puerta | undefined
+  /** Si esa estancia tiene marcada esa bandera de estado */
+  tieneFlag(estancia: string, flag: string): boolean
+  /** Marca esa bandera de estado en la estancia, si existe */
+  marcarFlag(estancia: string, flag: string): string | undefined
   /**
    * Abre la puerta de esa casilla: pide al proveedor la estancia a la que da
    * y la marca abierta hacia ella. Falla si no hay puerta, ya está abierta o

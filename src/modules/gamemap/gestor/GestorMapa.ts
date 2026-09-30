@@ -1,4 +1,4 @@
-import { accionesDelGestor, accionesDelModo, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
+import { accionesDelGestor, accionesDelModo, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
 import {
   activacionDe,
   activacionDeNoJugador,
@@ -292,7 +292,7 @@ export class GestorMapa implements MapaEnJuego {
    */
   async accionesDisponibles(escuadraId: string, personajeId?: string): Promise<Accion[]> {
     if (motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)) return []
-    return [...(await this.#accionesDelPersonaje(escuadraId, personajeId)), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
+    return [...(await this.#accionesDelPersonaje(escuadraId, personajeId)), ...this.#accionesDeEstancia(escuadraId, personajeId), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
   }
 
   /** Acciones de gestor disponibles para un PNJ: cambiar modo y terminar activación */
@@ -313,10 +313,12 @@ export class GestorMapa implements MapaEnJuego {
     const motivo = motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)
     if (motivo) return motivo
     const delPersonaje = (await this.#accionesDelPersonaje(escuadraId, personajeId)).find((a) => a.id === accionId)
+    const deEstancia = this.#accionesDeEstancia(escuadraId, personajeId).find((a) => a.id === accionId)
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
-    if (!delPersonaje && !delGestor) return `«${accionId}» no es una acción disponible ahora`
+    if (!delPersonaje && !deEstancia && !delGestor) return `«${accionId}» no es una acción disponible ahora`
     if (delPersonaje && esComando(delPersonaje)) await delPersonaje.exec()
-    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, delPersonaje && personajeId))
+    if (deEstancia && personajeId) this.marcarFlag(this.#personajeDe(personajeId)?.personaje.estancia ?? '', 'sin_trampas')
+    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, (delPersonaje || deEstancia) && personajeId))
     await this.#preguntarSiCompleta(escuadraId)
   }
 
@@ -331,6 +333,15 @@ export class GestorMapa implements MapaEnJuego {
 
   puertaEn(ubicacion: Ubicacion): Puerta | undefined {
     return puertaEn(this.#mapa, ubicacion)
+  }
+
+  tieneFlag(estancia: string, flag: string): boolean {
+    return this.#estancia(estancia)?.flags?.includes(flag) ?? false
+  }
+
+  marcarFlag(estancia: string, flag: string): string | undefined {
+    if (!this.#estancia(estancia)) return `No hay ninguna estancia «${estancia}» en el mapa`
+    this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map((e) => this.#marcarFlag(e, estancia, flag)) })
   }
 
   async abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> {
@@ -477,6 +488,21 @@ export class GestorMapa implements MapaEnJuego {
     if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId) return []
     const clase = await this.#claseDePersonaje(escuadraId, encontrado.personaje.id)
     return clase ? clase.acciones(encontrado.personaje, this) : []
+  }
+
+  #accionesDeEstancia(escuadraId: string, personajeId?: string): Accion[] {
+    const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
+    if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId || this.tieneFlag(encontrado.personaje.estancia, 'sin_trampas')) return []
+    return [BUSCAR_TRAMPAS]
+  }
+
+  #estancia(id: string): Estancia | undefined {
+    return this.#mapa.estancias.flatMap((e) => estanciasDe(e).map(({ estancia }) => estancia)).find((e) => e.id === id)
+  }
+
+  #marcarFlag(estancia: Estancia, id: string, flag: string): Estancia {
+    if (estancia.id !== id) return { ...estancia, estancias: estancia.estancias.map((e) => this.#marcarFlag(e, id, flag)) }
+    return estancia.flags?.includes(flag) ? estancia : { ...estancia, flags: [...(estancia.flags ?? []), flag] }
   }
 
   /** Estado del personaje y de su escuadra */

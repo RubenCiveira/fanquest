@@ -206,7 +206,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
 
   it('al pulsar un personaje, sus acciones van delante de las del gestor', async () => {
     const { gestor } = await conInicial()
-    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['gritar', 'cambiar-modo', 'terminar-turno'])
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['gritar', 'buscar-trampas', 'cambiar-modo', 'terminar-turno'])
   })
 
   it('las acciones se piden a la clase del personaje, con su estado y el mapa', async () => {
@@ -218,6 +218,21 @@ describe('gestor del mapa: activaciones y acciones', () => {
   it('sin un personaje pulsado solo están las del gestor', async () => {
     const { gestor } = await conInicial()
     expect((await gestor.accionesDisponibles('rojos')).map((a) => a.id)).toEqual(['cambiar-modo', 'terminar-turno'])
+  })
+
+  it('buscar trampas marca la estancia y deja de estar disponible', async () => {
+    const { gestor } = await conInicial()
+    await gestor.ejecutarAccion('rojos', 'buscar-trampas', 'barbaro')
+    expect([gestor.tieneFlag('estancia-1', 'sin_trampas'), (await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)]).toEqual([
+      true,
+      ['gritar', 'cambiar-modo', 'terminar-turno'],
+    ])
+  })
+
+  it('permite marcar y consultar flags de estancias', async () => {
+    const { gestor } = await conInicial()
+    gestor.marcarFlag('estancia-1', 'sin_trampas')
+    expect(gestor.tieneFlag('estancia-1', 'sin_trampas')).toBe(true)
   })
 
   it('un comando del personaje se ejecuta con su propio código', async () => {

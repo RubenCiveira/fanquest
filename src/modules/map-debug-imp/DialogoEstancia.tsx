@@ -63,7 +63,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
   }, [mapa])
 
   const maxSalidas = largoMuro(tamano, orientacion)
-  const monstruos = conMonstruos ? monstruosDePruebaDeTipo(monstruosDisponibles, 'esqueleto', mapa, inicial ? solitarios : 1) : []
+  const monstruos = conMonstruos ? monstruosDePruebaDeTipo(monstruosDisponibles, 'esqueleto', mapa, solitarios) : []
   const escuadras = inicial
     ? Array.from({ length: escuadrasMonstruos }, (_, i) =>
         monstruosDePruebaDeTipo(

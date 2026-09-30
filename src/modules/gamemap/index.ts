@@ -28,7 +28,7 @@ export type { Puerta } from './modelo/puerta'
 export type { Terreno, TipoTerreno } from './modelo/terreno'
 export type { ResultadoActivacion } from './modelo/resultadoActivacion'
 export type { Ubicacion } from './modelo/ubicacion'
-export { accionesDelGestor, accionesDelModo, apuntarAccion, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
+export { accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
 export {
   activacionDe,
   activacionDeJugador,
