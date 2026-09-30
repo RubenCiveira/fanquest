@@ -45,7 +45,7 @@ function proveedor(descripcion = sala) {
   const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', opcionesMovimiento, acciones }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [] }
   return {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' } as const,
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
     describirEstancia: vi.fn(async (_mapa?: Mapa, _entrada?: Direccion) => descripcion),
     estanciaCreada: vi.fn((_estancia: Estancia, _mapa: MapaEnJuego) => {}),
@@ -133,7 +133,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -389,8 +389,8 @@ describe('gestor del mapa: puertas', () => {
     expect(gestor.puertaEn(salida)?.abierta).toBeUndefined()
   })
 
-  it('con aliados impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoAliados: 'impasable' } as const }
+  it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable' } as const }
     const gestor = new GestorMapa(p)
     await gestor.nuevaEstancia()
     const [barbaro, enano] = gestor.mapa.escuadras?.map((e) => e.personajes[0].casilla) ?? []

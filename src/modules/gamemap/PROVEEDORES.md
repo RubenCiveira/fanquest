@@ -72,7 +72,7 @@ configuracion: {
   ordenActivaciones: 'alternas' | 'personajes-primero',
   modosActivacion: 'normal' | 'agresivo-sigiloso',
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea',
-  terrenoAliados: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
+  terrenoPersonajes: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
 }
 ```
 
@@ -89,8 +89,8 @@ configuracion: {
   diagonales cuestan 5. En diagonal no se cortan esquinas de muros ni de
   objetos, ni se cruza de una estancia a otra (las puertas se cruzan de
   frente). La flecha sigue el camino más corto según la medición.
-- `terrenoAliados`: cómo cuenta para moverse la casilla en que hay otro
-  personaje (de momento, todos son aliados). `normal`, se pasa por encima
+- `terrenoPersonajes`: cómo cuenta para moverse la casilla en que hay otro
+  personaje que no sea enemigo (de momento no hay enemigos: cualquiera). `normal`, se pasa por encima
   como si nada; `dificil` o `muy-dificil`, cuesta como ese terreno;
   `impasable`, no se puede atravesar: un personaje parado ante una puerta
   cierra el paso a los demás. Nunca se termina encima de otro personaje. Si

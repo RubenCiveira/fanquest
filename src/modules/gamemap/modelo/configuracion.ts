@@ -14,10 +14,11 @@ export type Configuracion = {
    */
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea'
   /**
-   * Cómo cuenta para moverse la casilla en que hay otro personaje (un aliado):
-   * `normal` se pasa por encima como si nada; `dificil` o `muy-dificil` la
-   * entorpece; `impasable` la bloquea (uno parado ante una puerta cierra el
-   * paso). Nunca se puede terminar encima de otro personaje
+   * Cómo cuenta para moverse la casilla en que hay otro personaje que no sea
+   * enemigo (de momento no hay enemigos: cualquier otro personaje). `normal`,
+   * se pasa por encima como si nada; `dificil` o `muy-dificil`, lo entorpece;
+   * `impasable`, lo bloquea (uno parado ante una puerta cierra el paso). Nunca
+   * se puede terminar encima de otro personaje
    */
-  terrenoAliados: 'normal' | TipoTerreno
+  terrenoPersonajes: 'normal' | TipoTerreno
 }

@@ -13,8 +13,8 @@ const mapa: Mapa = {
   ],
   turno: 2,
 }
-const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' }
-const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' }
+const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' }
+const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' }
 const rojos = (m: Mapa) => m.escuadras?.find((e) => e.id === 'rojos') ?? { id: '', nombre: '', personajes: [], turnos: [] }
 
 describe('acciones de las escuadras', () => {

@@ -2,7 +2,7 @@ import { useId, useRef, useState, type PointerEvent } from 'react'
 import { sitiosDeBotones } from './corona'
 import {
   alcance,
-  conAliados,
+  conPersonajes,
   costeDe,
   costesDe,
   enElMapa,
@@ -279,7 +279,7 @@ type Props = {
   /** Cómo se miden los movimientos al arrastrar (sin diagonales, si no se dice) */
   medicion?: MedicionMovimiento
   /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
-  terrenoAliados?: Configuracion['terrenoAliados']
+  terrenoPersonajes?: Configuracion['terrenoPersonajes']
 }
 
 /** Personaje colocado en una estancia, con su escuadra */
@@ -456,9 +456,9 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onElegirElemento, medicion = 'ortogonal', terrenoAliados = 'normal' } = props
-  /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con el terreno de los aliados */
-  const vistoPor = (ficha: Personaje) => conAliados(mapa, ficha.id, terrenoAliados)
+  const { opcionesMovimiento, onMover, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal' } = props
+  /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
+  const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
   const { estancias } = mapa
   const svg = useRef<SVGSVGElement>(null)
   // ids de las puntas de flecha, únicos aunque haya varios mapas en la página

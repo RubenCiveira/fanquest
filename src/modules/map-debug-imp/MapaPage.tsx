@@ -163,7 +163,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         opcionesMovimiento={(personaje) => gestor.opcionesMovimiento(personaje)}
         onMover={async (personaje, recorrido) => setNota(await gestor.moverPersonaje(personaje, recorrido))}
         medicion={configuracion.medicionMovimiento}
-        terrenoAliados={configuracion.terrenoAliados}
+        terrenoPersonajes={configuracion.terrenoPersonajes}
       />
 
       {mapa.estancias.map((e) => {

@@ -7,7 +7,7 @@ import { PuertasDePrueba } from './modelo/puerta'
 function proveedorDePrueba() {
   const puertas = new PuertasDePrueba()
   const proveedor: ProveedorMapa = {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' },
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' },
     confirmar: async () => true,
     describirEstancia: async () => ({ tipo: 'sala', tamano: { columnas: 6, filas: 4 }, orientacion: 'abajo', salidas: 1, elementos: [] }),
     ...escuadrasDePrueba(puertas),
