@@ -1,5 +1,7 @@
 import type { Escuadra } from './escuadra'
 import type { Estancia } from './estancia'
+import type { AccionEjecutada } from './accionEjecutada'
+import type { Activacion } from './activacion'
 import type { Jugadores } from './jugadores'
 import type { PersonajeNoJugador } from './personajeNoJugador'
 
@@ -17,5 +19,6 @@ export type Mapa = {
   personajesNoJugadores?: PersonajeNoJugador[]
   turno?: number
   jugadores?: Jugadores
+  activacionesJugadores?: { numero: number; jugador: string; activacion: Activacion; acciones: AccionEjecutada[]; personaje?: string }[]
   rotacion?: string[]
 }

@@ -10,6 +10,7 @@ import {
   jugadoresDe,
   jugadorEnTurno,
   numeroDeTurno,
+  personajesNoJugadoresDe,
   type Accion,
   type Casilla,
   type Estancia,
@@ -20,6 +21,7 @@ import { ETIQUETA_ORIENTACION, guardarMapa, obtenerMapa } from './mapas'
 import { PanelJugadores } from './PanelJugadores'
 import { esCancelacion, useProveedorDebug } from './useProveedorDebug'
 import { VistaMapa } from './VistaMapa'
+import { movimientoDePrueba } from './modelo/personaje'
 import './mapDebug.css'
 
 /** Un mapa de prueba: pulsa una casilla para ver de qué estancia es */
@@ -61,28 +63,31 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   // la miniatura elegida, si es un personaje, muestra en corona sus acciones
   const escuadraDelElegido = escuadrasDe(mapa).find((e) => e.personajes.some((h) => h.id === seleccion?.elemento))
   const personajeElegido = escuadraDelElegido?.personajes.find((h) => h.id === seleccion?.elemento)
+  const noJugadorElegido = personajesNoJugadoresDe(mapa).find((h) => h.id === seleccion?.elemento)
   const escuadraElegida = escuadraDelElegido?.id
   // un personaje ya en el mapa no se coloca a mano: se arrastra
-  const personajeEnMapa = !!personajeElegido?.casilla
-  const [acciones, setAcciones] = useState<{ escuadra: string; mapa: Mapa; lista: Accion[] }>()
+  const personajeEnMapa = !!personajeElegido?.casilla || !!noJugadorElegido?.casilla
+  const actorElegido = escuadraElegida ?? noJugadorElegido?.id
+  const [acciones, setAcciones] = useState<{ actor: string; mapa: Mapa; lista: Accion[] }>()
 
   useEffect(() => {
-    if (!escuadraElegida) return
+    if (!actorElegido) return
     let vigente = true
-    gestor.accionesDisponibles(escuadraElegida, seleccion?.elemento).then((lista) => vigente && setAcciones({ escuadra: escuadraElegida, mapa, lista }))
+    const disponibles = escuadraElegida ? gestor.accionesDisponibles(escuadraElegida, seleccion?.elemento) : Promise.resolve(gestor.accionesDisponiblesNoJugador(actorElegido))
+    disponibles.then((lista) => vigente && setAcciones({ actor: actorElegido, mapa, lista }))
     return () => {
       vigente = false
     }
-  }, [gestor, escuadraElegida, seleccion?.elemento, mapa])
+  }, [gestor, escuadraElegida, actorElegido, seleccion?.elemento, mapa])
 
   // las de otra escuadra o de un mapa anterior ya no valen
-  const accionesVigentes = acciones?.escuadra === escuadraElegida && acciones?.mapa === mapa ? acciones.lista : []
+  const accionesVigentes = acciones?.actor === actorElegido && acciones?.mapa === mapa ? acciones.lista : []
 
   /** Ejecuta la acción de la corona; si abre un diálogo (una puerta pide una estancia nueva) y se cancela, no pasa nada */
   async function accionar(accion: string) {
-    if (!escuadraElegida) return
+    if (!actorElegido) return
     try {
-      setNota(await gestor.ejecutarAccion(escuadraElegida, accion, seleccion?.elemento))
+      setNota(escuadraElegida ? await gestor.ejecutarAccion(escuadraElegida, accion, seleccion?.elemento) : gestor.ejecutarAccionNoJugador(actorElegido, accion))
     } catch (error) {
       if (!esCancelacion(error)) throw error
     }
@@ -114,6 +119,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   const numero = numeroDeTurno(mapa)
   const enTurno = jugadorEnTurno(mapa, configuracion)
   const nombreDeJugador = (jugador: string) => jugadoresDe(mapa).jugadores.find((j) => j.id === jugador)?.nombre ?? jugador
+  const esNoJugador = (personaje: string) => personajesNoJugadoresDe(mapa).some((p) => p.id === personaje)
 
   function aEspera() {
     if (!seleccion) return
@@ -135,6 +141,11 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         <button type="button" className="button secondary" onClick={() => setNota(gestor.terminarTurno())}>
           Terminar turno
         </button>
+        {enTurno?.tipo === 'ia' && (
+          <button type="button" className="button secondary" onClick={() => setNota(gestor.terminarActivacionJugador(enTurno.id))}>
+            Terminar activación de IA
+          </button>
+        )}
       </div>
       <ul className="map-debug-escuadras">
         {escuadrasDe(mapa).map(({ id: escuadra, nombre, jugador, modo, activo, personajes }) => {
@@ -163,15 +174,16 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         onElegir={elegirCasilla}
         onElegirElemento={(elemento) => {
           const personaje = escuadrasDe(mapa).flatMap((e) => e.personajes).find((h) => h.id === elemento)
-          const estancia = personaje?.estancia ?? mapa.estancias.find((e) => e.elementos.some((el) => el.id === elemento))?.id
+          const noJugador = personajesNoJugadoresDe(mapa).find((h) => h.id === elemento)
+          const estancia = personaje?.estancia ?? noJugador?.estancia ?? mapa.estancias.find((e) => e.elementos.some((el) => el.id === elemento))?.id
           if (estancia) setSeleccion({ estancia, elemento })
         }}
-        corona={escuadraElegida ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
-        opcionesMovimiento={(personaje) => gestor.opcionesMovimiento(personaje)}
-        onMover={async (personaje, recorrido) => setNota(await gestor.moverPersonaje(personaje, recorrido))}
+        corona={actorElegido ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
+        opcionesMovimiento={(personaje) => (esNoJugador(personaje) ? Promise.resolve(gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado))) : gestor.opcionesMovimiento(personaje))}
+        onMover={async (personaje, recorrido) => setNota(esNoJugador(personaje) ? await gestor.moverPersonajeNoJugador(personaje, recorrido, gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado))) : await gestor.moverPersonaje(personaje, recorrido))}
         medicion={configuracion.medicionMovimiento}
         terrenoPersonajes={configuracion.terrenoPersonajes}
-        motivoParaNoActuar={(personaje) => gestor.motivoParaNoActuar(personaje)}
+        motivoParaNoActuar={(personaje) => (esNoJugador(personaje) ? gestor.motivoParaNoActuarNoJugador(personaje) : gestor.motivoParaNoActuar(personaje))}
         jugadorEnTurno={enTurno}
       />
 

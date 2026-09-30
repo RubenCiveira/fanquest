@@ -96,9 +96,11 @@ mismo sitio.
   una sola de sus miniaturas. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las
   del jugador al que le toca (`jugadorEnTurno`), que rota entre alianzas y
-  entre los jugadores de cada una según `ordenActivaciones`. Al terminar cada
-  activación, el gestor avisa al proveedor de a quién le toca (`turnoDe`). El
-  turno solo termina cuando todas han completado su activación.
+  entre los jugadores de cada una según `ordenActivaciones`. Un jugador con
+  personajes no jugadores también ocupa su activación del turno; por ahora el
+  banco de pruebas permite moverlos a mano y terminar su activación. Al
+  terminar cada activación, el gestor avisa al proveedor de a quién le toca
+  (`turnoDe`). El turno solo termina cuando todas han completado su activación.
 - **Acciones**: al pulsar un personaje, el gestor pregunta a su clase qué puede
   hacer donde está; la clase mira los objetos de su casilla y lo que ya ha
   hecho, y compone sus comandos (acciones con su código en `exec`). El gestor

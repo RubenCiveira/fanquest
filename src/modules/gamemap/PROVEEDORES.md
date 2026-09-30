@@ -237,6 +237,10 @@ interface ClaseDePersonaje {
   llama tras «Terminar turno».
 - Una escuadra puede tener varios personajes, pero en cada activación solo
   actúa uno.
+- Un jugador con personajes no jugadores también aparece en `jugadorEnTurno`:
+  con `alternas`, rota entre alianzas; con `personajes-primero`, completa una
+  alianza antes de pasar a la siguiente. El banco de pruebas mueve a mano los
+  PNJ de un jugador IA y después termina su activación.
 - El gestor pide las clases una sola vez. Un gestor creado con un mapa
   guardado vuelve a pedirlas: deben tener los mismos ids.
 

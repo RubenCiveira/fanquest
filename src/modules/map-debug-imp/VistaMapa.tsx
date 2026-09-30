@@ -317,11 +317,12 @@ function CapaEstancia({
   onArrastrar,
   arrastrando,
   motivoParaNoActuar,
+  jugadorEnTurno,
 }: Props & {
   estancia: Estancia
   origen: Casilla
   personajes: PersonajeColocado[]
-  /** Personajes no jugadores que están en ella: no se arrastran */
+  /** Personajes no jugadores que están en ella */
   noJugadores: NoJugadorColocado[]
   /** Prefijo de los ids de los rayados del terreno (`<prefijo>-dificil`…), definidos en el mapa */
   patrones: string
@@ -335,7 +336,11 @@ function CapaEstancia({
   arrastrando: boolean
 }) {
   const esperando = (personaje: Personaje) => !!motivoParaNoActuar?.(personaje.id)
-  const elegido = personajes.find(({ personaje }) => personaje.id === elemento)?.personaje.casilla ?? estancia.elementos.find((el) => el.id === elemento)?.posicion
+  const puedeMoverNoJugador = (personaje: NoJugadorColocado) => personaje.jugador === jugadorEnTurno?.id && jugadorEnTurno.tipo === 'ia'
+  const elegido =
+    personajes.find(({ personaje }) => personaje.id === elemento)?.personaje.casilla ??
+    noJugadores.find((personaje) => personaje.id === elemento)?.casilla ??
+    estancia.elementos.find((el) => el.id === elemento)?.posicion
   const medidaElegida = estancia.elementos.find((el) => el.id === elemento) ?? { columnas: 1, filas: 1 }
 
   return (
@@ -415,7 +420,11 @@ function CapaEstancia({
         )
       })}
       {noJugadores.map((p) => (
-        <g key={p.id} className={`vista-elemento personaje no-jugador${p.enemigo ? ' enemigo' : ''}`}>
+        <g
+          key={p.id}
+          className={`vista-elemento personaje no-jugador${p.enemigo ? ' enemigo' : ''}`}
+          {...(onArrastrar && puedeMoverNoJugador(p) ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, p) } : { onClick: () => onElegirElemento?.(p.id) })}
+        >
           <FichaEnMapa ficha={p} x={p.casilla.x * LADO} y={p.casilla.y * LADO} />
         </g>
       ))}

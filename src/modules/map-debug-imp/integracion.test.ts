@@ -14,6 +14,7 @@ function proveedorDePrueba() {
     ...escuadrasDePrueba(puertas),
     estanciaCreada: (estancia) => puertas.asociar(estancia),
     turnoDe: () => {},
+    finDeTurno: () => {},
   }
   return proveedor
 }

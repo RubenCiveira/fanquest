@@ -1,8 +1,12 @@
-import { accionesDelGestor, ejecutarAccion, motivoParaNoActuar } from '../acciones'
+import { accionesDelGestor, accionesDelModo, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
 import {
   activacionDe,
+  activacionDeJugador,
   activar,
+  conActivacionDeJugador,
   conPersonaje,
+  conPersonajeNoJugador,
+  conTurno,
   escuadrasDe,
   jugadorEnTurno,
   todosLosPersonajes,
@@ -18,7 +22,7 @@ import { construirEstancia } from '../construccion'
 import { buscarSitio, colocarElemento, motivoParaNoColocar } from '../elementos'
 import { estanciasDe } from '../estancias'
 import { motivoParaNoCambiarJugadores } from '../jugadores'
-import { accionesAdicionales, casillasDeEnemigos, conPersonajes, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
@@ -189,11 +193,35 @@ export class GestorMapa implements MapaEnJuego {
     this.#cambiar({ ...this.#mapa, jugadores })
   }
 
+  /** Termina la activación manual de un jugador con personajes no jugadores */
+  terminarActivacionJugador(jugadorId: string): string | undefined {
+    const turno = this.jugadorEnTurno
+    if (!turno) return 'Nadie tiene nada que activar'
+    if (turno.id !== jugadorId) return `Le toca a ${turno.nombre}`
+    if (!this.#mapa.personajesNoJugadores?.some((p) => p.jugador === jugadorId)) return `${turno.nombre} no tiene personajes no jugadores`
+    this.#cambiar(conActivacionDeJugador(this.#mapa, jugadorId))
+  }
+
   /** Por qué el personaje de una escuadra no puede actuar ahora (no es su turno, ya actúa otro de su escuadra…), o nada si puede */
   motivoParaNoActuar(personajeId: string): string | undefined {
     const escuadra = this.#personajeDe(personajeId)?.escuadra
     if (!escuadra) return `${personajeId} no es de ninguna escuadra`
     return motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personajeId)
+  }
+
+  /** Por qué un PNJ no puede actuar ahora, o nada si es su turno y no actúa otro PNJ del jugador */
+  motivoParaNoActuarNoJugador(personajeId: string): string | undefined {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    if (!personaje) return `${personajeId} no es ningún personaje no jugador`
+    const turno = this.jugadorEnTurno
+    if (!turno) return 'Nadie tiene nada que activar'
+    if (turno.id !== personaje.jugador) return `Le toca a ${turno.nombre}`
+    const activacion = activacionDeJugador(this.#mapa, personaje.jugador)
+    if (activacion?.activacion.terminada) return `${turno.nombre} ya ha terminado su turno`
+    if (activacion?.personaje && activacion.personaje !== personaje.id) {
+      const activo = this.#mapa.personajesNoJugadores?.find((p) => p.id === activacion.personaje)
+      return `En esta activación ya actúa ${activo?.nombre ?? activacion.personaje}`
+    }
   }
 
   /**
@@ -230,6 +258,13 @@ export class GestorMapa implements MapaEnJuego {
     return [...(await this.#accionesDelPersonaje(escuadraId, personajeId)), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
   }
 
+  /** Acciones de gestor disponibles para un PNJ: cambiar modo y terminar activación */
+  accionesDisponiblesNoJugador(personajeId: string): Accion[] {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    if (!personaje || this.motivoParaNoActuarNoJugador(personajeId)) return []
+    return accionesDelModo(this.configuracion, activacionDeJugador(this.#mapa, personaje.jugador)?.activacion.modo ?? this.#modoInicial())
+  }
+
   /**
    * Ejecuta una de las acciones disponibles de la escuadra (con el personaje
    * `personajeId` pulsado). Si es un comando, antes ejecuta su código (`exec`): si
@@ -246,6 +281,15 @@ export class GestorMapa implements MapaEnJuego {
     if (delPersonaje && esComando(delPersonaje)) await delPersonaje.exec()
     this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, delPersonaje && personajeId))
     await this.#preguntarSiCompleta(escuadraId)
+  }
+
+  ejecutarAccionNoJugador(personajeId: string, accionId: string): string | undefined {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    const motivo = this.motivoParaNoActuarNoJugador(personajeId)
+    if (!personaje) return motivo
+    if (motivo) return motivo
+    if (!this.accionesDisponiblesNoJugador(personajeId).some((a) => a.id === accionId)) return `«${accionId}» no es una acción disponible ahora`
+    this.#cambiar(this.#apuntarAccionNoJugador(this.#mapa, personaje, accionId))
   }
 
   puertaEn(ubicacion: Ubicacion): Puerta | undefined {
@@ -272,6 +316,12 @@ export class GestorMapa implements MapaEnJuego {
     if (!encontrado?.personaje.casilla || motivoParaNoActuar(this.#mapa, this.configuracion, encontrado.escuadra.id, personajeId)) return
     const clase = await this.#claseDePersonaje(encontrado.escuadra.id, personajeId)
     return clase?.opcionesMovimiento(encontrado.personaje, gastadoPor(this.#mapa, encontrado.personaje))
+  }
+
+  opcionesMovimientoNoJugador(personajeId: string, opciones: (personaje: PersonajeNoJugador, gastado: ReturnType<typeof gastadoPor>) => OpcionesMovimiento | undefined): OpcionesMovimiento | undefined {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    if (!personaje?.casilla || this.motivoParaNoActuarNoJugador(personajeId)) return
+    return opciones(personaje, gastadoPor(this.#mapa, personaje))
   }
 
   /**
@@ -305,6 +355,26 @@ export class GestorMapa implements MapaEnJuego {
     await this.#preguntarSiCompleta(confirmado.escuadra)
   }
 
+  /** Mueve manualmente un PNJ del jugador en turno, aplicando las mismas opciones y restricciones de movimiento */
+  async moverPersonajeNoJugador(personajeId: string, recorrido: Casilla[], opciones: OpcionesMovimiento | undefined): Promise<string | undefined> {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    if (!personaje?.casilla) return `No hay ningún personaje no jugador «${personajeId}» colocado en el mapa`
+    const motivo = this.motivoParaNoActuarNoJugador(personajeId)
+    if (motivo) return motivo
+    if (!opciones) return `${personaje.nombre} no puede moverse ahora`
+    const evaluar = () => ({ personaje, ...evaluarRecorrido(conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes), personaje, recorrido, opciones, {
+      medicion: this.configuracion.medicionMovimiento,
+      enemigos: casillasDeEnemigos(this.#mapa, personaje.id),
+    }) })
+    const evaluado = evaluar()
+    if ('motivo' in evaluado) return evaluado.motivo
+    const adicionales = accionesAdicionales(evaluado)
+    if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return
+    const confirmado = adicionales.length ? evaluar() : evaluado
+    if ('motivo' in confirmado) return confirmado.motivo
+    this.#cambiar(this.#moverNoJugador(this.#mapa, confirmado.personaje, recorrido, confirmado))
+  }
+
   /**
    * Pasa a la clase de la escuadra, si sigue activándose, las acciones que
    * lleva en el turno; si responde que su activación está completa, termina su
@@ -317,6 +387,46 @@ export class GestorMapa implements MapaEnJuego {
     if (!clase || !escuadra || !enCurso()) return
     const { completo } = await clase.activar(turnoDeEscuadra(escuadra, numeroDeTurno(this.#mapa)).acciones)
     if (completo && enCurso()) this.#cambiar(terminarActivacion(this.#mapa, escuadraId))
+  }
+
+  #modoInicial(): ModoActivacion {
+    return this.configuracion.modosActivacion === 'agresivo-sigiloso' ? 'sigiloso' : 'normal'
+  }
+
+  #apuntarAccionNoJugador(m: Mapa, personaje: PersonajeNoJugador, accion: string): Mapa {
+    const actual = activacionDeJugador(m, personaje.jugador)
+    const modo = actual?.activacion.modo ?? this.#modoInicial()
+    const activacion: { modo: ModoActivacion; terminada: boolean } =
+      accion === CAMBIAR_MODO && modo !== 'normal'
+        ? { modo: modo === 'agresivo' ? 'sigiloso' : 'agresivo', terminada: false }
+        : accion === TERMINAR_TURNO.id
+          ? { modo, terminada: true }
+          : { modo, terminada: false }
+    const entrada = actual ?? { numero: numeroDeTurno(m), jugador: personaje.jugador, activacion: { modo, terminada: false }, acciones: [] }
+    const actualizada = {
+      ...entrada,
+      personaje: personaje.id,
+      activacion,
+      acciones: [...entrada.acciones, { accion, personaje: personaje.id }],
+    }
+    const activacionesJugadores = actual
+      ? (m.activacionesJugadores ?? []).map((a) => (a === actual ? actualizada : a))
+      : [...(m.activacionesJugadores ?? []), actualizada]
+    return { ...m, activacionesJugadores, ...(activacion.terminada && !actual?.activacion.terminada ? { rotacion: [...(m.rotacion ?? []), personaje.jugador] } : {}) }
+  }
+
+  #moverNoJugador(m: Mapa, personaje: PersonajeNoJugador, recorrido: Casilla[], valido: { opcion: OpcionesMovimiento['base']; tramos: number[] }): Mapa {
+    const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
+    if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
+    const acciones = accionesConsumidas(valido)
+    const hecho = { opcion: valido.opcion.id, casillas: costeDe(conPersonajes(m, personaje.id, this.configuracion.terrenoPersonajes), recorrido, this.configuracion.medicionMovimiento), acciones }
+    const movido = conPersonajeNoJugador(m, personaje.id, (p) => ({
+      ...p,
+      estancia: destino.estancia.id,
+      casilla: destino.casilla,
+      turnos: conTurno(p.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
+    }))
+    return acciones.reduce((a, accion) => this.#apuntarAccionNoJugador(a, personaje, accion), movido)
   }
 
   /** Lo que dice la clase del personaje pulsado de la escuadra (si está colocado) que puede hacer donde está */
@@ -361,8 +471,10 @@ export class GestorMapa implements MapaEnJuego {
     const antes = this.#mapa
     this.#mapa = mapa
     this.#avisos.forEach((aviso) => aviso(mapa))
-    const relevo = (mapa.rotacion?.length ?? 0) > (antes.rotacion?.length ?? 0) || numeroDeTurno(mapa) > numeroDeTurno(antes)
+    const finDeActivacion = (mapa.rotacion?.length ?? 0) > (antes.rotacion?.length ?? 0)
+    const relevo = finDeActivacion || numeroDeTurno(mapa) > numeroDeTurno(antes)
     const turno = relevo && this.jugadorEnTurno
     if (turno) this.#proveedor.turnoDe(turno, this)
+    else if (finDeActivacion && !motivoParaNoTerminarTurno(mapa)) this.#proveedor.finDeTurno(this)
   }
 }

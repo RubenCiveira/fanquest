@@ -30,4 +30,6 @@ export interface MapaEnJuego {
    * cambia nada y devuelve el motivo
    */
   cambiarJugadores(jugadores: Jugadores): string | undefined
+  /** Pasa al turno siguiente si todas las activaciones han terminado */
+  terminarTurno(): string | undefined
 }

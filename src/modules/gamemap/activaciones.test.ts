@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   activacionDe,
   activar,
+  conActivacionDeJugador,
   conActivacion,
   escuadraActiva,
   jugadorEnTurno,
@@ -119,14 +120,29 @@ describe('a qué jugador le toca', () => {
     },
     turno: 1,
   }
+  const conMonstruos: Mapa = {
+    ...partida,
+    escuadras: [escuadra('de-ana', 'ana'), escuadra('de-bruno', 'bruno')],
+    personajesNoJugadores: [{ id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [], jugador: 'oscuridad' }],
+    jugadores: {
+      alianzas: [
+        { id: 'heroes', nombre: 'Héroes' },
+        { id: 'monstruos', nombre: 'Monstruos' },
+      ],
+      jugadores: [
+        { id: 'ana', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' },
+        { id: 'bruno', nombre: 'Bruno', tipo: 'humano', alianza: 'heroes' },
+        { id: 'oscuridad', nombre: 'La Oscuridad', tipo: 'ia', alianza: 'monstruos' },
+      ],
+    },
+  }
   /** A quién le va tocando mientras cada uno activa y termina su escuadra */
   function sucesion(m: Mapa, config: Configuracion) {
     const orden: string[] = []
     for (let turno = jugadorEnTurno(m, config); turno; turno = jugadorEnTurno(m, config)) {
       const suya = m.escuadras?.find((e) => e.jugador === turno.id && !activacionDe(m, e.id))
-      if (!suya) break
       orden.push(turno.nombre)
-      m = terminarActivacion(activar(m, config, suya.id, 'normal'), suya.id)
+      m = suya ? terminarActivacion(activar(m, config, suya.id, 'normal'), suya.id) : conActivacionDeJugador(m, turno.id)
     }
     return orden
   }
@@ -141,6 +157,14 @@ describe('a qué jugador le toca', () => {
 
   it('alianza a alianza: primero todos los de la primera', () => {
     expect(sucesion(partida, normales)).toEqual(['Ana', 'Tomás', 'Bruno'])
+  })
+
+  it('alternas: tras un héroe le toca a la alianza de monstruos aunque solo tenga PNJ', () => {
+    expect(sucesion(conMonstruos, { ...normales, ordenActivaciones: 'alternas' })).toEqual(['Ana', 'La Oscuridad', 'Bruno'])
+  })
+
+  it('alianza a alianza: los héroes completan sus activaciones antes que los monstruos', () => {
+    expect(sucesion(conMonstruos, normales)).toEqual(['Ana', 'Bruno', 'La Oscuridad'])
   })
 
   it('en el turno siguiente, las alternas siguen la rotación', () => {

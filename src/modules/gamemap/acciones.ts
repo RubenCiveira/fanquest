@@ -52,10 +52,14 @@ export function motivoParaNoActuar(m: Mapa, config: Configuracion, id: string, p
 }
 
 /** Acciones que el gestor añade a las del personaje: cambiar al otro modo (si hay modos) y terminar turno */
-export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): Accion[] {
-  const modo = modoActual(m, config, id)
+export function accionesDelModo(config: Configuracion, modo: ModoActivacion): Accion[] {
   const cambiar = config.modosActivacion === 'agresivo-sigiloso' && modo !== 'normal' ? [{ id: CAMBIAR_MODO, nombre: `Cambiar a ${OTRO_MODO[modo]}`, icono: ICONO_MODO[OTRO_MODO[modo]] }] : []
   return [...cambiar, TERMINAR_TURNO]
+}
+
+/** Acciones que el gestor añade a las del personaje: cambiar al otro modo (si hay modos) y terminar turno */
+export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): Accion[] {
+  return accionesDelModo(config, modoActual(m, config, id))
 }
 
 /**

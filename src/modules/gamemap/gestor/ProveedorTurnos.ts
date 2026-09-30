@@ -9,4 +9,6 @@ export interface ProveedorTurnos {
    * avisarle o, si es la IA, jugar por ella
    */
   turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
+  /** Cuando nadie tiene más activaciones pendientes, antes de empezar el siguiente turno */
+  finDeTurno(mapa: MapaEnJuego): void
 }

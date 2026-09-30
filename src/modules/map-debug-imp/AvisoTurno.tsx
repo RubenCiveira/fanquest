@@ -21,3 +21,24 @@ export function AvisoTurno({ jugador, onCerrar }: { jugador: Jugador; onCerrar: 
     </dialog>
   )
 }
+
+/** Aviso de que todas las activaciones del turno han terminado */
+export function AvisoFinTurno({ onTerminar }: { onTerminar: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => ref.current?.showModal(), [])
+
+  return (
+    <dialog ref={ref} className="dialog" aria-labelledby="fin-turno-titulo" onClose={onTerminar}>
+      <form method="dialog" className="dialog-contenido">
+        <h2 id="fin-turno-titulo">Turno terminado</h2>
+        <p>Todos los jugadores han completado sus activaciones.</p>
+        <div className="fila-botones">
+          <button type="submit" className="button" autoFocus>
+            Empezar siguiente turno
+          </button>
+        </div>
+      </form>
+    </dialog>
+  )
+}

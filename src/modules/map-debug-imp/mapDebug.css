@@ -5,6 +5,8 @@
 }
 
 .vista-estancia {
+  position: relative;
+  z-index: 10;
   width: 100%;
   max-width: 720px;
   height: auto;
@@ -124,7 +126,7 @@
 }
 
 .vista-elemento.personaje.no-jugador > circle {
-  cursor: default;
+  cursor: grab;
 }
 
 .vista-elemento.personaje.enemigo > circle {

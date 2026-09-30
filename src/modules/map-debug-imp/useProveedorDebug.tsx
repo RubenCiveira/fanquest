@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
-import type { Configuracion, DescripcionEstancia, Direccion, Jugador, Mapa, ProveedorMapa } from '../gamemap'
-import { AvisoTurno } from './AvisoTurno'
+import type { Configuracion, DescripcionEstancia, Direccion, Jugador, Mapa, MapaEnJuego, ProveedorMapa } from '../gamemap'
+import { AvisoFinTurno, AvisoTurno } from './AvisoTurno'
 import { cargarConfiguracion, guardarConfiguracion } from './configuracion'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
@@ -30,6 +30,7 @@ export function useProveedorDebug() {
   const [peticion, setPeticion] = useState<Peticion>()
   const [confirmacion, setConfirmacion] = useState<Confirmacion>()
   const [turno, setTurno] = useState<Jugador>()
+  const [finTurno, setFinTurno] = useState<MapaEnJuego>()
   const [configuracion, setConfiguracion] = useState(cargarConfiguracion)
   // la que lee el gestor: la del proveedor no cambia al volver a pintar
   const vigente = useRef(configuracion)
@@ -51,6 +52,7 @@ export function useProveedorDebug() {
       ...escuadrasDePrueba(puertas),
       estanciaCreada: (estancia) => puertas.asociar(estancia),
       turnoDe: (jugador) => setTurno(jugador),
+      finDeTurno: (mapa) => setFinTurno(mapa),
       describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>
           setPeticion({
@@ -67,6 +69,7 @@ export function useProveedorDebug() {
     <>
       {peticion && <DialogoEstancia mapa={peticion.mapa} entrada={peticion.entrada} onCrear={peticion.responder} onCancelar={peticion.cancelar} />}
       {turno && <AvisoTurno key={turno.id} jugador={turno} onCerrar={() => setTurno(undefined)} />}
+      {finTurno && <AvisoFinTurno onTerminar={() => (setFinTurno(undefined), finTurno.terminarTurno())} />}
       {confirmacion && (
         // al confirmar, el diálogo también se cierra: la segunda respuesta ya no cuenta
         <ConfirmarDialog
