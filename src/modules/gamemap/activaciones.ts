@@ -1,36 +1,70 @@
-import { estanciasDe } from './estancias'
-import type { ModoActivacion } from './modelo/activacion'
+import type { Activacion, ModoActivacion } from './modelo/activacion'
 import type { Configuracion } from './modelo/configuracion'
-import type { FichaHeroe } from './modelo/elemento'
-import type { DatosEscuadra, Mapa } from './modelo/mapa'
-import type { Turno } from './modelo/turno'
+import type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
+import type { Heroe, TurnoDeHeroe } from './modelo/heroe'
+import type { Mapa } from './modelo/mapa'
 
-const PRIMER_TURNO: Turno = { numero: 1, activaciones: {} }
+/** Número del turno en curso */
+export const numeroDeTurno = (m: Mapa) => m.turno ?? 1
 
-export const turnoDe = (m: Mapa): Turno => m.turno ?? PRIMER_TURNO
+export const escuadrasDe = (m: Mapa): Escuadra[] => m.escuadras ?? []
 
-/** Fichas de héroe de todas las estancias, colocadas o en la zona de espera */
-export const heroesDelMapa = (m: Mapa): FichaHeroe[] =>
-  m.estancias.flatMap((raiz) =>
-    estanciasDe(raiz).flatMap(({ estancia }) => estancia.elementos.flatMap((el) => (el.tipo === 'heroe' ? [el] : []))),
-  )
+/** Todos los héroes de todas las escuadras, colocados o en una zona de espera */
+export const heroesDelMapa = (m: Mapa): Heroe[] => escuadrasDe(m).flatMap((e) => e.heroes)
 
-/** Escuadras con algún héroe en el mapa, con su nombre (o su id, si el mapa no lo guarda) */
-export const escuadrasDelMapa = (m: Mapa): DatosEscuadra[] =>
-  [...new Set(heroesDelMapa(m).map((h) => h.escuadra))].map((id) => m.escuadras?.find((e) => e.id === id) ?? { id, nombre: id })
+/** Lo que ha hecho la escuadra en ese turno (vacío si nada) */
+export const turnoDeEscuadra = (e: Escuadra, numero: number): TurnoDeEscuadra => e.turnos.find((t) => t.numero === numero) ?? { numero, acciones: [] }
 
-/** Escuadra con la activación en curso, si la hay: hasta que termine, las demás no pueden actuar */
-export function escuadraActiva(m: Mapa): DatosEscuadra | undefined {
-  const { activaciones } = turnoDe(m)
-  return escuadrasDelMapa(m).find((e) => activaciones[e.id] && !activaciones[e.id].terminada)
+/** Lo que ha hecho el héroe en ese turno (vacío si nada) */
+export const turnoDeHeroe = (h: Heroe, numero: number): TurnoDeHeroe =>
+  h.turnos.find((t) => t.numero === numero) ?? { numero, acciones: [], movimientos: [] }
+
+/** Cambia la entrada de un turno de la lista, o la añade (desde `vacia`) si aún no existe */
+export function conTurno<T extends { numero: number }>(turnos: T[], vacia: T, cambio: (t: T) => T): T[] {
+  const actual = turnos.find((t) => t.numero === vacia.numero)
+  return actual ? turnos.map((t) => (t === actual ? cambio(t) : t)) : [...turnos, cambio(vacia)]
 }
 
+export const conEscuadra = (m: Mapa, id: string, cambio: (e: Escuadra) => Escuadra): Mapa => ({
+  ...m,
+  escuadras: escuadrasDe(m).map((e) => (e.id === id ? cambio(e) : e)),
+})
+
+export const conHeroe = (m: Mapa, id: string, cambio: (h: Heroe) => Heroe): Mapa => ({
+  ...m,
+  escuadras: escuadrasDe(m).map((e) => ({ ...e, heroes: e.heroes.map((h) => (h.id === id ? cambio(h) : h)) })),
+})
+
+/** Activación de la escuadra en el turno en curso, si se ha activado */
+export const activacionDe = (m: Mapa, id: string): Activacion | undefined => {
+  const escuadra = escuadrasDe(m).find((e) => e.id === id)
+  return escuadra && turnoDeEscuadra(escuadra, numeroDeTurno(m)).activacion
+}
+
+/** Escuadras que juegan: las que tienen algún héroe */
+const enJuego = (m: Mapa) => escuadrasDe(m).filter((e) => e.heroes.length)
+
+/** Escuadra con la activación en curso, si la hay: hasta que termine, las demás no pueden actuar */
+export const escuadraActiva = (m: Mapa): Escuadra | undefined =>
+  enJuego(m).find((e) => {
+    const activacion = activacionDe(m, e.id)
+    return activacion && !activacion.terminada
+  })
+
 /** Por qué una escuadra no puede actuar mientras otra se activa */
-export const esperandoA = (activa: DatosEscuadra) => `No se puede activar hasta terminar la activación de ${activa.nombre}`
+export const esperandoA = (activa: Pick<Escuadra, 'nombre'>) => `No se puede activar hasta terminar la activación de ${activa.nombre}`
 
 /** Modos entre los que elige una escuadra al activarse */
 export const modosPermitidos = ({ modosActivacion }: Configuracion): ModoActivacion[] =>
   modosActivacion === 'agresivo-sigiloso' ? ['agresivo', 'sigiloso'] : ['normal']
+
+/** Cambia la activación de la escuadra en el turno en curso (y su último modo) */
+export const conActivacion = (m: Mapa, id: string, activacion: Activacion): Mapa =>
+  conEscuadra(m, id, (e) => ({
+    ...e,
+    modo: activacion.modo,
+    turnos: conTurno(e.turnos, { numero: numeroDeTurno(m), acciones: [] }, (t) => ({ ...t, activacion })),
+  }))
 
 /**
  * Por qué la escuadra no puede activarse en ese modo, o nada si puede: solo
@@ -38,12 +72,10 @@ export const modosPermitidos = ({ modosActivacion }: Configuracion): ModoActivac
  * escuadra a medio activar. La activación vale para todos sus héroes
  */
 export function motivoParaNoActivar(m: Mapa, config: Configuracion, id: string, modo: ModoActivacion): string | undefined {
-  const escuadras = escuadrasDelMapa(m)
-  const escuadra = escuadras.find((e) => e.id === id)
+  const escuadra = enJuego(m).find((e) => e.id === id)
   if (!escuadra) return `No hay ninguna escuadra «${id}» en el mapa`
   if (!modosPermitidos(config).includes(modo)) return `El modo ${modo} no está permitido: ${modosPermitidos(config).join(' o ')}`
-  const { activaciones } = turnoDe(m)
-  if (activaciones[id]) return `${escuadra.nombre} ya se ha activado este turno`
+  if (activacionDe(m, id)) return `${escuadra.nombre} ya se ha activado este turno`
   const activa = escuadraActiva(m)
   if (activa) return esperandoA(activa)
 }
@@ -52,33 +84,29 @@ export function motivoParaNoActivar(m: Mapa, config: Configuracion, id: string, 
 export function activar(m: Mapa, config: Configuracion, id: string, modo: ModoActivacion): Mapa {
   const motivo = motivoParaNoActivar(m, config, id, modo)
   if (motivo) throw new Error(motivo)
-  const turno = turnoDe(m)
-  return { ...m, turno: { ...turno, activaciones: { ...turno.activaciones, [id]: { modo, terminada: false } } } }
+  return conActivacion(m, id, { modo, terminada: false })
 }
 
 /** Da por completa la activación en curso de la escuadra; falla si no la tiene */
 export function terminarActivacion(m: Mapa, id: string): Mapa {
-  const turno = turnoDe(m)
-  const activacion = turno.activaciones[id]
+  const activacion = activacionDe(m, id)
   if (!activacion || activacion.terminada) throw new Error(`«${id}» no tiene ninguna activación en curso`)
-  return { ...m, turno: { ...turno, activaciones: { ...turno.activaciones, [id]: { ...activacion, terminada: true } } } }
+  return conActivacion(m, id, { ...activacion, terminada: true })
 }
 
 /** Por qué no se puede terminar el turno (escuadras sin activación completa), o nada si se puede */
 export function motivoParaNoTerminarTurno(m: Mapa): string | undefined {
-  const { activaciones } = turnoDe(m)
-  const pendientes = escuadrasDelMapa(m).filter((e) => !activaciones[e.id]?.terminada)
+  const pendientes = enJuego(m).filter((e) => !activacionDe(m, e.id)?.terminada)
   if (pendientes.length) return `Falta terminar la activación de ${pendientes.map((e) => e.nombre).join(', ')}`
 }
 
 /**
- * Pasa al turno siguiente, con todas las escuadras sin activar pero
- * recordando su último modo agresivo o sigiloso; falla si alguna no ha terminado
+ * Pasa al turno siguiente: cada escuadra y cada héroe empiezan una entrada de
+ * turno nueva cuando hagan algo; su último modo queda en la escuadra. Falla si
+ * alguna escuadra no ha terminado
  */
 export function terminarTurno(m: Mapa): Mapa {
   const motivo = motivoParaNoTerminarTurno(m)
   if (motivo) throw new Error(motivo)
-  const { numero, activaciones, ultimosModos } = turnoDe(m)
-  const modos = Object.entries(activaciones).flatMap(([id, { modo }]) => (modo === 'normal' ? [] : [[id, modo]]))
-  return { ...m, turno: { numero: numero + 1, activaciones: {}, ultimosModos: { ...ultimosModos, ...Object.fromEntries(modos) } } }
+  return { ...m, turno: numeroDeTurno(m) + 1 }
 }

@@ -148,7 +148,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
           </button>
         </fieldset>
 
-        <VistaMapa estancias={[construirEstancia('vista-previa', descripcion, entrada)]} />
+        <VistaMapa mapa={{ estancias: [construirEstancia('vista-previa', descripcion, entrada)] }} />
         <p className="nota">
           {entrada
             ? `Se entra por el muro de ${entrada}, el de la puerta que se abre, y se sale por el de la orientación.`

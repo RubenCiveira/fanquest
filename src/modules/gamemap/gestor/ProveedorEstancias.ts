@@ -1,6 +1,8 @@
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
 import type { Direccion } from '../modelo/direccion'
+import type { Estancia } from '../modelo/estancia'
 import type { Mapa } from '../modelo/mapa'
+import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 
 /**
  * Lo que implementa el proyecto para decidir cada estancia nueva: con una
@@ -12,4 +14,10 @@ import type { Mapa } from '../modelo/mapa'
  */
 export interface ProveedorEstancias {
   describirEstancia(mapa?: Mapa, entrada?: Direccion): Promise<DescripcionEstancia>
+  /**
+   * Aviso de que la estancia ya está creada y en su sitio, con sus puertas:
+   * el proyecto puede asociarle lo suyo (objetos para sus puertas…). `mapa`,
+   * lo que el gestor le deja hacer sobre el mapa
+   */
+  estanciaCreada(estancia: Estancia, mapa: MapaEnJuego): void
 }

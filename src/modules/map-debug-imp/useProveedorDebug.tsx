@@ -1,11 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
 import type { Configuracion, DescripcionEstancia, Direccion, Mapa, ProveedorMapa } from '../gamemap'
+import { cargarConfiguracion, guardarConfiguracion } from './configuracion'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
-
-/** Reglas del ejemplo: activaciones alternas y cada héroe elige modo agresivo o sigiloso */
-const CONFIGURACION: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' }
+import { PuertasDePrueba } from './modelo/puerta'
 
 /** Pregunta de `confirmar` pendiente de respuesta */
 type Confirmacion = { mensaje: string; responder: (si: boolean) => void }
@@ -17,21 +16,37 @@ export const esCancelacion = (error: unknown) => error instanceof DOMException &
 
 /**
  * Proveedor del mapa de pruebas: las estancias se describen a mano en un
- * diálogo, los héroes son las escuadras de prueba, las reglas son
- * `CONFIGURACION` y las confirmaciones, un diálogo de confirmar o cancelar. El `dialogo` se pinta en
- * la página; cerrarlo sin crear rechaza la promesa con una cancelación
- * (`esCancelacion`)
+ * diálogo, los héroes son las escuadras de prueba, las reglas son las del
+ * formulario de configuración (`configuracion` y `cambiarConfiguracion`: el
+ * gestor las lee cada vez, así que un cambio vale al momento) y las
+ * confirmaciones, un diálogo de confirmar o cancelar.
+ * A cada estancia creada se le asocian puertas de prueba (`PuertasDePrueba`),
+ * cuyas acciones (abrirse) ofrecen los héroes que las pisan. El `dialogo` se pinta en la página; cerrarlo sin
+ * crear rechaza la promesa con una cancelación (`esCancelacion`)
  */
 export function useProveedorDebug() {
   const [peticion, setPeticion] = useState<Peticion>()
   const [confirmacion, setConfirmacion] = useState<Confirmacion>()
+  const [configuracion, setConfiguracion] = useState(cargarConfiguracion)
+  // la que lee el gestor: la del proveedor no cambia al volver a pintar
+  const vigente = useRef(configuracion)
 
-  const proveedor = useMemo<ProveedorMapa>(
-    () => ({
-      configuracion: CONFIGURACION,
+  function cambiarConfiguracion(nueva: Configuracion) {
+    vigente.current = nueva
+    guardarConfiguracion(nueva)
+    setConfiguracion(nueva)
+  }
+
+  const proveedor = useMemo<ProveedorMapa>(() => {
+    const puertas = new PuertasDePrueba()
+    return {
+      get configuracion() {
+        return vigente.current
+      },
       confirmar: (mensaje) =>
         new Promise((resolve) => setConfirmacion({ mensaje, responder: (si) => (setConfirmacion(undefined), resolve(si)) })),
-      ...escuadrasDePrueba,
+      ...escuadrasDePrueba(puertas),
+      estanciaCreada: (estancia) => puertas.asociar(estancia),
       describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>
           setPeticion({
@@ -41,9 +56,8 @@ export function useProveedorDebug() {
             cancelar: () => (setPeticion(undefined), reject(new DOMException('Estancia cancelada', 'AbortError'))),
           }),
         ),
-    }),
-    [],
-  )
+    }
+  }, [])
 
   const dialogo = (
     <>
@@ -61,5 +75,5 @@ export function useProveedorDebug() {
       )}
     </>
   )
-  return { proveedor, dialogo }
+  return { proveedor, dialogo, configuracion, cambiarConfiguracion }
 }

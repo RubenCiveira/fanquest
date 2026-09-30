@@ -2,39 +2,41 @@ export type { Accion } from './modelo/accion'
 export type { AccionEjecutada } from './modelo/accionEjecutada'
 export type { Activacion, ModoActivacion, ModoAgresivoSigiloso } from './modelo/activacion'
 export type { Casilla } from './modelo/casilla'
+export type { ClaseDeEscuadra } from './modelo/claseDeEscuadra'
+export type { ClaseDeHeroe } from './modelo/claseDeHeroe'
 export { esComando, type Comando } from './modelo/comando'
 export type { Configuracion } from './modelo/configuracion'
 export type { DescripcionElemento, DescripcionEstancia } from './modelo/descripcionEstancia'
 export { OPUESTA, type Direccion } from './modelo/direccion'
-export type { Elemento, FichaHeroe, Objeto } from './modelo/elemento'
-export type { Escuadra } from './modelo/escuadra'
-export type { EstadoEscuadra, PosicionHeroe } from './modelo/estadoEscuadra'
-export type { Heroe } from './modelo/heroe'
-export type { HeroeEnMapa } from './modelo/heroeEnMapa'
-export type { MapaEnJuego } from './modelo/mapaEnJuego'
+export type { Elemento, Objeto } from './modelo/elemento'
+export type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
 export type { Estancia, TipoEstancia } from './modelo/estancia'
-export type { DatosEscuadra, Mapa } from './modelo/mapa'
-export type { OpcionesMovimiento, OpcionMovimiento, TramoMovimiento } from './modelo/opcionesMovimiento'
+export type { Heroe, TurnoDeHeroe } from './modelo/heroe'
+export type { Mapa } from './modelo/mapa'
+export type { MapaEnJuego } from './modelo/mapaEnJuego'
 export type { Medida } from './modelo/medida'
 export type { MovimientoGastado } from './modelo/movimientoGastado'
 export type { MovimientoHecho } from './modelo/movimientoHecho'
+export type { OpcionesMovimiento, OpcionMovimiento, TramoMovimiento } from './modelo/opcionesMovimiento'
 export type { Puerta } from './modelo/puerta'
 export type { ResultadoActivacion } from './modelo/resultadoActivacion'
-export type { Turno } from './modelo/turno'
 export type { Ubicacion } from './modelo/ubicacion'
-export { accionesDelGestor, CAMBIAR_MODO, ejecutarAccion, estadoDeEscuadra, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
+export { accionesDelGestor, apuntarAccion, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
 export {
+  activacionDe,
   activar,
   escuadraActiva,
-  escuadrasDelMapa,
+  escuadrasDe,
   esperandoA,
   heroesDelMapa,
   modosPermitidos,
   motivoParaNoActivar,
   motivoParaNoTerminarTurno,
+  numeroDeTurno,
   terminarActivacion,
   terminarTurno,
-  turnoDe,
+  turnoDeEscuadra,
+  turnoDeHeroe,
 } from './activaciones'
 export { construirEstancia } from './construccion'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
@@ -44,13 +46,16 @@ export {
   accionesConsumidas,
   alcance,
   casillaDelMapa,
+  costeDe,
+  costesDe,
   enElMapa,
   evaluarRecorrido,
-  extenderRecorrido,
   gastadoPor,
   mover,
+  ruta,
   sePuedePasar,
   transitable,
+  type MedicionMovimiento,
   type RecorridoEvaluado,
 } from './movimiento'
 export { casillaDelMuro, largoMuro, orientar } from './orientacion'

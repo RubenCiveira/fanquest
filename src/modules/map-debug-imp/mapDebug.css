@@ -327,3 +327,11 @@
   fill: var(--vitela);
   stroke-dasharray: 3 2;
 }
+
+.map-debug-configuracion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  border: 1.5px solid var(--trazo-suave);
+  border-radius: var(--boceto-2);
+}

@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { crearEstancia } from './estancias'
 import type { Casilla } from './modelo/casilla'
-import type { FichaHeroe, Objeto } from './modelo/elemento'
+import type { Objeto } from './modelo/elemento'
+import type { Heroe } from './modelo/heroe'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
-import { accionesConsumidas, evaluarRecorrido, extenderRecorrido, mover as moverFicha } from './movimiento'
+import { turnoDeHeroe } from './activaciones'
+import { accionesConsumidas, costeDe, evaluarRecorrido, gastadoPor, mover as moverHeroe, ruta } from './movimiento'
 import { orientar } from './orientacion'
 
-const barbaro: FichaHeroe = { id: 'barbaro', nombre: 'Bárbaro', tipo: 'heroe', escuadra: 'rojos', columnas: 1, filas: 1, posicion: { x: 0, y: 0 } }
+const barbaro: Heroe = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] }
 const mesa: Objeto = { id: 'mesa', nombre: 'Mesa', tipo: 'objeto', columnas: 1, filas: 2, posicion: { x: 1, y: 0 } }
-const sala = (...elementos: (FichaHeroe | Objeto)[]): Mapa => ({
-  estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 12, filas: 4 }), elementos: [barbaro, ...elementos] }],
+/** Sala de 12 × 4 con el bárbaro en 0,0, sus objetos y otros héroes */
+const sala = (objetos: Objeto[] = [], otros: Heroe[] = []): Mapa => ({
+  estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 12, filas: 4 }), elementos: objetos }],
+  escuadras: [{ id: 'rojos', nombre: 'Rojos', heroes: [barbaro, ...otros], turnos: [] }],
 })
 
 const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
@@ -36,24 +40,32 @@ const recto = (pasos: number): Casilla[] => [
   ...Array.from({ length: Math.max(0, pasos - 3) }, (_, i) => ({ x: i + 1, y: 3 })),
 ]
 
-describe('recorrido al arrastrar', () => {
-  it('se alarga hasta la casilla junto a la última', () => {
-    expect(extenderRecorrido(sala(), barbaro, [{ x: 0, y: 0 }], { x: 0, y: 1 })).toEqual([
+describe('ruta hasta una casilla', () => {
+  it('a la casilla de al lado, un paso', () => {
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 0, y: 1 })).toEqual([
       { x: 0, y: 0 },
       { x: 0, y: 1 },
     ])
   })
 
-  it('si se salta casillas, las rellena rodeando los objetos', () => {
-    expect(extenderRecorrido(sala(mesa), barbaro, [{ x: 0, y: 0 }], { x: 2, y: 0 })).toHaveLength(7)
+  it('a su propia casilla, sin pasos', () => {
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 0, y: 0 })).toEqual([{ x: 0, y: 0 }])
   })
 
-  it('al volver a una casilla del recorrido, se recorta hasta ella', () => {
-    expect(extenderRecorrido(sala(), barbaro, recto(4), { x: 0, y: 2 })).toEqual(recto(2))
+  it('en línea recta si no hay nada en medio', () => {
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 0, y: 3 })).toEqual(recto(3))
   })
 
-  it('a una casilla ocupada por un objeto no se llega', () => {
-    expect(extenderRecorrido(sala(mesa), barbaro, [{ x: 0, y: 0 }], { x: 1, y: 1 })).toEqual([{ x: 0, y: 0 }])
+  it('rodea los objetos por el camino más corto', () => {
+    expect(ruta(sala([mesa]), { x: 0, y: 0 }, { x: 2, y: 0 })).toHaveLength(7)
+  })
+
+  it('a una casilla ocupada por un objeto no hay ruta', () => {
+    expect(ruta(sala([mesa]), { x: 0, y: 0 }, { x: 1, y: 1 })).toBeUndefined()
+  })
+
+  it('fuera del mapa no hay ruta', () => {
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 20, y: 0 })).toBeUndefined()
   })
 })
 
@@ -71,23 +83,23 @@ describe('opciones de movimiento', () => {
   })
 
   it('con un enemigo al final del camino, carga', () => {
-    expect(evaluarRecorrido(sala(), barbaro, recto(8), opciones, [{ x: 6, y: 2 }])).toMatchObject({ opcion: { id: 'cargar' } })
+    expect(evaluarRecorrido(sala(), barbaro, recto(8), opciones, { enemigos: [{ x: 6, y: 2 }] })).toMatchObject({ opcion: { id: 'cargar' } })
   })
 
   it('no puede pasar junto a un enemigo sin cargar', () => {
-    expect(evaluarRecorrido(sala(), barbaro, recto(4), opciones, [{ x: 1, y: 1 }])).toEqual({
+    expect(evaluarRecorrido(sala(), barbaro, recto(4), opciones, { enemigos: [{ x: 1, y: 1 }] })).toEqual({
       motivo: 'Ninguna forma de moverse permite ese recorrido',
     })
   })
 
   it('no puede atravesar un objeto', () => {
     const porLaMesa = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }]
-    expect(evaluarRecorrido(sala(mesa), barbaro, porLaMesa, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+    expect(evaluarRecorrido(sala([mesa]), barbaro, porLaMesa, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
   })
 
   it('pasa por encima de otro héroe, pero no termina encima', () => {
-    const enano: FichaHeroe = { ...barbaro, id: 'enano', nombre: 'Enano', posicion: { x: 0, y: 1 } }
-    expect(evaluarRecorrido(sala(enano), barbaro, recto(1), opciones)).toEqual({ motivo: 'No se puede terminar encima de Enano' })
+    const enano: Heroe = { ...barbaro, id: 'enano', nombre: 'Enano', casilla: { x: 0, y: 1 } }
+    expect(evaluarRecorrido(sala([], [enano]), barbaro, recto(1), opciones)).toEqual({ motivo: 'No se puede terminar encima de Enano' })
   })
 
   it('el recorrido empieza en la ficha', () => {
@@ -106,14 +118,16 @@ describe('opciones de movimiento', () => {
 
 describe('cruzar puertas', () => {
   // la sala de 3 × 3 en 0,0 tiene su salida abajo en 1,2; el pasillo de 3 × 4 está pegado debajo, con su entrada arriba en 1,0 (1,3 del mapa)
+  const enLaSala: Heroe = { ...barbaro, estancia: 'arriba', casilla: { x: 1, y: 1 } }
   const salaConSalida = (abierta: boolean): Mapa => {
     const arriba = orientar(crearEstancia({ id: 'arriba', tipo: 'sala', columnas: 3, filas: 3 }), 'abajo', 1)
     const abajo = orientar(crearEstancia({ id: 'abajo', tipo: 'pasillo', columnas: 3, filas: 4 }), 'abajo', 0)
     return {
       estancias: [
-        { ...arriba, elementos: [{ ...barbaro, posicion: { x: 1, y: 1 } }], puertas: arriba.puertas.map((p) => (p.tipo === 'salida' ? { ...p, abierta } : p)) },
+        { ...arriba, puertas: arriba.puertas.map((p) => (p.tipo === 'salida' ? { ...p, abierta } : p)) },
         { ...abajo, posicion: { x: 0, y: 3 } },
       ],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', heroes: [enLaSala], turnos: [] }],
     }
   }
   const porLaPuerta = [
@@ -124,26 +138,103 @@ describe('cruzar puertas', () => {
   ]
 
   it('con la puerta abierta, el recorrido pasa a la estancia de al lado', () => {
-    expect(evaluarRecorrido(salaConSalida(true), barbaro, porLaPuerta, opciones)).toMatchObject({ opcion: { id: 'mover' } })
+    expect(evaluarRecorrido(salaConSalida(true), enLaSala, porLaPuerta, opciones)).toMatchObject({ opcion: { id: 'mover' } })
   })
 
   it('con la puerta cerrada, el muro no se cruza', () => {
-    expect(evaluarRecorrido(salaConSalida(false), barbaro, porLaPuerta, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+    expect(evaluarRecorrido(salaConSalida(false), enLaSala, porLaPuerta, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
   })
 
   it('entre dos estancias pegadas solo se cruza por la puerta', () => {
     const porElMuro = [{ x: 1, y: 1 }, { x: 0, y: 1 }, { x: 0, y: 2 }, { x: 0, y: 3 }]
-    expect(evaluarRecorrido(salaConSalida(true), barbaro, porElMuro, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+    expect(evaluarRecorrido(salaConSalida(true), enLaSala, porElMuro, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
   })
 
-  it('al arrastrar hasta la otra estancia, el camino pasa por la puerta abierta', () => {
-    expect(extenderRecorrido(salaConSalida(true), barbaro, [{ x: 1, y: 1 }], { x: 0, y: 4 })).toEqual([...porLaPuerta.slice(0, 3), { x: 0, y: 3 }, { x: 0, y: 4 }])
+  it('una puerta abierta no se cruza en diagonal', () => {
+    const cruzandoEnDiagonal = [{ x: 1, y: 1 }, { x: 1, y: 2 }, { x: 0, y: 3 }]
+    expect(evaluarRecorrido(salaConSalida(true), enLaSala, cruzandoEnDiagonal, opciones, { medicion: 'diagonal' })).toEqual({
+      motivo: 'El recorrido pasa por donde no se puede',
+    })
   })
 
-  it('al mover a la otra estancia, la ficha pasa a ella con su casilla en ella', () => {
-    const m = salaConSalida(true)
-    const valido = { opcion: opciones.base, tramos: [0, 0, 0] }
-    const movido = moverFicha(m, { ordenActivaciones: 'alternas', modosActivacion: 'normal' }, { ...barbaro, posicion: { x: 1, y: 1 } }, porLaPuerta, valido)
-    expect(movido.estancias.map((e) => e.elementos.map((el) => [el.id, el.posicion]))).toEqual([[], [['barbaro', { x: 1, y: 1 }]]])
+  it('la ruta a la otra estancia pasa por la puerta abierta', () => {
+    expect(ruta(salaConSalida(true), { x: 1, y: 1 }, { x: 0, y: 4 })?.slice(0, 3)).toEqual(porLaPuerta.slice(0, 3))
+  })
+
+  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' } as const
+  const moverPorLaPuerta = () => moverHeroe(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
+
+  it('al mover a la otra estancia, el héroe pasa a ella con su casilla en ella', () => {
+    const [movido] = moverPorLaPuerta().escuadras?.[0].heroes ?? []
+    expect([movido.estancia, movido.casilla]).toEqual(['abajo', { x: 1, y: 1 }])
+  })
+
+  it('el movimiento queda en el turno del héroe y cuenta como gastado', () => {
+    const m = moverPorLaPuerta()
+    const [movido] = m.escuadras?.[0].heroes ?? []
+    expect([turnoDeHeroe(movido, 1).movimientos, gastadoPor(m, movido)]).toEqual([
+      [{ opcion: 'mover', casillas: 3, acciones: ['mover'] }],
+      { casillas: 3, acciones: ['mover'] },
+    ])
+  })
+
+  it('las acciones que consume el movimiento van al turno de la escuadra, como del héroe', () => {
+    expect(moverPorLaPuerta().escuadras?.[0].turnos[0].acciones).toEqual([{ accion: 'mover', heroe: 'barbaro' }])
+  })
+})
+
+describe('medición de los movimientos', () => {
+  /** Recorrido en diagonal hacia abajo a la derecha desde 0,0 */
+  const enDiagonal = (pasos: number): Casilla[] => Array.from({ length: pasos + 1 }, (_, i) => ({ x: i, y: i }))
+
+  it('sin diagonales, un paso en diagonal no se puede dar', () => {
+    expect(evaluarRecorrido(sala(), barbaro, enDiagonal(1), opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+  })
+
+  it('con diagonales que cuentan como uno, tres pasos en diagonal cuestan tres', () => {
+    expect(costeDe(enDiagonal(3), 'diagonal')).toBe(3)
+  })
+
+  it('por Pitágoras, tres pasos en diagonal cuestan lo que su largo redondeado hacia arriba', () => {
+    expect(costeDe(enDiagonal(3), 'euclidea')).toBe(5)
+  })
+
+  it('por Pitágoras, dos diagonales no llegan a tres casillas', () => {
+    expect(costeDe(enDiagonal(2), 'euclidea')).toBe(3)
+  })
+
+  it('los tramos se cuentan por lo que cuesta cada paso: 3 diagonales por Pitágoras ya tocan el tramo de deslizar', () => {
+    const cuatro = [...enDiagonal(3), { x: 4, y: 3 }, { x: 5, y: 3 }]
+    expect(evaluarRecorrido(sala(), barbaro, cuatro, opciones, { medicion: 'euclidea' })).toMatchObject({ opcion: { id: 'deslizar' }, tramos: [0, 0, 0, 0, 1] })
+  })
+
+  it('en diagonal no se cortan las esquinas de un objeto', () => {
+    // la mesa ocupa 1,0 y 1,1: de 0,1 a 1,2 se rozaría su esquina
+    const rozando = [{ x: 0, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 2 }]
+    expect(evaluarRecorrido(sala([mesa]), barbaro, rozando, opciones, { medicion: 'diagonal' })).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+  })
+
+  it('la ruta va en diagonal si la medición lo permite', () => {
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 3, y: 3 }, 'diagonal')).toEqual(enDiagonal(3))
+  })
+
+  it('con diagonales que cuentan como uno, a igual coste prefiere los pasos rectos', () => {
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 3, y: 0 }, 'diagonal')).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+    ])
+  })
+
+  it('por Pitágoras, la ruta es la más corta de largo', () => {
+    const camino = ruta(sala(), { x: 0, y: 0 }, { x: 3, y: 1 }, 'euclidea') ?? []
+    expect([camino.length - 1, costeDe(camino, 'euclidea')]).toEqual([3, 4])
+  })
+
+  it('el movimiento apunta lo que cuesta según la medición', () => {
+    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea' } as const
+    const m = moverHeroe(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
+    expect(gastadoPor(m, m.escuadras?.[0].heroes[0] ?? barbaro).casillas).toBe(5)
   })
 })

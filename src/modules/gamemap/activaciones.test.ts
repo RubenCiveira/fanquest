@@ -1,46 +1,47 @@
 import { describe, expect, it } from 'vitest'
 import {
+  activacionDe,
   activar,
   escuadraActiva,
-  escuadrasDelMapa,
   motivoParaNoActivar,
   motivoParaNoTerminarTurno,
+  numeroDeTurno,
   terminarActivacion,
   terminarTurno,
-  turnoDe,
+  turnoDeEscuadra,
 } from './activaciones'
 import { crearEstancia } from './estancias'
 import type { Configuracion } from './modelo/configuracion'
-import type { FichaHeroe } from './modelo/elemento'
+import type { Heroe } from './modelo/heroe'
 import type { Mapa } from './modelo/mapa'
 
-const ficha = (id: string, escuadra: string): FichaHeroe => ({ id, nombre: id, tipo: 'heroe', escuadra, columnas: 1, filas: 1 })
+const heroe = (id: string): Heroe => ({ id, nombre: id, estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] })
 const mapa: Mapa = {
-  estancias: [
-    { ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 3 }), elementos: [ficha('barbaro', 'rojos'), ficha('elfo', 'rojos'), ficha('enano', 'azules')] },
-  ],
+  estancias: [crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 3 })],
   escuadras: [
-    { id: 'rojos', nombre: 'Rojos' },
-    { id: 'azules', nombre: 'Azules' },
+    { id: 'rojos', nombre: 'Rojos', heroes: [heroe('barbaro'), heroe('elfo')], turnos: [] },
+    { id: 'azules', nombre: 'Azules', heroes: [heroe('enano')], turnos: [] },
   ],
+  turno: 1,
 }
-const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' }
-const normales: Configuracion = { ordenActivaciones: 'heroes-primero', modosActivacion: 'normal' }
+const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal' }
+const normales: Configuracion = { ordenActivaciones: 'heroes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' }
 
 const completas = (m: Mapa, config: Configuracion, modos: Record<string, 'normal' | 'agresivo' | 'sigiloso'>) =>
   Object.entries(modos).reduce((a, [id, modo]) => terminarActivacion(activar(a, config, id, modo), id), m)
 
 describe('activaciones por escuadra', () => {
-  it('sin turno guardado, es el primero y nadie se ha activado', () => {
-    expect(turnoDe(mapa)).toEqual({ numero: 1, activaciones: {} })
+  it('sin turno guardado, es el primero', () => {
+    expect(numeroDeTurno({ estancias: [] })).toBe(1)
   })
 
-  it('las escuadras del mapa son las de sus héroes, con su nombre', () => {
-    expect(escuadrasDelMapa(mapa)).toEqual(mapa.escuadras)
+  it('la activación queda en el turno en curso de la escuadra', () => {
+    const [rojos] = activar(mapa, conModos, 'rojos', 'sigiloso').escuadras ?? []
+    expect(rojos.turnos).toEqual([{ numero: 1, activacion: { modo: 'sigiloso', terminada: false }, acciones: [] }])
   })
 
-  it('una escuadra se activa en el modo elegido', () => {
-    expect(turnoDe(activar(mapa, conModos, 'rojos', 'sigiloso')).activaciones).toEqual({ rojos: { modo: 'sigiloso', terminada: false } })
+  it('activarse guarda el modo como último de la escuadra', () => {
+    expect(activar(mapa, conModos, 'rojos', 'agresivo').escuadras?.[0].modo).toBe('agresivo')
   })
 
   it('no se activa un héroe suelto, sino su escuadra', () => {
@@ -68,30 +69,7 @@ describe('activaciones por escuadra', () => {
   })
 
   it('terminar la activación conserva el modo', () => {
-    expect(turnoDe(completas(mapa, conModos, { azules: 'sigiloso' })).activaciones.azules).toEqual({ modo: 'sigiloso', terminada: true })
-  })
-
-  it('no se termina el turno con escuadras sin activación completa', () => {
-    expect(motivoParaNoTerminarTurno(activar(mapa, normales, 'rojos', 'normal'))).toBe('Falta terminar la activación de Rojos, Azules')
-  })
-
-  it('con todas terminadas, pasa al turno siguiente sin activaciones', () => {
-    expect(turnoDe(terminarTurno(completas(mapa, normales, { rojos: 'normal', azules: 'normal' })))).toMatchObject({ numero: 2, activaciones: {} })
-  })
-
-  const turnoCon = (modos: Record<string, 'agresivo' | 'sigiloso'>, m = mapa) => terminarTurno(completas(m, conModos, modos))
-
-  it('el turno siguiente recuerda el último modo agresivo o sigiloso de cada escuadra', () => {
-    expect(turnoDe(turnoCon({ rojos: 'agresivo', azules: 'sigiloso' })).ultimosModos).toEqual({ rojos: 'agresivo', azules: 'sigiloso' })
-  })
-
-  it('el último modo se actualiza con la activación más reciente', () => {
-    const dos = turnoCon({ rojos: 'sigiloso', azules: 'sigiloso' }, turnoCon({ rojos: 'agresivo', azules: 'sigiloso' }))
-    expect(turnoDe(dos).ultimosModos).toEqual({ rojos: 'sigiloso', azules: 'sigiloso' })
-  })
-
-  it('las activaciones normales no dejan último modo', () => {
-    expect(turnoDe(terminarTurno(completas(mapa, normales, { rojos: 'normal', azules: 'normal' }))).ultimosModos).toEqual({})
+    expect(activacionDe(completas(mapa, conModos, { azules: 'sigiloso' }), 'azules')).toEqual({ modo: 'sigiloso', terminada: true })
   })
 
   it('sin nadie activándose, no hay escuadra activa', () => {
@@ -99,6 +77,21 @@ describe('activaciones por escuadra', () => {
   })
 
   it('la escuadra activa es la que tiene la activación en curso', () => {
-    expect(escuadraActiva(activar(mapa, conModos, 'azules', 'sigiloso'))).toEqual({ id: 'azules', nombre: 'Azules' })
+    expect(escuadraActiva(activar(mapa, conModos, 'azules', 'sigiloso'))?.id).toBe('azules')
+  })
+
+  it('no se termina el turno con escuadras sin activación completa', () => {
+    expect(motivoParaNoTerminarTurno(activar(mapa, normales, 'rojos', 'normal'))).toBe('Falta terminar la activación de Rojos, Azules')
+  })
+
+  it('con todas terminadas, pasa al turno siguiente y nadie se ha activado en él', () => {
+    const siguiente = terminarTurno(completas(mapa, normales, { rojos: 'normal', azules: 'normal' }))
+    expect([numeroDeTurno(siguiente), activacionDe(siguiente, 'rojos')]).toEqual([2, undefined])
+  })
+
+  it('los turnos anteriores de cada escuadra se conservan', () => {
+    const siguiente = terminarTurno(completas(mapa, conModos, { rojos: 'agresivo', azules: 'sigiloso' }))
+    const rojos = siguiente.escuadras?.[0]
+    expect(rojos && [turnoDeEscuadra(rojos, 1).activacion, rojos.modo]).toEqual([{ modo: 'agresivo', terminada: true }, 'agresivo'])
   })
 })

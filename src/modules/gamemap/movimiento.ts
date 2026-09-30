@@ -1,11 +1,13 @@
-import { ejecutarAccion } from './acciones'
+import { apuntarAccion } from './acciones'
+import { conHeroe, conTurno, heroesDelMapa, numeroDeTurno, turnoDeHeroe } from './activaciones'
 import { estanciaEn } from './estancias'
 import type { Accion } from './modelo/accion'
 import type { Casilla } from './modelo/casilla'
 import type { Configuracion } from './modelo/configuracion'
 import type { Direccion } from './modelo/direccion'
-import type { Elemento, FichaHeroe } from './modelo/elemento'
+import type { Elemento } from './modelo/elemento'
 import type { Estancia } from './modelo/estancia'
+import type { Heroe } from './modelo/heroe'
 import type { Mapa } from './modelo/mapa'
 import type { MovimientoGastado } from './modelo/movimientoGastado'
 import type { OpcionMovimiento, OpcionesMovimiento } from './modelo/opcionesMovimiento'
@@ -24,9 +26,27 @@ const PASOS: Casilla[] = [
   { x: 0, y: -1 },
 ]
 
+const DIAGONALES: Casilla[] = [
+  { x: 1, y: 1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 1 },
+  { x: -1, y: -1 },
+]
+
+/** Cómo se miden los movimientos (`Configuracion.medicionMovimiento`) */
+export type MedicionMovimiento = Configuracion['medicionMovimiento']
+
+/** Pasos posibles desde una casilla: sin diagonales o con ellas */
+const pasosDe = (medicion: MedicionMovimiento) => (medicion === 'ortogonal' ? PASOS : [...PASOS, ...DIAGONALES])
+
+/** Largo de un paso en diagonal: cuenta como uno, o √2 midiendo por Pitágoras */
+const LARGO_DIAGONAL: Record<MedicionMovimiento, number> = { ortogonal: 1, diagonal: 1, euclidea: Math.SQRT2 }
+
 const igual = (a: Casilla) => (b: Casilla) => a.x === b.x && a.y === b.y
 
 const junto = (a: Casilla, b: Casilla) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) === 1
+
+const enDiagonal = (a: Casilla, b: Casilla) => Math.abs(a.x - b.x) === 1 && Math.abs(a.y - b.y) === 1
 
 /** Distancia contando las diagonales como un paso: 1 es estar junto, también en diagonal */
 const distancia = (a: Casilla, b: Casilla) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
@@ -52,120 +72,163 @@ export function casillaDelMapa(m: Mapa, c: Casilla): { estancia: Estancia; casil
   }
 }
 
-/** Casilla del mapa en que está el elemento (colocado) de una de sus estancias */
-export function enElMapa(m: Mapa, id: string): Casilla | undefined {
-  for (const estancia of m.estancias) {
-    const posicion = estancia.elementos.find((el) => el.id === id)?.posicion
-    if (posicion) return { x: origenDe(estancia).x + posicion.x, y: origenDe(estancia).y + posicion.y }
-  }
+/** Casilla del mapa en que está el héroe; nada si está en una zona de espera */
+export function enElMapa(m: Mapa, heroe: Heroe): Casilla | undefined {
+  const estancia = m.estancias.find((e) => e.id === heroe.estancia)
+  if (!estancia || !heroe.casilla) return
+  return { x: origenDe(estancia).x + heroe.casilla.x, y: origenDe(estancia).y + heroe.casilla.y }
 }
 
 /**
- * Si la ficha puede estar en la casilla del mapa: es de una estancia (no de
+ * Si un héroe puede estar en la casilla del mapa: es de una estancia (no de
  * una interior) y no la ocupa un objeto. Por encima de otros héroes sí pasa
  */
-export function transitable(m: Mapa, ficha: FichaHeroe, c: Casilla): boolean {
+export function transitable(m: Mapa, c: Casilla): boolean {
   const en = casillaDelMapa(m, c)
-  return !!en && !en.estancia.elementos.some((el) => el.id !== ficha.id && el.tipo === 'objeto' && cubre(el, en.casilla))
+  return !!en && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
 }
 
 /**
- * Si la ficha puede pasar de una casilla del mapa a la de al lado: dentro de
- * la misma estancia o, entre dos, cruzando una puerta abierta en esa arista
+ * Si un héroe puede pasar de una casilla del mapa a la de al lado: dentro de
+ * la misma estancia o, entre dos, cruzando una puerta abierta en esa arista.
+ * En diagonal (si la medición lo permite), solo dentro de una estancia y sin
+ * cortar esquinas: tiene que poder pasarse por las dos casillas en ortogonal
  */
-export function sePuedePasar(m: Mapa, ficha: FichaHeroe, a: Casilla, b: Casilla): boolean {
+export function sePuedePasar(m: Mapa, a: Casilla, b: Casilla, medicion: MedicionMovimiento = 'ortogonal'): boolean {
+  if (enDiagonal(a, b)) {
+    const [salida, llegada] = [casillaDelMapa(m, a), casillaDelMapa(m, b)]
+    if (medicion === 'ortogonal' || !salida || !llegada || salida.estancia.id !== llegada.estancia.id || !transitable(m, b)) return false
+    return [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((esquina) => sePuedePasar(m, a, esquina) && sePuedePasar(m, esquina, b))
+  }
   const salida = casillaDelMapa(m, a)
   const llegada = casillaDelMapa(m, b)
-  if (!junto(a, b) || !salida || !llegada || !transitable(m, ficha, b)) return false
+  if (!junto(a, b) || !salida || !llegada || !transitable(m, b)) return false
   if (salida.estancia.id === llegada.estancia.id) return true
   const abierta = ({ estancia, casilla }: { estancia: Estancia; casilla: Casilla }, lado: Direccion) =>
     estancia.puertas.some((p) => p.abierta && p.lado === lado && igual(p.casilla)(casilla))
   return abierta(salida, ladoHacia(a, b)) || abierta(llegada, ladoHacia(b, a))
 }
 
-/** Camino más corto (sin la casilla de salida) por donde se puede pasar, sin las casillas de `evitar`; nada si no lo hay */
-function camino(m: Mapa, ficha: FichaHeroe, desde: Casilla, hasta: Casilla, evitar: Casilla[]): Casilla[] | undefined {
-  const vistas = new Set([...evitar, desde].map(({ x, y }) => `${x},${y}`))
-  let frente: Casilla[][] = [[]]
-  while (frente.length) {
-    const siguiente: Casilla[][] = []
-    for (const tramo of frente) {
-      const ultima = tramo.at(-1) ?? desde
-      for (const paso of PASOS) {
-        const c = { x: ultima.x + paso.x, y: ultima.y + paso.y }
-        if (vistas.has(`${c.x},${c.y}`) || !sePuedePasar(m, ficha, ultima, c)) continue
-        if (igual(c)(hasta)) return [...tramo, c]
-        vistas.add(`${c.x},${c.y}`)
-        siguiente.push([...tramo, c])
-      }
-    }
-    frente = siguiente
-  }
+/** Lo que cuesta cada paso en diagonal al buscar la ruta: con diagonales que cuentan como uno, algo más, para preferir los rectos a igual coste */
+const PESO_DIAGONAL: Record<MedicionMovimiento, number> = { ortogonal: Number.POSITIVE_INFINITY, diagonal: 1.001, euclidea: Math.SQRT2 }
+
+/** Lo que falta como poco de `a` a `b` (la heurística de A*): sin obstáculos, en recto y en diagonal según la medición */
+function falta(a: Casilla, b: Casilla, medicion: MedicionMovimiento) {
+  const [dx, dy] = [Math.abs(a.x - b.x), Math.abs(a.y - b.y)]
+  if (medicion === 'ortogonal') return dx + dy
+  const diagonales = Math.min(dx, dy)
+  return Math.max(dx, dy) - diagonales + diagonales * PESO_DIAGONAL[medicion]
 }
 
 /**
- * El recorrido (en casillas del mapa) al arrastrar la ficha hasta una
- * casilla: si ya está en él, se recorta hasta ella (se ha vuelto atrás); si
- * no, se alarga hasta ella por el camino más corto sin repetir casillas,
- * cruzando puertas abiertas si hace falta. Si no se puede llegar, no cambia
+ * Ruta más corta (A*) de una casilla del mapa a otra, con los pasos que
+ * permite la medición: sin atravesar objetos ni estancias interiores, sin
+ * cortar esquinas en diagonal y cruzando de una estancia a otra solo por
+ * puertas abiertas. Con las dos casillas, en orden; nada si no se puede llegar
  */
-export function extenderRecorrido(m: Mapa, ficha: FichaHeroe, recorrido: Casilla[], c: Casilla): Casilla[] {
-  const i = recorrido.findIndex(igual(c))
-  if (i >= 0) return recorrido.slice(0, i + 1)
-  const ultima = recorrido.at(-1)
-  const tramo = ultima && camino(m, ficha, ultima, c, recorrido)
-  return tramo ? [...recorrido, ...tramo] : recorrido
+export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: MedicionMovimiento = 'ortogonal'): Casilla[] | undefined {
+  const clave = ({ x, y }: Casilla) => `${x},${y}`
+  const coste = new Map([[clave(desde), 0]])
+  const previa = new Map<string, Casilla>()
+  const cerradas = new Set<string>()
+  const abiertas = [desde]
+  const prioridad = (c: Casilla) => (coste.get(clave(c)) ?? 0) + falta(c, hasta, medicion)
+  while (abiertas.length) {
+    abiertas.sort((a, b) => prioridad(a) - prioridad(b))
+    const actual = abiertas.shift()
+    if (!actual) break
+    if (igual(actual)(hasta)) {
+      const vuelta = [actual]
+      for (let c = previa.get(clave(actual)); c; c = previa.get(clave(c))) vuelta.unshift(c)
+      return vuelta
+    }
+    cerradas.add(clave(actual))
+    for (const paso of pasosDe(medicion)) {
+      const c = { x: actual.x + paso.x, y: actual.y + paso.y }
+      if (cerradas.has(clave(c)) || !sePuedePasar(m, actual, c, medicion)) continue
+      const nuevo = (coste.get(clave(actual)) ?? 0) + (enDiagonal(actual, c) ? PESO_DIAGONAL[medicion] : 1)
+      if (nuevo < (coste.get(clave(c)) ?? Number.POSITIVE_INFINITY)) {
+        if (!coste.has(clave(c))) abiertas.push(c)
+        coste.set(clave(c), nuevo)
+        previa.set(clave(c), actual)
+      }
+    }
+  }
 }
 
-/** Lo que el héroe ya ha movido en el turno: la suma de sus movimientos */
-export function gastadoPor(m: Mapa, heroe: FichaHeroe): MovimientoGastado {
-  const suyos = (m.turno?.movimientos?.[heroe.escuadra] ?? []).filter((mv) => mv.heroe === heroe.id)
-  return { casillas: suyos.reduce((suma, mv) => suma + mv.casillas, 0), acciones: suyos.flatMap((mv) => mv.acciones) }
+/** Lo que el héroe ya ha movido en el turno en curso: la suma de sus movimientos */
+export function gastadoPor(m: Mapa, heroe: Heroe): MovimientoGastado {
+  const { movimientos } = turnoDeHeroe(heroe, numeroDeTurno(m))
+  return { casillas: movimientos.reduce((suma, mv) => suma + mv.casillas, 0), acciones: movimientos.flatMap((mv) => mv.acciones) }
 }
 
 /** Casillas que puede recorrer como mucho, con la opción que más llega */
 export const alcance = ({ base, variaciones }: OpcionesMovimiento) =>
   Math.max(...[base, ...variaciones].map((o) => o.tramos.reduce((suma, t) => suma + t.distancia, 0)))
 
-/** Tramo de la opción en que cae cada uno de los `pasos`; nada si no le llegan */
-function tramosDe(opcion: OpcionMovimiento, pasos: number): number[] | undefined {
-  const tramos = opcion.tramos.flatMap(({ distancia }, i) => Array<number>(distancia).fill(i))
-  return pasos <= tramos.length ? tramos.slice(0, pasos) : undefined
+/**
+ * Lo que se lleva movido al final de cada paso del recorrido, según la
+ * medición: un paso recto cuenta uno y uno en diagonal, uno o √2 (redondeando
+ * hacia arriba lo acumulado)
+ */
+export function costesDe(recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal'): number[] {
+  let largo = 0
+  return recorrido.slice(1).map((c, i) => {
+    largo += enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1
+    // sin arrastrar el error de coma flotante: 2 × √2 no llega a 3
+    return Math.ceil(largo - 1e-9)
+  })
+}
+
+/** Lo que cuesta el recorrido entero según la medición */
+export const costeDe = (recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal') => costesDe(recorrido, medicion).at(-1) ?? 0
+
+/** Tramo de la opción en que cae cada paso, según lo movido al final de cada uno; nada si no le llegan */
+function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefined {
+  let hasta = 0
+  const limites = opcion.tramos.map(({ distancia }) => (hasta += distancia))
+  const tramos = costes.map((c) => limites.findIndex((limite) => c <= limite))
+  return tramos.every((t) => t >= 0) ? tramos : undefined
 }
 
 /**
- * Qué opción de movimiento permite el recorrido (en casillas del mapa, de la
- * de la ficha a la de destino, paso a paso en ortogonal y cruzando solo
- * puertas abiertas) y en qué tramo cae cada paso. `enemigos`: sus casillas
- * del mapa, para las opciones que se alejan de ellos o cargan
+ * Qué opción de movimiento permite el recorrido del héroe (en casillas del
+ * mapa, de la suya a la de destino, paso a paso según la `medicion` y
+ * cruzando solo puertas abiertas) y en qué tramo cae cada paso. No puede
+ * terminar encima de un objeto ni de otro héroe. `enemigos`: sus casillas del
+ * mapa, para las opciones que se alejan de ellos o cargan
  */
 export function evaluarRecorrido(
   m: Mapa,
-  ficha: FichaHeroe,
+  heroe: Heroe,
   recorrido: Casilla[],
   { base, variaciones }: OpcionesMovimiento,
-  enemigos: Casilla[] = [],
+  { medicion = 'ortogonal', enemigos = [] }: { medicion?: MedicionMovimiento; enemigos?: Casilla[] } = {},
 ): RecorridoEvaluado {
   const [salida, ...pasos] = recorrido
   const destino = pasos.at(-1)
-  const donde = enElMapa(m, ficha.id)
-  if (!salida || !donde || !igual(salida)(donde)) return { motivo: `El recorrido tiene que empezar en ${ficha.nombre}` }
-  if (!destino) return { motivo: `${ficha.nombre} no se ha movido` }
-  if (pasos.some((c, i) => !sePuedePasar(m, ficha, recorrido[i], c))) return { motivo: 'El recorrido pasa por donde no se puede' }
-  const final = casillaDelMapa(m, destino)
-  const encima = final?.estancia.elementos.find((el) => el.id !== ficha.id && cubre(el, final.casilla))
-  if (encima) return { motivo: `No se puede terminar encima de ${encima.nombre}` }
+  const donde = enElMapa(m, heroe)
+  if (!salida || !donde || !igual(salida)(donde)) return { motivo: `El recorrido tiene que empezar en ${heroe.nombre}` }
+  if (!destino) return { motivo: `${heroe.nombre} no se ha movido` }
+  if (pasos.some((c, i) => !sePuedePasar(m, recorrido[i], c, medicion))) return { motivo: 'El recorrido pasa por donde no se puede' }
+  const otro = heroesDelMapa(m).find((h) => {
+    const suya = h.id !== heroe.id && enElMapa(m, h)
+    return !!suya && igual(destino)(suya)
+  })
+  if (otro) return { motivo: `No se puede terminar encima de ${otro.nombre}` }
 
   const opciones = [base, ...variaciones]
   const permite = (o: OpcionMovimiento) =>
     (!o.alejarseDeEnemigos || pasos.every((c) => enemigos.every((en) => distancia(c, en) > (o.alejarseDeEnemigos ?? 0)))) &&
     (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
+  const costes = costesDe(recorrido, medicion)
   for (const opcion of opciones) {
-    const tramos = tramosDe(opcion, pasos.length)
+    const tramos = tramosDe(opcion, costes)
     if (tramos && permite(opcion)) return { opcion, tramos }
   }
   const maximo = alcance({ base, variaciones })
-  if (pasos.length > maximo) return { motivo: `Demasiado lejos: ${pasos.length} casillas y como mucho ${maximo}` }
+  const coste = costeDe(recorrido, medicion)
+  if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }
   return { motivo: 'Ninguna forma de moverse permite ese recorrido' }
 }
 
@@ -179,27 +242,21 @@ export const accionesAdicionales = ({ opcion, tramos }: Valido): Accion[] =>
 export const accionesConsumidas = (valido: Valido): string[] => [valido.opcion.accion.id, ...accionesAdicionales(valido).map((a) => a.id)]
 
 /**
- * Lleva la ficha del héroe al final del recorrido ya evaluado (en casillas del
- * mapa: si es otra estancia, pasa a ella) y apunta en su escuadra el
- * movimiento y las acciones que consume, que empiezan su activación si no
- * había empezado
+ * Lleva al héroe de la escuadra al final del recorrido ya evaluado (en
+ * casillas del mapa: si es otra estancia, pasa a ella), apunta el movimiento en
+ * su turno (lo que cuesta según la medición de `config`) y las acciones que
+ * consume en el de su escuadra, que empiezan su activación si no había empezado
  */
-export function mover(m: Mapa, config: Configuracion, heroe: FichaHeroe, recorrido: Casilla[], valido: Valido): Mapa {
+export function mover(m: Mapa, config: Configuracion, escuadra: string, heroe: Heroe, recorrido: Casilla[], valido: Valido): Mapa {
   const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
   if (!destino) throw new Error(`El recorrido de ${heroe.nombre} no termina en ninguna estancia`)
-  const movido: Mapa = {
-    ...m,
-    estancias: m.estancias.map((e) => {
-      const sin = e.elementos.filter((el) => el.id !== heroe.id)
-      return { ...e, elementos: e.id === destino.estancia.id ? [...sin, { ...heroe, posicion: destino.casilla }] : sin }
-    }),
-  }
   const acciones = accionesConsumidas(valido)
-  const conAcciones = acciones.reduce((a, accion) => ejecutarAccion(a, config, heroe.escuadra, accion, heroe.id), movido)
-  const turno = conAcciones.turno ?? { numero: 1, activaciones: {} }
-  const hecho = { heroe: heroe.id, opcion: valido.opcion.id, casillas: recorrido.length - 1, acciones }
-  return {
-    ...conAcciones,
-    turno: { ...turno, movimientos: { ...turno.movimientos, [heroe.escuadra]: [...(turno.movimientos?.[heroe.escuadra] ?? []), hecho] } },
-  }
+  const hecho = { opcion: valido.opcion.id, casillas: costeDe(recorrido, config.medicionMovimiento), acciones }
+  const movido = conHeroe(m, heroe.id, (h) => ({
+    ...h,
+    estancia: destino.estancia.id,
+    casilla: destino.casilla,
+    turnos: conTurno(h.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
+  }))
+  return acciones.reduce((a, accion) => apuntarAccion(a, config, escuadra, accion, heroe.id), movido)
 }

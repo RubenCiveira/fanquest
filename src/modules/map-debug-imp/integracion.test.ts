@@ -1,28 +1,39 @@
 import { describe, expect, it } from 'vitest'
-import { extenderRecorrido, GestorMapa, type ProveedorMapa } from '../gamemap'
+import { GestorMapa, ruta, type ProveedorMapa } from '../gamemap'
 import { escuadrasDePrueba } from './escuadras'
+import { PuertasDePrueba } from './modelo/puerta'
 
-/** El banco de pruebas de punta a punta: escuadras de prueba y una sala de 6 × 4 hacia abajo con una salida */
-async function conSala() {
+/** Proveedor del banco de pruebas, sin diálogos: escuadras de prueba y siempre una sala de 6 × 4 hacia abajo con una salida */
+function proveedorDePrueba() {
+  const puertas = new PuertasDePrueba()
   const proveedor: ProveedorMapa = {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' },
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal' },
     confirmar: async () => true,
     describirEstancia: async () => ({ tipo: 'sala', tamano: { columnas: 6, filas: 4 }, orientacion: 'abajo', salidas: 1, elementos: [] }),
-    ...escuadrasDePrueba,
+    ...escuadrasDePrueba(puertas),
+    estanciaCreada: (estancia) => puertas.asociar(estancia),
   }
+  return proveedor
+}
+
+/** El banco de pruebas de punta a punta: un gestor con la estancia inicial */
+async function conSala(proveedor = proveedorDePrueba()) {
   const gestor = new GestorMapa(proveedor)
   await gestor.nuevaEstancia()
   return gestor
 }
 
+/** Estado del bárbaro en el mapa */
+const barbaroDe = (gestor: GestorMapa) => gestor.mapa.escuadras?.[0].heroes.find((h) => h.id === 'barbaro')
+
 /** Lleva al bárbaro a la casilla de la salida de la sala inicial */
 async function barbaroEnLaSalida(gestor: GestorMapa) {
   const sala = gestor.mapa.estancias[0]
-  const barbaro = sala.elementos.find((el) => el.id === 'barbaro')
+  const casilla = barbaroDe(gestor)?.casilla
   const salida = sala.puertas.find((p) => p.tipo === 'salida')
-  if (barbaro?.tipo !== 'heroe' || !barbaro.posicion || !salida) throw new Error('La sala de prueba no tiene bárbaro o salida')
+  if (!casilla || !salida) throw new Error('La sala de prueba no tiene bárbaro o salida')
   // la sala inicial está en 0,0: sus casillas son las del mapa
-  await gestor.moverHeroe('barbaro', extenderRecorrido(gestor.mapa, barbaro, [barbaro.posicion], salida.casilla))
+  await gestor.moverHeroe('barbaro', ruta(gestor.mapa, casilla, salida.casilla) ?? [])
   return { estancia: sala.id, casilla: salida.casilla }
 }
 
@@ -65,10 +76,19 @@ describe('banco de pruebas', () => {
     // abrir la puerta completa la activación del bárbaro: termina el turno para que pueda volver a moverse
     await gestor.ejecutarAccion('escuadra-enano', 'terminar-turno')
     gestor.terminarTurno()
-    const barbaro = gestor.mapa.estancias[0].elementos.find((el) => el.id === 'barbaro')
-    if (barbaro?.tipo !== 'heroe') throw new Error('El bárbaro no está en la sala inicial')
     const dentro = { x: casilla.x, y: casilla.y + 2 }
-    expect(await gestor.moverHeroe('barbaro', extenderRecorrido(gestor.mapa, barbaro, [casilla], dentro))).toBeUndefined()
-    expect(gestor.mapa.estancias[1].elementos.map((el) => el.id)).toContain('barbaro')
+    expect(await gestor.moverHeroe('barbaro', ruta(gestor.mapa, casilla, dentro) ?? [])).toBeUndefined()
+    expect(barbaroDe(gestor)?.estancia).toBe(gestor.mapa.estancias[1].id)
+  })
+
+  it('la puerta se abre en el gestor que la usa, aunque otro gestor haya avisado de las mismas estancias', async () => {
+    const proveedor = proveedorDePrueba()
+    const gestor = await conSala(proveedor)
+    // como StrictMode al crear dos veces la página: otro gestor con el mismo mapa y proveedor avisa de sus estancias
+    const otro = new GestorMapa(proveedor, gestor.mapa)
+    gestor.mapa.estancias.forEach((e) => proveedor.estanciaCreada(e, otro))
+    await barbaroEnLaSalida(gestor)
+    await gestor.ejecutarAccion('escuadra-barbaro', 'abrir-puerta', 'barbaro')
+    expect([gestor.mapa.estancias.length, otro.mapa.estancias.length]).toEqual([2, 1])
   })
 })

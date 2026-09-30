@@ -1,29 +1,20 @@
-import type { Accion } from './accion'
 import type { AccionEjecutada } from './accionEjecutada'
-import type { ModoAgresivoSigiloso } from './activacion'
-import type { EstadoEscuadra } from './estadoEscuadra'
+import type { Activacion, ModoActivacion } from './activacion'
 import type { Heroe } from './heroe'
-import type { HeroeEnMapa } from './heroeEnMapa'
-import type { MapaEnJuego } from './mapaEnJuego'
-import type { ResultadoActivacion } from './resultadoActivacion'
 
-/** Grupo de héroes que da el proyecto; cada escuadra informa de quiénes la componen */
-export interface Escuadra {
+/** Lo que ha hecho una escuadra en un turno: su activación (si se ha activado) y las acciones de todos sus héroes */
+export type TurnoDeEscuadra = { numero: number; activacion?: Activacion; acciones: AccionEjecutada[] }
+
+/**
+ * Estado de una escuadra en el mapa, que guarda el gestor: sus héroes, el que
+ * está actuando (`activo`), el último modo en que se activó (o el de partida)
+ * y sus turnos
+ */
+export type Escuadra = {
   id: string
   nombre: string
-  heroes(): Promise<Heroe[]>
-  /** Modo en que empieza, si la configuración permite modo agresivo o sigiloso */
-  modoActivacion(): Promise<ModoAgresivoSigiloso>
-  /**
-   * Acciones que puede hacer ahora, según su estado y el mapa; `heroe`, el
-   * suyo cuya ficha se ha pulsado para abrir el menú, con su posición. Pueden
-   * ser comandos (`Comando`) con su código ya empaquetado. El gestor añade
-   * detrás las suyas (cambiar de modo, terminar turno)
-   */
-  acciones(estado: EstadoEscuadra, mapa: MapaEnJuego, heroe?: HeroeEnMapa): Promise<Accion[]>
-  /**
-   * Tras cada acción o movimiento, con las acciones que lleva ejecutadas en el
-   * turno: si responde `completo`, el gestor termina su turno
-   */
-  activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
+  heroes: Heroe[]
+  activo?: string
+  modo?: ModoActivacion
+  turnos: TurnoDeEscuadra[]
 }

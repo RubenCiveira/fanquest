@@ -16,35 +16,24 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 
 ## Estructura
 
-- `modelo/`: definiciones del dominio, una por fichero, sin lógica
-  (`Casilla`, `Medida`, `Direccion`, `Puerta`, `Elemento`, `Estancia`,
-  `DescripcionEstancia`, `Mapa`, `Heroe`, `Escuadra`, `Configuracion`,
-  `Activacion`, `Turno`).
+- `modelo/`: definiciones del dominio, una por fichero, sin lógica. El
+  **estado** que guarda el gestor (`Mapa`, `Estancia`, `Escuadra`, `Heroe`,
+  sus turnos, `Puerta`, `Objeto`…) y las **clases** que implementa el
+  proyecto para decir qué puede hacer cada uno (`ClaseDeEscuadra`,
+  `ClaseDeHeroe`).
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
-  `elementos.ts`, `construccion.ts`, `activaciones.ts`), cada una con sus
-  tests.
+  `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
+  `acciones.ts`, `movimiento.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
-  (`ProveedorConfiguracion`, `ProveedorEstancias` y `ProveedorHeroes`): el gestor recibe un solo objeto
-  que los cumple.
+  (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias` y
+  `ProveedorHeroes`): el gestor recibe un solo objeto que los cumple.
 
 ## Uso
 
+Ver el ejemplo completo en [PROVEEDORES.md](./PROVEEDORES.md#ejemplo-completo).
+
 ```ts
-const proveedor: ProveedorMapa = {
-  configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' },
-  // mapa: el ya construido; en la primera estancia, undefined
-  describirEstancia: async (mapa) => ({
-    tipo: 'sala',
-    tamano: { columnas: 6, filas: 4 },
-    orientacion: 'abajo',
-    salidas: 2,
-    elementos: [{ tipo: 'objeto', nombre: 'Mesa', columnas: 3, filas: 2 }],
-  }),
-  listarEscuadras: async () => [
-    { id: 'grupo', nombre: 'Grupo', heroes: async () => [{ id: 'barbaro', nombre: 'Bárbaro', imagenVtt: url }] },
-  ],
-}
 const gestor = new GestorMapa(proveedor, mapaGuardado)
 gestor.suscribir((mapa) => guardar(mapa))
 await gestor.nuevaEstancia()
@@ -55,53 +44,44 @@ await gestor.nuevaEstancia()
 - **Estancia**: mapa de `filas` × `columnas` casillas de un tipo (`exterior`,
   `sala` o `pasillo`). Puede contener otras estancias sin salirse ni solaparse
   entre ellas: un jardín (exterior) con las cuatro salas de una casa. Cada
-  casilla es de la estancia más interior que la cubre (`estanciaEn`).
+  casilla es de la estancia más interior que la cubre (`estanciaEn`). En el
+  mapa, cada estancia tiene su sitio en casillas comunes (`posicion`).
 - **Casilla**: `{ x, y }`, columna y fila desde 0 en la esquina superior
   izquierda de su estancia.
-- **Orientación**: hacia dónde se recorre una estancia. Se entra por el muro
-  contrario (una puerta de entrada en su centro) y se sale por el de la
-  orientación (las salidas repartidas a lo largo del muro).
-- **Elemento**: objeto que ocupa `filas` × `columnas` casillas (más adelante,
-  monstruos). Al crear la estancia, el gestor lo pone en el sitio libre más
-  cercano al centro, sin tapar puertas ni pisar otros elementos; si no cabe,
-  queda en la **zona de espera** (sin `posicion`) para que el jugador lo
-  coloque a mano (`GestorMapa.colocarElemento`).
-- **Escuadra y héroe**: el proyecto da las escuadras (`ProveedorHeroes`) y
-  cada una, sus héroes (`id`, `nombre` e `imagenVtt`). Al crear la estancia
-  inicial, el gestor pone una ficha de una casilla por héroe (`FichaHeroe`,
-  con el id de su escuadra) como cualquier otro elemento y guarda en el mapa
-  el id y el nombre de cada escuadra.
-- **Configuración**: la da el proyecto. `ordenActivaciones` dice si héroes y
-  enemigos se van turnando (`alternas`) o se activan primero todos los héroes
-  (`heroes-primero`); `modosActivacion`, si cada héroe elige modo agresivo o
-  sigiloso al activarse o todas las activaciones son normales.
+- **Orientación**: hacia dónde se recorre una estancia: se sale por ese muro
+  (las salidas repartidas a lo largo de él) y se entra por el contrario o, si
+  se abre desde una puerta, por el muro que encaja con ella.
+- **Puerta**: va en una arista del muro exterior, no dentro de una casilla:
+  la casilla del borde y el `lado` por el que se sale de ella. Al abrirla, la
+  estancia de detrás se pega a ella y las dos quedan abiertas.
+- **Objeto** (elemento): ocupa `filas` × `columnas` casillas de una estancia.
+  Al crearla, el gestor lo pone en el sitio libre más cercano al centro, sin
+  tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**
+  (sin `posicion`) para colocarlo a mano.
+- **Escuadra y héroe** (estado): el gestor guarda cada escuadra con sus
+  héroes, su héroe activo, su último modo y sus turnos (activación y
+  acciones); y cada héroe con su posición (estancia y casilla; sin casilla, en
+  la zona de espera) y sus turnos (acciones y movimientos).
+- **Clase de escuadra y de héroe**: las da el proyecto (`ProveedorHeroes`) y
+  dicen qué puede hacer cada uno: sus héroes, su modo de partida y cuándo
+  termina su activación (`ClaseDeEscuadra`); cómo se mueve y qué acciones
+  tiene donde está (`ClaseDeHeroe`).
+- **Configuración**: la da el proyecto. `ordenActivaciones` (alternas o todos
+  los héroes primero), `modosActivacion` (agresivo o sigiloso, o normal) y
+  `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
+  redondeando hacia arriba).
 - **Turno y activación**: la activación es de la escuadra y vale para todos
-  sus héroes. El mapa guarda el turno en curso y, por escuadra, su activación
-  (modo y si ha terminado) y su último modo agresivo o sigiloso de turnos
-  anteriores. Una escuadra se activa una vez por turno y no se activa otra
+  sus héroes. Una escuadra se activa una vez por turno y no se activa otra
   hasta que termine la que está en curso; el turno solo termina cuando todas
   han completado su activación.
-- **Modo de partida**: con modo agresivo o sigiloso, al crear la estancia
-  inicial el gestor pregunta a cada escuadra sin modo cuál es el suyo
-  (`Escuadra.modoActivacion`).
-- **Acciones**: el gestor pregunta a cada escuadra qué acciones tiene
-  (`Escuadra.acciones`), pasándole su `EstadoEscuadra`: turno, posición de sus
-  héroes, modo y acciones ya hechas en el turno. Añade las suyas: «Cambiar a
-  …» (con modo agresivo o sigiloso) y «Terminar turno». La primera acción de
-  la escuadra en el turno empieza su activación; «Terminar turno» la termina.
-- **Movimiento**: al arrastrar una ficha, el gestor pregunta al héroe sus
-  `OpcionesMovimiento` (movimiento base y variaciones, cada una en tramos que
+- **Acciones**: al pulsar un héroe, el gestor pregunta a su clase qué puede
+  hacer donde está; la clase mira los objetos de su casilla y lo que ya ha
+  hecho, y compone sus comandos (acciones con su código en `exec`). El gestor
+  añade «Cambiar a …» y «Terminar turno».
+- **Movimiento**: al arrastrar una ficha, el gestor pregunta a la clase del
+  héroe sus `OpcionesMovimiento` (movimiento base y variaciones, en tramos que
   pueden consumir acciones adicionales). El recorrido vale con la primera
-  opción que lo permite (por todo el mapa, cruzando puertas abiertas); si
-  consume una acción adicional, antes se pide
-  confirmación. El movimiento y sus acciones quedan apuntados en el turno de
-  la escuadra (ver `PROVEEDORES.md`).
-- **Comandos**: al pulsar una ficha, la escuadra recibe el héroe y el mapa
-  (`MapaEnJuego`) y puede dar comandos, acciones con su código en `exec`:
-  p. ej., abrir la puerta que pisa el héroe, que pide una estancia nueva al
-  proveedor, la pega a la puerta (su entrada enfrente) y deja las dos
-  puertas abiertas una hacia la otra.
+  opción que lo permite, por todo el mapa cruzando puertas abiertas; si
+  consume una acción adicional, antes se pide confirmación.
 - **Descripción de estancia**: lo que el proyecto devuelve al pedirle una
-  estancia nueva: tipo, tamaño, orientación, número de salidas y elementos.
-- **Puerta**: va en una arista del muro exterior, no dentro de una casilla:
-  la casilla del borde y el `lado` por el que se sale de ella.
+  estancia nueva: tipo, tamaño, orientación, número de salidas y objetos.
