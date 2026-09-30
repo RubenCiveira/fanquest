@@ -1,3 +1,4 @@
+import type { DescripcionPersonajeNoJugador } from './descripcionPersonaje'
 import type { Direccion } from './direccion'
 import type { Objeto } from './elemento'
 import type { TipoEstancia } from './estancia'
@@ -16,4 +17,6 @@ export type DescripcionEstancia = {
   elementos: DescripcionElemento[]
   /** Zonas de terreno difícil o impasable, en casillas de la estancia */
   terrenos?: Terreno[]
+  /** Personajes no jugadores (enemigos…) que aparecen en ella, y dónde */
+  personajesNoJugadores?: DescripcionPersonajeNoJugador[]
 }

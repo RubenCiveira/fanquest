@@ -1,20 +1,25 @@
 import { describe, expect, it } from 'vitest'
 import { crearEstancia } from './estancias'
 import type { Casilla } from './modelo/casilla'
+import type { Postura } from './modelo/alianza'
 import type { Objeto } from './modelo/elemento'
 import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import { turnoDePersonaje } from './activaciones'
-import { accionesConsumidas, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
+import { accionesConsumidas, casillasDeEnemigos, conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
 import { orientar } from './orientacion'
+import type { Jugadores } from './modelo/jugadores'
+
+/** Sin reparto de jugadores: nadie tiene turno ni enemigos */
+const SIN_JUGADORES: Jugadores = { alianzas: [], jugadores: [] }
 
 const barbaro: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] }
 const mesa: Objeto = { id: 'mesa', nombre: 'Mesa', tipo: 'objeto', columnas: 1, filas: 2, posicion: { x: 1, y: 0 } }
 /** Sala de 12 × 4 con el bárbaro en 0,0, sus objetos y otros personajes */
 const sala = (objetos: Objeto[] = [], otros: Personaje[] = []): Mapa => ({
   estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 12, filas: 4 }), elementos: objetos }],
-  escuadras: [{ id: 'rojos', nombre: 'Rojos', personajes: [barbaro, ...otros], turnos: [] }],
+  escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [barbaro, ...otros], turnos: [] }],
 })
 
 const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
@@ -127,7 +132,7 @@ describe('cruzar puertas', () => {
         { ...arriba, puertas: arriba.puertas.map((p) => (p.tipo === 'salida' ? { ...p, abierta } : p)) },
         { ...abajo, posicion: { x: 0, y: 3 } },
       ],
-      escuadras: [{ id: 'rojos', nombre: 'Rojos', personajes: [enLaSala], turnos: [] }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [enLaSala], turnos: [] }],
     }
   }
   const porLaPuerta = [
@@ -161,7 +166,7 @@ describe('cruzar puertas', () => {
     expect(ruta(salaConSalida(true), { x: 1, y: 1 }, { x: 0, y: 4 })?.slice(0, 3)).toEqual(porLaPuerta.slice(0, 3))
   })
 
-  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } as const
+  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: SIN_JUGADORES } as const
   const moverPorLaPuerta = () => moverPersonaje(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
 
   it('al mover a la otra estancia, el personaje pasa a ella con su casilla en ella', () => {
@@ -233,8 +238,58 @@ describe('medición de los movimientos', () => {
   })
 
   it('el movimiento apunta lo que cuesta según la medición', () => {
-    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal' } as const
+    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', jugadores: SIN_JUGADORES } as const
     const m = moverPersonaje(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
     expect(gastadoPor(m, m.escuadras?.[0].personajes[0] ?? barbaro).casillas).toBe(5)
+  })
+})
+
+describe('enemigos', () => {
+  /** El bárbaro (rojos, de Ana en los Héroes) y un orco de la Oscuridad en los Monstruos, con esa postura hacia los Héroes */
+  const orco = (casilla: Casilla, haciaHeroes: Postura = 'hostil'): Mapa => ({
+    ...sala(),
+    personajesNoJugadores: [{ id: 'orco', nombre: 'Orco', estancia: 'sala', casilla, turnos: [], jugador: 'oscuridad' }],
+    jugadores: {
+      alianzas: [
+        { id: 'heroes', nombre: 'Héroes' },
+        { id: 'monstruos', nombre: 'Monstruos', posturas: { heroes: haciaHeroes } },
+      ],
+      jugadores: [
+        { id: 'j1', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' },
+        { id: 'oscuridad', nombre: 'La Oscuridad', tipo: 'ia', alianza: 'monstruos' },
+      ],
+    },
+  })
+
+  it('sus casillas son las del mapa', () => {
+    expect(casillasDeEnemigos({ ...orco({ x: 1, y: 1 }), estancias: [{ ...sala().estancias[0], posicion: { x: 10, y: 5 } }] }, 'barbaro')).toEqual([{ x: 11, y: 6 }])
+  })
+
+  it('los de una alianza neutral no son enemigos', () => {
+    expect(casillasDeEnemigos(orco({ x: 1, y: 1 }, 'neutral'), 'barbaro')).toEqual([])
+  })
+
+  it('la postura va en un sentido: los Héroes no son enemigos de los Monstruos si no son hostiles hacia ellos', () => {
+    expect(casillasDeEnemigos(orco({ x: 1, y: 1 }), 'orco')).toEqual([])
+  })
+
+  it('no se puede pasar por encima de un enemigo, aunque los personajes no estorben', () => {
+    const conOrco = conPersonajes(orco({ x: 1, y: 0 }), 'barbaro', 'normal')
+    expect(ruta(conOrco, { x: 0, y: 0 }, { x: 2, y: 0 })).toHaveLength(5)
+  })
+
+  it('por encima de uno que no es enemigo se pasa según la regla de los personajes', () => {
+    const conOrco = conPersonajes(orco({ x: 1, y: 0 }, 'neutral'), 'barbaro', 'normal')
+    expect(ruta(conOrco, { x: 0, y: 0 }, { x: 2, y: 0 })).toHaveLength(3)
+  })
+
+  it('no se termina encima de un enemigo', () => {
+    const m = orco({ x: 0, y: 2 })
+    expect(evaluarRecorrido(m, barbaro, recto(2), opciones, { enemigos: casillasDeEnemigos(m, 'barbaro') })).toEqual({ motivo: 'No se puede terminar encima de Orco' })
+  })
+
+  it('para acabar junto a un enemigo sin alejarse, hay que cargar', () => {
+    const m = orco({ x: 1, y: 3 })
+    expect(evaluarRecorrido(m, barbaro, recto(3), opciones, { enemigos: casillasDeEnemigos(m, 'barbaro') })).toMatchObject({ opcion: { id: 'cargar' } })
   })
 })

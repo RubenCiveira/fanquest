@@ -1,5 +1,8 @@
 import type { Estancia } from './estancia'
+import type { DescripcionPersonajeNoJugador } from './descripcionPersonaje'
+import type { Jugadores } from './jugadores'
 import type { Mapa } from './mapa'
+import type { PersonajeNoJugador } from './personajeNoJugador'
 import type { Puerta } from './puerta'
 import type { Ubicacion } from './ubicacion'
 
@@ -15,4 +18,16 @@ export interface MapaEnJuego {
    * el proveedor no da la estancia (la puerta sigue cerrada)
    */
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia>
+  /**
+   * Añade a la estancia esos personajes no jugadores, cada uno donde diga su
+   * aparición (en una casilla libre que no sea impasable; si no hay sitio, en la
+   * zona de espera). Falla si la estancia no existe o un id ya está en el mapa
+   */
+  anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[]
+  /**
+   * Cambia las alianzas, los jugadores o sus posturas en mitad de la partida
+   * (un evento vuelve enemigos a unos acólitos…). Si el reparto no vale, no
+   * cambia nada y devuelve el motivo
+   */
+  cambiarJugadores(jugadores: Jugadores): string | undefined
 }

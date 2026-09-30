@@ -11,7 +11,7 @@ export const ETIQUETA_ORIENTACION: Record<Direccion, string> = {
 /** Mapa de prueba con el id con que se guarda */
 export type MapaGuardado = { id: string; mapa: Mapa }
 
-const CLAVE = 'fetenquest.map-debug.v4'
+const CLAVE = 'fetenquest.map-debug.v5'
 
 function guardados(): MapaGuardado[] {
   try {

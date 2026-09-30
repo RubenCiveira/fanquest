@@ -8,14 +8,14 @@ import type { Mapa } from './modelo/mapa'
 const mapa: Mapa = {
   estancias: [crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 3 })],
   escuadras: [
-    { id: 'rojos', nombre: 'Rojos', modo: 'agresivo', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }], turnos: [] },
-    { id: 'azules', nombre: 'Azules', modo: 'sigiloso', personajes: [{ id: 'enano', nombre: 'Enano', estancia: 'sala', turnos: [] }], turnos: [] },
+    { id: 'rojos', nombre: 'Rojos', jugador: 'j1', modo: 'agresivo', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }], turnos: [] },
+    { id: 'azules', nombre: 'Azules', jugador: 'j1', modo: 'sigiloso', personajes: [{ id: 'enano', nombre: 'Enano', estancia: 'sala', turnos: [] }], turnos: [] },
   ],
   turno: 2,
 }
-const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' }
-const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' }
-const rojos = (m: Mapa) => m.escuadras?.find((e) => e.id === 'rojos') ?? { id: '', nombre: '', personajes: [], turnos: [] }
+const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: { alianzas: [], jugadores: [] } }
+const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: { alianzas: [], jugadores: [] } }
+const rojos = (m: Mapa) => m.escuadras?.find((e) => e.id === 'rojos') ?? { id: '', nombre: '', jugador: '', personajes: [], turnos: [] }
 
 describe('acciones de las escuadras', () => {
   it('con modos, el gestor ofrece cambiar al otro modo y terminar turno', () => {
@@ -54,11 +54,11 @@ describe('acciones de las escuadras', () => {
   })
 
   it('una escuadra que ha terminado su turno no puede actuar', () => {
-    expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', TERMINAR_TURNO.id), 'rojos')).toBe('Rojos ya ha terminado su turno')
+    expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', TERMINAR_TURNO.id), conModos, 'rojos')).toBe('Rojos ya ha terminado su turno')
   })
 
   it('mientras una escuadra se activa, las demás no pueden actuar', () => {
-    expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', 'gritar'), 'azules')).toBe('No se puede activar hasta terminar la activación de Rojos')
+    expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', 'gritar'), conModos, 'azules')).toBe('No se puede activar hasta terminar la activación de Rojos')
   })
 
   it('en el turno siguiente la escuadra recuerda el modo al que cambió y empieza sin acciones', () => {
@@ -69,5 +69,42 @@ describe('acciones de las escuadras', () => {
     ].reduce((m, [id, accion]) => ejecutarAccion(m, conModos, id, accion), mapa)
     const siguiente = terminarTurno(hecho)
     expect([rojos(siguiente).modo, turnoDeEscuadra(rojos(siguiente), numeroDeTurno(siguiente)).acciones]).toEqual(['sigiloso', []])
+  })
+})
+
+describe('quién puede actuar', () => {
+  /** Los rojos (el bárbaro y el elfo) de Ana y los azules de Bruno, en alianzas distintas */
+  const partida: Mapa = {
+    ...mapa,
+    escuadras: [
+      { id: 'rojos', nombre: 'Rojos', jugador: 'ana', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', turnos: [] }, { id: 'elfo', nombre: 'Elfo', estancia: 'sala', turnos: [] }], turnos: [] },
+      { id: 'azules', nombre: 'Azules', jugador: 'bruno', personajes: [{ id: 'enano', nombre: 'Enano', estancia: 'sala', turnos: [] }], turnos: [] },
+    ],
+    jugadores: {
+      alianzas: [
+        { id: 'heroes', nombre: 'Héroes' },
+        { id: 'enanos', nombre: 'Enanos' },
+      ],
+      jugadores: [
+        { id: 'ana', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' },
+        { id: 'bruno', nombre: 'Bruno', tipo: 'humano', alianza: 'enanos' },
+      ],
+    },
+  }
+
+  it('solo actúan las escuadras del jugador al que le toca', () => {
+    expect(motivoParaNoActuar(partida, conModos, 'azules', 'enano')).toBe('Le toca a Ana')
+  })
+
+  it('en una activación solo actúa una miniatura', () => {
+    expect(motivoParaNoActuar(ejecutarAccion(partida, conModos, 'rojos', 'gritar', 'barbaro'), conModos, 'rojos', 'elfo')).toBe('En esta activación ya actúa Bárbaro')
+  })
+
+  it('la que actúa puede seguir actuando', () => {
+    expect(motivoParaNoActuar(ejecutarAccion(partida, conModos, 'rojos', 'gritar', 'barbaro'), conModos, 'rojos', 'barbaro')).toBeUndefined()
+  })
+
+  it('al terminar la activación, le toca al siguiente', () => {
+    expect(motivoParaNoActuar(ejecutarAccion(partida, conModos, 'rojos', TERMINAR_TURNO.id), conModos, 'azules', 'enano')).toBeUndefined()
   })
 })

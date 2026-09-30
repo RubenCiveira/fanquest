@@ -8,13 +8,17 @@ import type { Terreno } from './modelo/terreno'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import { conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
 import { factorDeTerreno, terrenoEn } from './terrenos'
+import type { Jugadores } from './modelo/jugadores'
+
+/** Sin reparto de jugadores: nadie tiene turno ni enemigos */
+const SIN_JUGADORES: Jugadores = { alianzas: [], jugadores: [] }
 
 const barro: Terreno = { tipo: 'dificil', posicion: { x: 1, y: 0 }, columnas: 1, filas: 3 }
 const zarzas: Terreno = { tipo: 'muy-dificil', posicion: { x: 3, y: 0 }, columnas: 1, filas: 1 }
 const muro: Terreno = { tipo: 'impasable', posicion: { x: 2, y: 1 }, columnas: 1, filas: 2 }
 const estancia = { ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 6, filas: 3 }), terrenos: [barro, zarzas, muro] }
 const barbaro: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] }
-const mapa: Mapa = { estancias: [estancia], escuadras: [{ id: 'rojos', nombre: 'Rojos', personajes: [barbaro], turnos: [] }] }
+const mapa: Mapa = { estancias: [estancia], escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [barbaro], turnos: [] }] }
 const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
 const seis: OpcionesMovimiento = { base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 6 }] }, variaciones: [] }
 /** Por la fila de arriba de 0,0 a x,0 */
@@ -90,7 +94,7 @@ describe('casillas con personajes', () => {
   const pasillo = crearEstancia({ id: 'pasillo', tipo: 'pasillo', columnas: 5, filas: 1 })
   const enano: Personaje = { ...barbaro, id: 'enano', nombre: 'Enano', estancia: 'pasillo', casilla: { x: 2, y: 0 } }
   const enElPasillo: Personaje = { ...barbaro, estancia: 'pasillo' }
-  const conEnano: Mapa = { estancias: [pasillo], escuadras: [{ id: 'grupo', nombre: 'Grupo', personajes: [enElPasillo, enano], turnos: [] }] }
+  const conEnano: Mapa = { estancias: [pasillo], escuadras: [{ id: 'grupo', nombre: 'Grupo', jugador: 'j1', personajes: [enElPasillo, enano], turnos: [] }] }
   const hastaElFondo = porArriba(4)
 
   it('con personajes normales, el mapa no cambia', () => {
@@ -115,7 +119,7 @@ describe('casillas con personajes', () => {
   })
 
   it('al moverse, lo gastado cuenta el paso por encima del otro personaje', () => {
-    const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'dificil' } as const
+    const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'dificil', jugadores: SIN_JUGADORES } as const
     const movido = moverPersonaje(conEnano, config, 'grupo', enElPasillo, hastaElFondo, { opcion: seis.base, tramos: [0, 0, 0, 0] })
     expect(gastadoPor(movido, movido.escuadras?.[0].personajes[0] ?? enElPasillo).casillas).toBe(5)
   })

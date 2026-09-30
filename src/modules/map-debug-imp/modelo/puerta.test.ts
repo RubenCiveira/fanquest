@@ -5,7 +5,7 @@ import { AbrirPuerta } from './abrirPuerta'
 import { PuertaDePrueba, PuertasDePrueba } from './puerta'
 
 const donde = { estancia: 'estancia-1', casilla: { x: 2, y: 3 } }
-const mapaCon = (puerta?: Puerta): MapaEnJuego => ({ mapa: { estancias: [] }, puertaEn: () => puerta, abrirPuerta: vi.fn() })
+const mapaCon = (puerta?: Puerta): MapaEnJuego => ({ mapa: { estancias: [] }, puertaEn: () => puerta, abrirPuerta: vi.fn(), anadirPersonajes: vi.fn(), cambiarJugadores: vi.fn() })
 const salida: Puerta = { id: 'salida-1', tipo: 'salida', casilla: donde.casilla, lado: 'abajo' }
 
 describe('puertas de prueba', () => {

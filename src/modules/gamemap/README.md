@@ -23,11 +23,12 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
   `ClaseDePersonaje`).
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
-  `acciones.ts`, `movimiento.ts`), cada una con sus tests.
+  `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
+  `jugadores.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
-  (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias` y
-  `ProveedorPersonajes`): el gestor recibe un solo objeto que los cumple.
+  (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
+  `ProveedorPersonajes` y `ProveedorTurnos`): el gestor recibe un solo objeto que los cumple.
 
 ## Uso
 
@@ -38,6 +39,11 @@ const gestor = new GestorMapa(proveedor, mapaGuardado)
 gestor.suscribir((mapa) => guardar(mapa))
 await gestor.nuevaEstancia()
 ```
+
+El gestor admite un tercer argumento, `azar` (una función que da números
+entre 0 y 1, `Math.random` por defecto), con el que reparte los personajes
+que aparecen sin casilla: en los tests se fija para que salgan siempre en el
+mismo sitio.
 
 ## Dominio
 
@@ -65,19 +71,34 @@ await gestor.nuevaEstancia()
   personajes, su personaje activo, su último modo y sus turnos (activación y
   acciones); y cada personaje con su posición (estancia y casilla; sin casilla, en
   la zona de espera) y sus turnos (acciones y movimientos).
+- **Jugador y alianza**: cada escuadra y cada personaje no jugador es de un
+  jugador (humano o IA) y cada jugador, de una alianza. La postura de una
+  alianza hacia otra (aliada, neutral u hostil) dice si sus personajes son
+  enemigos de los de la otra. El reparto viene de la configuración, se guarda
+  en el mapa y puede cambiar en mitad de la partida (`cambiarJugadores`).
+- **Personaje no jugador**: un personaje (id, nombre e imagen, estancia y
+  casilla) que no está en ninguna escuadra, de un jugador (enemigos,
+  acólitos…). Aparece al crear una estancia o con `anadirPersonajes`: en su
+  casilla o al azar en su zona o en la estancia, nunca en terreno impasable ni
+  encima de nada.
+- **Enemigo**: personaje de una alianza hostil hacia la del que se mueve. Su
+  casilla es impasable y cuenta para alejarse o cargar.
 - **Clase de escuadra y de personaje**: las da el proyecto (`ProveedorPersonajes`) y
   dicen qué puede hacer cada uno: sus personajes, su modo de partida y cuándo
   termina su activación (`ClaseDeEscuadra`); cómo se mueve y qué acciones
   tiene donde está (`ClaseDePersonaje`).
-- **Configuración**: la da el proyecto. `ordenActivaciones` (alternas o todos
-  los personajes primero), `modosActivacion` (agresivo o sigiloso, o normal) y
+- **Configuración**: la da el proyecto. `jugadores` (el reparto inicial),
+  `ordenActivaciones` (alternas entre alianzas o alianza a alianza), `modosActivacion` (agresivo o sigiloso, o normal) y
   `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
   redondeando hacia arriba) y `terrenoPersonajes` (cómo cuenta la casilla de
   otro personaje: normal, difícil, muy difícil o impasable).
-- **Turno y activación**: la activación es de la escuadra y vale para todos
-  sus personajes. Una escuadra se activa una vez por turno y no se activa otra
-  hasta que termine la que está en curso; el turno solo termina cuando todas
-  han completado su activación.
+- **Turno y activación**: la activación es de la escuadra y en ella actúa
+  una sola de sus miniaturas. Una escuadra se activa una vez por turno y no
+  se activa otra hasta que termine la que está en curso; solo se activan las
+  del jugador al que le toca (`jugadorEnTurno`), que rota entre alianzas y
+  entre los jugadores de cada una según `ordenActivaciones`. Al terminar cada
+  activación, el gestor avisa al proveedor de a quién le toca (`turnoDe`). El
+  turno solo termina cuando todas han completado su activación.
 - **Acciones**: al pulsar un personaje, el gestor pregunta a su clase qué puede
   hacer donde está; la clase mira los objetos de su casilla y lo que ya ha
   hecho, y compone sus comandos (acciones con su código en `exec`). El gestor

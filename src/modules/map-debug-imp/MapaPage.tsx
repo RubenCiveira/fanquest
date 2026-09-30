@@ -7,7 +7,8 @@ import {
   escuadrasDe,
   estanciaEn,
   GestorMapa,
-  motivoParaNoActuar,
+  jugadoresDe,
+  jugadorEnTurno,
   numeroDeTurno,
   type Accion,
   type Casilla,
@@ -16,6 +17,7 @@ import {
 } from '../gamemap'
 import { FormularioConfiguracion } from './FormularioConfiguracion'
 import { ETIQUETA_ORIENTACION, guardarMapa, obtenerMapa } from './mapas'
+import { PanelJugadores } from './PanelJugadores'
 import { esCancelacion, useProveedorDebug } from './useProveedorDebug'
 import { VistaMapa } from './VistaMapa'
 import './mapDebug.css'
@@ -110,6 +112,8 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   }
 
   const numero = numeroDeTurno(mapa)
+  const enTurno = jugadorEnTurno(mapa, configuracion)
+  const nombreDeJugador = (jugador: string) => jugadoresDe(mapa).jugadores.find((j) => j.id === jugador)?.nombre ?? jugador
 
   function aEspera() {
     if (!seleccion) return
@@ -124,18 +128,21 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         Nueva estancia
       </button>
       <FormularioConfiguracion configuracion={configuracion} onCambiar={cambiarConfiguracion} />
+      <PanelJugadores jugadores={jugadoresDe(mapa)} enTurno={enTurno} onCambiar={(jugadores) => setNota(gestor.cambiarJugadores(jugadores))} />
       <div className="map-debug-turno">
         <strong>Turno {numero}</strong>
+        <span className="nota">{enTurno ? `Le toca a ${enTurno.nombre}.` : 'Nadie tiene nada que activar: termina el turno.'}</span>
         <button type="button" className="button secondary" onClick={() => setNota(gestor.terminarTurno())}>
           Terminar turno
         </button>
       </div>
       <ul className="map-debug-escuadras">
-        {escuadrasDe(mapa).map(({ id: escuadra, nombre, modo, activo, personajes }) => {
+        {escuadrasDe(mapa).map(({ id: escuadra, nombre, jugador, modo, activo, personajes }) => {
           const activacion = activacionDe(mapa, escuadra)
           return (
             <li key={escuadra} className="map-debug-turno">
               <strong>{nombre}</strong>
+              <span className="nota">de {nombreDeJugador(jugador)}.</span>
               {activacion && !activacion.terminada && (
                 <span className="nota">
                   Activándose en modo {activacion.modo}
@@ -164,6 +171,8 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         onMover={async (personaje, recorrido) => setNota(await gestor.moverPersonaje(personaje, recorrido))}
         medicion={configuracion.medicionMovimiento}
         terrenoPersonajes={configuracion.terrenoPersonajes}
+        motivoParaNoActuar={(personaje) => gestor.motivoParaNoActuar(personaje)}
+        jugadorEnTurno={enTurno}
       />
 
       {mapa.estancias.map((e) => {
@@ -199,7 +208,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
               )}
             </div>
             {elegido && !personajeEnMapa && <p className="nota">Pulsa la casilla donde quieres su esquina superior izquierda.</p>}
-            {elegido && escuadraElegida && motivoParaNoActuar(mapa, escuadraElegida) && <p className="nota">{motivoParaNoActuar(mapa, escuadraElegida)}</p>}
+            {elegido && personajeElegido && gestor.motivoParaNoActuar(personajeElegido.id) && <p className="nota">{gestor.motivoParaNoActuar(personajeElegido.id)}</p>}
           </article>
         )
       })}

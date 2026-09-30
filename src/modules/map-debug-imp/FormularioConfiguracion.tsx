@@ -1,11 +1,11 @@
 import type { Configuracion } from '../gamemap'
-import { OPCIONES_CONFIGURACION } from './configuracion'
+import { OPCIONES_CONFIGURACION, type Ajuste } from './configuracion'
 
 type Props = { configuracion: Configuracion; onCambiar: (configuracion: Configuracion) => void }
 
 /** Formulario con las reglas que el proveedor de pruebas da al gestor: cada cambio vale al momento */
 export function FormularioConfiguracion({ configuracion, onCambiar }: Props) {
-  const ajustes = Object.keys(OPCIONES_CONFIGURACION) as (keyof Configuracion)[]
+  const ajustes = Object.keys(OPCIONES_CONFIGURACION) as Ajuste[]
   return (
     <fieldset className="map-debug-configuracion">
       <legend>Configuración del proveedor</legend>

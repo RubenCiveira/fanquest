@@ -14,12 +14,13 @@ export const activacionDePrueba = (acciones: AccionEjecutada[]): ResultadoActiva
  * de `puertas`); empieza en modo sigiloso y su turno termina según
  * `activacionDePrueba`
  */
-function escuadra(id: string, nombre: string, ids: string[], puertas: PuertasDePrueba): ClaseDeEscuadra {
+function escuadra(id: string, nombre: string, jugador: string, ids: string[], puertas: PuertasDePrueba): ClaseDeEscuadra {
   // las mismas clases de personaje cada vez
   let suyos: Promise<PersonajeDePrueba[]> | undefined
   return {
     id,
     nombre,
+    jugador,
     personajes: () =>
       (suyos ??= cargarHeroes().then((todos) =>
         todos
@@ -36,10 +37,10 @@ function escuadra(id: string, nombre: string, ids: string[], puertas: PuertasDeP
   }
 }
 
-/** Dos escuadras de prueba, una con el bárbaro y otra con el enano, cuyos personajes abren las puertas de `puertas` */
+/** Dos escuadras de prueba, la de Ana con el bárbaro y la de Bruno con el enano, cuyos personajes abren las puertas de `puertas` */
 export const escuadrasDePrueba = (puertas: PuertasDePrueba): ProveedorPersonajes => ({
   listarEscuadras: async () => [
-    escuadra('escuadra-barbaro', 'Escuadra del bárbaro', ['barbaro'], puertas),
-    escuadra('escuadra-enano', 'Escuadra del enano', ['enano'], puertas),
+    escuadra('escuadra-barbaro', 'Escuadra del bárbaro', 'ana', ['barbaro'], puertas),
+    escuadra('escuadra-enano', 'Escuadra del enano', 'bruno', ['enano'], puertas),
   ],
 })

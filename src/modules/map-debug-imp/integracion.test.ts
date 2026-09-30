@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { GestorMapa, ruta, type ProveedorMapa } from '../gamemap'
+import { JUGADORES_DE_PRUEBA } from './configuracion'
 import { escuadrasDePrueba } from './escuadras'
 import { PuertasDePrueba } from './modelo/puerta'
 
@@ -7,11 +8,12 @@ import { PuertasDePrueba } from './modelo/puerta'
 function proveedorDePrueba() {
   const puertas = new PuertasDePrueba()
   const proveedor: ProveedorMapa = {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' },
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: JUGADORES_DE_PRUEBA },
     confirmar: async () => true,
     describirEstancia: async () => ({ tipo: 'sala', tamano: { columnas: 6, filas: 4 }, orientacion: 'abajo', salidas: 1, elementos: [] }),
     ...escuadrasDePrueba(puertas),
     estanciaCreada: (estancia) => puertas.asociar(estancia),
+    turnoDe: () => {},
   }
   return proveedor
 }

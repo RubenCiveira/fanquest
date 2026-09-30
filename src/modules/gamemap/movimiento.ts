@@ -1,5 +1,6 @@
 import { apuntarAccion } from './acciones'
-import { conPersonaje, conTurno, numeroDeTurno, personajesDelMapa, turnoDePersonaje } from './activaciones'
+import { conPersonaje, conTurno, numeroDeTurno, todosLosPersonajes, turnoDePersonaje } from './activaciones'
+import { esEnemigo, jugadorDe } from './jugadores'
 import { estanciaEn } from './estancias'
 import { factorDeTerreno, terrenoEn } from './terrenos'
 import type { Accion } from './modelo/accion'
@@ -90,19 +91,36 @@ export function transitable(m: Mapa, c: Casilla): boolean {
   return !!en && terrenoEn(en.estancia, en.casilla)?.tipo !== 'impasable' && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
 }
 
+/** Personajes del mapa enemigos del personaje: los de alianzas hostiles hacia la suya */
+const enemigosDe = (m: Mapa, personaje: string): Personaje[] => {
+  const alianza = jugadorDe(m, personaje)?.alianza
+  return todosLosPersonajes(m).filter((p) => esEnemigo(m, p.id, alianza))
+}
+
+/** Casillas del mapa de los enemigos colocados del personaje: para alejarse de ellos o cargar */
+export const casillasDeEnemigos = (m: Mapa, personaje: string): Casilla[] =>
+  enemigosDe(m, personaje).flatMap((p) => {
+    const suya = enElMapa(m, p)
+    return suya ? [suya] : []
+  })
+
 /**
- * El mapa tal como lo ve un personaje al moverse: cada uno de los demás
- * personajes colocados que no sean enemigos (de momento, todos) es una casilla
- * de terreno `terrenoPersonajes` (con `normal`, el mapa no cambia). Solo para
- * medir y trazar rutas: no se guarda
+ * El mapa tal como lo ve un personaje al moverse: cada uno de sus enemigos
+ * colocados es una casilla de terreno impasable y cada uno de los demás
+ * personajes, una de terreno `terrenoPersonajes` (con `normal`, no cambia).
+ * Solo para medir y trazar rutas: no se guarda
  */
 export function conPersonajes(m: Mapa, personaje: string, terrenoPersonajes: Configuracion['terrenoPersonajes']): Mapa {
-  if (terrenoPersonajes === 'normal') return m
-  const otros = personajesDelMapa(m).filter((p) => p.id !== personaje && p.casilla)
+  const enemigos = new Set(enemigosDe(m, personaje).map((p) => p.id))
+  const otros = todosLosPersonajes(m).flatMap((p) => {
+    if (enemigos.has(p.id)) return [{ p, tipo: 'impasable' as const }]
+    return terrenoPersonajes === 'normal' || p.id === personaje ? [] : [{ p, tipo: terrenoPersonajes }]
+  })
+  if (!otros.length) return m
   return {
     ...m,
     estancias: m.estancias.map((e) => {
-      const suyos = otros.flatMap((p) => (p.estancia === e.id && p.casilla ? [{ tipo: terrenoPersonajes, posicion: p.casilla, columnas: 1, filas: 1 }] : []))
+      const suyos = otros.flatMap(({ p, tipo }) => (p.estancia === e.id && p.casilla ? [{ tipo, posicion: p.casilla, columnas: 1, filas: 1 }] : []))
       return suyos.length ? { ...e, terrenos: [...(e.terrenos ?? []), ...suyos] } : e
     }),
   }
@@ -238,7 +256,7 @@ export function evaluarRecorrido(
   if (!salida || !donde || !igual(salida)(donde)) return { motivo: `El recorrido tiene que empezar en ${personaje.nombre}` }
   if (!destino) return { motivo: `${personaje.nombre} no se ha movido` }
   if (pasos.some((c, i) => !sePuedePasar(m, recorrido[i], c, medicion))) return { motivo: 'El recorrido pasa por donde no se puede' }
-  const otro = personajesDelMapa(m).find((h) => {
+  const otro = todosLosPersonajes(m).find((h) => {
     const suya = h.id !== personaje.id && enElMapa(m, h)
     return !!suya && igual(destino)(suya)
   })

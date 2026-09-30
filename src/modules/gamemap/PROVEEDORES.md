@@ -5,7 +5,7 @@
 cumple todas las interfaces de `ProveedorMapa`:
 
 ```ts
-type ProveedorMapa = ProveedorConfiguracion & ProveedorConfirmacion & ProveedorEstancias & ProveedorPersonajes
+type ProveedorMapa = ProveedorConfiguracion & ProveedorConfirmacion & ProveedorEstancias & ProveedorPersonajes & ProveedorTurnos
 ```
 
 Todos los tipos se importan desde `index.ts` del módulo. La implementación de
@@ -27,6 +27,7 @@ La librería separa dos cosas con nombres distintos:
 type Escuadra = {
   id: string
   nombre: string
+  jugador: string             // el jugador del que es, y sus personajes con ella
   personajes: Personaje[]
   activo?: string             // el personaje que está actuando
   modo?: ModoActivacion       // el último en que se activó (o el de partida)
@@ -43,6 +44,11 @@ type Personaje = {
 }
 ```
 
+Los personajes que no están en ninguna escuadra (enemigos, acólitos…) son
+`PersonajeNoJugador`: un `Personaje` con su `jugador`. El reparto de
+jugadores y alianzas también se guarda en el mapa (`mapa.jugadores`), con la
+`rotacion`: los jugadores que han ido terminando activaciones, en orden.
+
 El número del turno en curso es `mapa.turno` (`numeroDeTurno(mapa)`);
 `turnoDePersonaje(personaje, numero)` y `turnoDeEscuadra(escuadra, numero)` dan lo que
 ha hecho cada uno en un turno (vacío si nada). En los turnos del personaje,
@@ -57,6 +63,7 @@ movimientos con las acciones que consumieron.
 | `ProveedorConfirmacion` | `confirmar(mensaje)` | Antes de un movimiento que consume una acción adicional (deslizar…) |
 | `ProveedorEstancias` | `describirEstancia(mapa?, entrada?)` | En cada `nuevaEstancia()` y `abrirPuerta()` |
 | `ProveedorEstancias` | `estanciaCreada(estancia, mapa)` | Cuando la estancia ya está creada y en su sitio |
+| `ProveedorTurnos` | `turnoDe(jugador, mapa)` | Tras cada activación que termina y al empezar un turno, si a alguien le toca |
 | `ProveedorPersonajes` | `listarEscuadras()` | La primera vez que necesita las clases (una sola vez por gestor) |
 | `ClaseDeEscuadra` | `personajes()` | Al crear la estancia inicial y al buscar la clase de un personaje |
 | `ClaseDeEscuadra` | `modoActivacion()` | Al crear la estancia inicial, con modo agresivo o sigiloso |
@@ -73,12 +80,32 @@ configuracion: {
   modosActivacion: 'normal' | 'agresivo-sigiloso',
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea',
   terrenoPersonajes: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
+  jugadores: {
+    alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
+    jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
+  },
 }
 ```
 
-- `ordenActivaciones`: si personajes y enemigos se van turnando o se activan
-  primero todos los personajes. Se guarda, pero aún no cambia nada: no hay
-  enemigos en el mapa.
+- `jugadores`: el reparto con que empieza la partida. Cada escuadra y cada
+  personaje no jugador es de un jugador, y cada jugador, de una alianza. La
+  postura de una alianza hacia otra dice si sus personajes son enemigos de los
+  de la otra: con `hostil`, lo son; sin postura, neutral. Va en un sentido:
+  unos acólitos hostiles hacia los héroes son enemigos de los héroes, pero los
+  héroes solo lo son de ellos si su alianza también es hostil hacia la suya.
+  El gestor guarda el reparto en el mapa al crear la estancia inicial (falla
+  si una escuadra es de un jugador que no está) y se puede cambiar en
+  cualquier momento con `cambiarJugadores` (también desde un comando, con
+  `MapaEnJuego`): un evento vuelve hostiles a los acólitos, un jugador cambia
+  de alianza…
+- `ordenActivaciones`: a qué jugador le toca activar una escuadra. Con
+  `alternas`, tras cada activación la siguiente alianza y, dentro de ella, el
+  siguiente jugador al último suyo que activó: A (alianza 1), B (alianza 2),
+  T (alianza 1)… Con `personajes-primero`, la primera alianza hasta que no le
+  quede nada que activar (rotando sus jugadores), luego la siguiente. Se salta
+  a quien no tiene escuadras por activar en el turno. Solo se pueden elegir
+  las miniaturas del jugador al que le toca (`gestor.jugadorEnTurno`) y, en
+  cada activación, actúa una sola miniatura: la primera que hace algo.
 - `modosActivacion`: con `agresivo-sigiloso`, cada escuadra se activa en uno
   de esos dos modos y puede cambiar de uno a otro; con `normal`, todas las
   activaciones son normales.
@@ -90,11 +117,12 @@ configuracion: {
   objetos, ni se cruza de una estancia a otra (las puertas se cruzan de
   frente). La flecha sigue el camino más corto según la medición.
 - `terrenoPersonajes`: cómo cuenta para moverse la casilla en que hay otro
-  personaje que no sea enemigo (de momento no hay enemigos: cualquiera). `normal`, se pasa por encima
+  personaje que no sea enemigo. `normal`, se pasa por encima
   como si nada; `dificil` o `muy-dificil`, cuesta como ese terreno;
   `impasable`, no se puede atravesar: un personaje parado ante una puerta
   cierra el paso a los demás. Nunca se termina encima de otro personaje. Si
-  además hay terreno en esa casilla, cuenta el peor de los dos.
+  además hay terreno en esa casilla, cuenta el peor de los dos. La casilla de
+  un enemigo es siempre impasable.
 
 El gestor lee `configuracion` cada vez que la necesita: si el proveedor la
 expone con un getter, un cambio vale al momento (el banco de pruebas tiene un
@@ -108,6 +136,17 @@ confirmar(mensaje: string): Promise<boolean>
 Pide al jugador que confirme algo antes de hacerlo; `true` si confirma. Se
 usa al soltar una ficha en un tramo que consume una acción adicional
 («Confirme que queremos deslizar»): sin confirmar, no se mueve.
+
+## ProveedorTurnos
+
+```ts
+turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
+```
+
+Tras cada activación que termina (y al pasar a un turno nuevo), el gestor
+dice a qué jugador le toca, si a alguno le queda algo por activar: para
+avisarle o, si es la IA, jugar por ella. El banco de pruebas abre un diálogo
+«Le toca a …».
 
 ## ProveedorEstancias
 
@@ -128,6 +167,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   salidas: number,
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
   terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
+  personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
 ```
 
@@ -142,6 +182,14 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   terreno impasable, y un terreno que se sale de la estancia no se puede
   construir. Con `imagen`, la vista pinta solo la imagen sobre todas sus
   casillas; sin ella, un rayado según el tipo.
+- Los `personajesNoJugadores`, cada uno de un `jugador` (enemigos si su
+  alianza es hostil), aparecen en la
+  estancia: en su `casilla`, o en una al azar de su `zona` o, sin ninguna de
+  las dos, de toda la estancia. Siempre en una casilla libre: dentro, sin
+  terreno impasable, puerta, objeto ni otro personaje; si no la hay, quedan
+  en la zona de espera. Sus ids no pueden repetir los de otros personajes del
+  mapa. El banco de pruebas pone uno o dos monstruos de las plantillas, al
+  azar por la estancia.
 - Si la promesa se rechaza, no se crea ninguna estancia y el error sigue. El
   banco de pruebas rechaza con un `DOMException` `AbortError` al cancelar su
   diálogo.
@@ -163,6 +211,7 @@ listarEscuadras(): Promise<ClaseDeEscuadra[]>
 interface ClaseDeEscuadra {
   id: string
   nombre: string
+  jugador: string // id de un jugador de `configuracion.jugadores`
   personajes(): Promise<ClaseDePersonaje[]>
   modoActivacion(): Promise<'agresivo' | 'sigiloso'>
   activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
@@ -186,6 +235,8 @@ interface ClaseDePersonaje {
   escuadra todas las acciones del turno (`{ accion, personaje? }`). Si responde
   `{ completo: true }`, termina su turno como con «Terminar turno». No se
   llama tras «Terminar turno».
+- Una escuadra puede tener varios personajes, pero en cada activación solo
+  actúa uno.
 - El gestor pide las clases una sola vez. Un gestor creado con un mapa
   guardado vuelve a pedirlas: deben tener los mismos ids.
 
@@ -212,6 +263,8 @@ interface MapaEnJuego {
   readonly mapa: Mapa                                  // el mapa tal como está
   puertaEn(ubicacion: Ubicacion): Puerta | undefined   // la puerta de esa casilla
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // pide la estancia de detrás y la deja abierta
+  anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] // como los de la descripción
+  cambiarJugadores(jugadores: Jugadores): string | undefined // otro reparto de alianzas, jugadores o posturas; si no vale, el motivo
 }
 ```
 
@@ -223,6 +276,11 @@ activo. Si `exec` falla (o se cancela un diálogo que abre), no se apunta.
 estancia pegada a la puerta y la marca `abierta` con su `destino`. Falla si no
 hay puerta, si ya está abierta o si el proveedor rechaza: entonces la puerta
 sigue cerrada.
+
+`anadirPersonajes` pone personajes no jugadores en una estancia que ya está
+en el mapa (una emboscada, refuerzos…) con el mismo criterio de aparición que
+los de `describirEstancia`, y devuelve cómo han quedado. Falla si la estancia
+no está o un id se repite.
 
 En el banco de pruebas (`map-debug-imp/modelo/`):
 
@@ -273,7 +331,9 @@ type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la ad
 - Al mover, el gestor apunta el movimiento en el turno del personaje y las
   acciones que consume (la de la opción y la de cada tramo adicional usado)
   en el de su escuadra; si no había empezado, empieza su activación.
-- Aún no hay enemigos en el mapa: no se puede cargar.
+- `alejarseDeEnemigos` y `terminarJuntoAEnemigo` miran las casillas de los
+  enemigos del personaje que se mueve (los de alianzas hostiles hacia la suya): una opción de carga solo vale si termina junto a uno.
+  Por encima de un enemigo no se pasa.
 
 ## Ejemplo completo
 
@@ -301,13 +361,20 @@ const barbaro: ClaseDePersonaje = {
 const grupo: ClaseDeEscuadra = {
   id: 'grupo',
   nombre: 'El grupo',
+  jugador: 'ana',
   personajes: async () => [barbaro],
   modoActivacion: async () => 'sigiloso',
   activar: async (acciones) => ({ completo: acciones.some((a) => a.accion === 'mover') }),
 }
 
 const proveedor: ProveedorMapa = {
-  configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso' },
+  configuracion: {
+    ordenActivaciones: 'alternas',
+    modosActivacion: 'agresivo-sigiloso',
+    medicionMovimiento: 'ortogonal',
+    terrenoPersonajes: 'normal',
+    jugadores: { alianzas: [{ id: 'heroes', nombre: 'Héroes' }], jugadores: [{ id: 'ana', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' }] },
+  },
   confirmar: async (mensaje) => window.confirm(mensaje),
   describirEstancia: async (mapa, entrada) => ({
     tipo: mapa ? 'pasillo' : 'sala',
@@ -317,6 +384,7 @@ const proveedor: ProveedorMapa = {
     elementos: [{ tipo: 'objeto', nombre: 'Mesa', columnas: 3, filas: 2 }],
   }),
   estanciaCreada: () => {},
+  turnoDe: (jugador) => window.alert(`Le toca a ${jugador.nombre}`),
   listarEscuadras: async () => [grupo],
 }
 

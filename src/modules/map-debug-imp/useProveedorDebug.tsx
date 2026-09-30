@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
-import type { Configuracion, DescripcionEstancia, Direccion, Mapa, ProveedorMapa } from '../gamemap'
+import type { Configuracion, DescripcionEstancia, Direccion, Jugador, Mapa, ProveedorMapa } from '../gamemap'
+import { AvisoTurno } from './AvisoTurno'
 import { cargarConfiguracion, guardarConfiguracion } from './configuracion'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
@@ -19,7 +20,8 @@ export const esCancelacion = (error: unknown) => error instanceof DOMException &
  * diálogo, los personajes son las escuadras de prueba, las reglas son las del
  * formulario de configuración (`configuracion` y `cambiarConfiguracion`: el
  * gestor las lee cada vez, así que un cambio vale al momento) y las
- * confirmaciones, un diálogo de confirmar o cancelar.
+ * confirmaciones, un diálogo de confirmar o cancelar. Tras cada activación
+ * avisa en otro diálogo de a quién le toca.
  * A cada estancia creada se le asocian puertas de prueba (`PuertasDePrueba`),
  * cuyas acciones (abrirse) ofrecen los personajes que las pisan. El `dialogo` se pinta en la página; cerrarlo sin
  * crear rechaza la promesa con una cancelación (`esCancelacion`)
@@ -27,6 +29,7 @@ export const esCancelacion = (error: unknown) => error instanceof DOMException &
 export function useProveedorDebug() {
   const [peticion, setPeticion] = useState<Peticion>()
   const [confirmacion, setConfirmacion] = useState<Confirmacion>()
+  const [turno, setTurno] = useState<Jugador>()
   const [configuracion, setConfiguracion] = useState(cargarConfiguracion)
   // la que lee el gestor: la del proveedor no cambia al volver a pintar
   const vigente = useRef(configuracion)
@@ -47,6 +50,7 @@ export function useProveedorDebug() {
         new Promise((resolve) => setConfirmacion({ mensaje, responder: (si) => (setConfirmacion(undefined), resolve(si)) })),
       ...escuadrasDePrueba(puertas),
       estanciaCreada: (estancia) => puertas.asociar(estancia),
+      turnoDe: (jugador) => setTurno(jugador),
       describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>
           setPeticion({
@@ -62,6 +66,7 @@ export function useProveedorDebug() {
   const dialogo = (
     <>
       {peticion && <DialogoEstancia mapa={peticion.mapa} entrada={peticion.entrada} onCrear={peticion.responder} onCancelar={peticion.cancelar} />}
+      {turno && <AvisoTurno key={turno.id} jugador={turno} onCerrar={() => setTurno(undefined)} />}
       {confirmacion && (
         // al confirmar, el diálogo también se cierra: la segunda respuesta ya no cuenta
         <ConfirmarDialog

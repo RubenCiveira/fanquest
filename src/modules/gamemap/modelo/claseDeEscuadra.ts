@@ -7,6 +7,8 @@ import type { ResultadoActivacion } from './resultadoActivacion'
 export interface ClaseDeEscuadra {
   id: string
   nombre: string
+  /** Id del jugador del que es, de los de la configuración */
+  jugador: string
   personajes(): Promise<ClaseDePersonaje[]>
   /** Modo en que empieza, si la configuración permite modo agresivo o sigiloso */
   modoActivacion(): Promise<ModoAgresivoSigiloso>

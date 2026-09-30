@@ -2,11 +2,12 @@ import { useId, useRef, useState, type PointerEvent } from 'react'
 import { sitiosDeBotones } from './corona'
 import {
   alcance,
+  casillasDeEnemigos,
   conPersonajes,
   costeDe,
   costesDe,
   enElMapa,
-  escuadraActiva,
+  esEnemigo,
   escuadrasDe,
   estanciaEn,
   estanciasDe,
@@ -18,6 +19,7 @@ import {
   type Configuracion,
   type Estancia,
   type Escuadra,
+  type Jugador,
   type Personaje,
   type Mapa,
   type MedicionMovimiento,
@@ -27,7 +29,9 @@ import {
   type RecorridoEvaluado,
   type TipoTerreno,
   numeroDeTurno,
+  personajesNoJugadoresDe,
   turnoDeEscuadra,
+  type PersonajeNoJugador,
 } from '../gamemap'
 
 /** Lado de una casilla en unidades del SVG */
@@ -280,10 +284,17 @@ type Props = {
   medicion?: MedicionMovimiento
   /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
   terrenoPersonajes?: Configuracion['terrenoPersonajes']
+  /** Por qué no puede actuar ahora un personaje de una escuadra: si lo hay, se ve apagado y no se arrastra (pulsarlo solo lo elige) */
+  motivoParaNoActuar?: (personajeId: string) => string | undefined
+  /** Jugador al que le toca: los personajes no jugadores enemigos suyos se marcan como tales */
+  jugadorEnTurno?: Jugador
 }
 
 /** Personaje colocado en una estancia, con su escuadra */
 type PersonajeColocado = { personaje: Personaje & { casilla: Casilla }; escuadra: Escuadra }
+
+/** Personaje no jugador colocado en una estancia, y si es enemigo del jugador al que le toca */
+type NoJugadorColocado = PersonajeNoJugador & { casilla: Casilla; enemigo: boolean }
 
 /**
  * Una estancia del mapa en su sitio (`origen`, en casillas del mapa), con las
@@ -295,38 +306,35 @@ function CapaEstancia({
   estancia,
   origen,
   personajes,
+  noJugadores,
   patrones,
   fichas,
   numero,
-  activa,
   onElegir,
   elemento,
   onElegirElemento,
   corona,
   onArrastrar,
   arrastrando,
+  motivoParaNoActuar,
 }: Props & {
   estancia: Estancia
   origen: Casilla
   personajes: PersonajeColocado[]
+  /** Personajes no jugadores que están en ella: no se arrastran */
+  noJugadores: NoJugadorColocado[]
   /** Prefijo de los ids de los rayados del terreno (`<prefijo>-dificil`…), definidos en el mapa */
   patrones: string
   /** Casillas de todas las fichas de personaje del mapa, en coordenadas de esta estancia */
   fichas: Casilla[]
   /** Número del turno en curso */
   numero: number
-  /**
-   * Escuadra con la activación en curso: los personajes de las demás se ven
-   * apagados y no se arrastran (pulsarlos solo los elige) hasta que termine
-   */
-  activa?: string
   /** Al pulsar una ficha de personaje que se puede arrastrar: el arrastre lo lleva el mapa */
   onArrastrar?: (ev: PointerEvent, personaje: Personaje) => void
   /** Mientras se arrastra una ficha no se muestra la corona */
   arrastrando: boolean
 }) {
-  /** Personaje de otra escuadra mientras una se activa */
-  const esperando = (escuadra: Escuadra) => !!activa && escuadra.id !== activa
+  const esperando = (personaje: Personaje) => !!motivoParaNoActuar?.(personaje.id)
   const elegido = personajes.find(({ personaje }) => personaje.id === elemento)?.personaje.casilla ?? estancia.elementos.find((el) => el.id === elemento)?.posicion
   const medidaElegida = estancia.elementos.find((el) => el.id === elemento) ?? { columnas: 1, filas: 1 }
 
@@ -391,8 +399,8 @@ function CapaEstancia({
         return (
           <g
             key={personaje.id}
-            className={`vista-elemento personaje${personaje.id === elemento ? ' activo' : ''}${esperando(escuadra) ? ' esperando' : ''}`}
-            {...(onArrastrar && !esperando(escuadra)
+            className={`vista-elemento personaje${personaje.id === elemento ? ' activo' : ''}${esperando(personaje) ? ' esperando' : ''}`}
+            {...(onArrastrar && !esperando(personaje)
               ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, personaje) }
               : { onClick: () => onElegirElemento?.(personaje.id) })}
           >
@@ -406,6 +414,11 @@ function CapaEstancia({
           </g>
         )
       })}
+      {noJugadores.map((p) => (
+        <g key={p.id} className={`vista-elemento personaje no-jugador${p.enemigo ? ' enemigo' : ''}`}>
+          <FichaEnMapa ficha={p} x={p.casilla.x * LADO} y={p.casilla.y * LADO} />
+        </g>
+      ))}
       {estanciasDe(estancia).flatMap(({ estancia: e, origen }) =>
         e.puertas.map((p) => <PuertaEnMuro key={`${e.id}-${p.id}`} puerta={p} origen={origen} />),
       )}
@@ -502,7 +515,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const evaluado: RecorridoEvaluado | undefined =
     arrastre?.opciones === null
       ? { motivo: `${arrastre.ficha.nombre} no puede moverse ahora` }
-      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion })
+      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion, enemigos: casillasDeEnemigos(mapa, arrastre.ficha.id) })
   const x0 = Math.min(...estancias.map((e) => origenDe(e).x))
   const y0 = Math.min(...estancias.map((e) => origenDe(e).y))
   const x1 = Math.max(...estancias.map((e) => origenDe(e).x + e.columnas))
@@ -510,8 +523,8 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const colocados = escuadrasDe(mapa).flatMap((escuadra) =>
     escuadra.personajes.flatMap((personaje) => (personaje.casilla ? [{ personaje: { ...personaje, casilla: personaje.casilla }, escuadra }] : [])),
   )
+  const noJugadores = personajesNoJugadoresDe(mapa).flatMap((p) => (p.casilla ? [{ ...p, casilla: p.casilla, enemigo: esEnemigo(mapa, p.id, props.jugadorEnTurno?.alianza) }] : []))
   const numero = numeroDeTurno(mapa)
-  const activa = escuadraActiva(mapa)?.id
   const conElegido = (e: Estancia) =>
     Number(
       colocados.some(({ personaje }) => personaje.id === props.elemento && personaje.estancia === e.id) ||
@@ -544,13 +557,13 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
             estancia={e}
             origen={origenDe(e)}
             personajes={colocados.filter(({ personaje }) => personaje.estancia === e.id)}
+            noJugadores={noJugadores.filter((p) => p.estancia === e.id)}
             patrones={marcador}
-            fichas={colocados.flatMap(({ personaje }) => {
+            fichas={[...colocados.map(({ personaje }) => personaje), ...noJugadores].flatMap((personaje) => {
               const c = enElMapa(mapa, personaje)
               return c ? [{ x: c.x - origenDe(e).x, y: c.y - origenDe(e).y }] : []
             })}
             numero={numero}
-            activa={activa}
             onArrastrar={onMover ? empezar : undefined}
             arrastrando={!!arrastre}
             {...props}

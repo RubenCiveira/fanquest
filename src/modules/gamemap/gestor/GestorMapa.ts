@@ -4,7 +4,8 @@ import {
   activar,
   conPersonaje,
   escuadrasDe,
-  personajesDelMapa,
+  jugadorEnTurno,
+  todosLosPersonajes,
   motivoParaNoActivar,
   motivoParaNoTerminarTurno,
   numeroDeTurno,
@@ -12,10 +13,12 @@ import {
   terminarTurno,
   turnoDeEscuadra,
 } from '../activaciones'
+import { anadirPersonajesNoJugadores, huecoDePersonaje } from '../apariciones'
 import { construirEstancia } from '../construccion'
 import { buscarSitio, colocarElemento, motivoParaNoColocar } from '../elementos'
 import { estanciasDe } from '../estancias'
-import { accionesAdicionales, conPersonajes, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { motivoParaNoCambiarJugadores } from '../jugadores'
+import { accionesAdicionales, casillasDeEnemigos, conPersonajes, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
@@ -24,29 +27,20 @@ import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { ClaseDePersonaje } from '../modelo/claseDePersonaje'
 import { esComando } from '../modelo/comando'
 import { OPUESTA } from '../modelo/direccion'
+import type { DescripcionPersonajeNoJugador } from '../modelo/descripcionPersonaje'
 import type { Objeto } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
 import type { Estancia } from '../modelo/estancia'
+import type { Jugador } from '../modelo/jugador'
+import type { Jugadores } from '../modelo/jugadores'
 import type { Personaje } from '../modelo/personaje'
 import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
+import type { PersonajeNoJugador } from '../modelo/personajeNoJugador'
 import type { Puerta } from '../modelo/puerta'
 import type { Ubicacion } from '../modelo/ubicacion'
 import type { ProveedorMapa } from './ProveedorMapa'
-
-/** Casillas de los enemigos: aún no hay, así que no se puede cargar ni hay de quién alejarse */
-const SIN_ENEMIGOS: Casilla[] = []
-
-/** Hueco de una casilla que ocupa un personaje, para buscar sitio a otro sin que se pisen */
-const hueco = (personaje: { id: string; nombre: string }, posicion?: Casilla): Objeto => ({
-  id: `personaje-${personaje.id}`,
-  tipo: 'objeto',
-  nombre: personaje.nombre,
-  columnas: 1,
-  filas: 1,
-  posicion,
-})
 
 /**
  * Gestiona el estado del mapa (estancias, escuadras y personajes con sus turnos):
@@ -61,10 +55,13 @@ export class GestorMapa implements MapaEnJuego {
   #avisos = new Set<(mapa: Mapa) => void>()
   /** Clases de las escuadras del proveedor: se piden una sola vez */
   #clases?: Promise<ClaseDeEscuadra[]>
+  /** De dónde salen los sitios al azar de los personajes que aparecen (entre 0 y 1) */
+  #azar: () => number
 
-  constructor(proveedor: ProveedorMapa, mapa: Mapa = { estancias: [] }) {
+  constructor(proveedor: ProveedorMapa, mapa: Mapa = { estancias: [] }, azar: () => number = Math.random) {
     this.#proveedor = proveedor
     this.#mapa = mapa
+    this.#azar = azar
   }
 
   get mapa() {
@@ -85,9 +82,10 @@ export class GestorMapa implements MapaEnJuego {
   /**
    * Pide al proveedor la descripción de una estancia nueva y la añade al
    * mapa, a la derecha de todo lo que hay (las que se abren desde una puerta
-   * se pegan a ella: `abrirPuerta`). En la inicial crea además las escuadras
-   * con sus personajes colocados y, si hay modo agresivo o sigiloso, con el modo en
-   * que empieza cada una
+   * se pegan a ella: `abrirPuerta`). En la inicial guarda además el reparto
+   * de jugadores de la configuración y crea las escuadras con sus personajes
+   * colocados y, si hay modo agresivo o sigiloso, con el modo en que empieza
+   * cada una. Falla si el reparto no vale para las escuadras
    */
   nuevaEstancia(): Promise<Estancia> {
     return this.#nuevaEstancia()
@@ -106,11 +104,11 @@ export class GestorMapa implements MapaEnJuego {
     const construida = construirEstancia(this.#idLibre(), descripcion, entrada)
     const estancia = desde ? pegar(this.#mapa, desde, construida) : { ...construida, posicion: aparte(this.#mapa) }
     const escuadras = inicial ? await this.#escuadrasIniciales(estancia) : undefined
-    this.#cambiar({
-      ...this.#mapa,
-      estancias: [...this.#mapa.estancias, estancia],
-      ...(escuadras && { escuadras, turno: 1 }),
-    })
+    const { jugadores } = this.configuracion
+    const conEstancia = { ...this.#mapa, estancias: [...this.#mapa.estancias, estancia], ...(escuadras && { escuadras, turno: 1, jugadores }) }
+    const reparto = escuadras && motivoParaNoCambiarJugadores(conEstancia, jugadores)
+    if (reparto) throw new Error(reparto)
+    this.#cambiar(anadirPersonajesNoJugadores(conEstancia, estancia.id, descripcion.personajesNoJugadores ?? [], this.#azar).mapa)
     this.#proveedor.estanciaCreada(estancia, this)
     return estancia
   }
@@ -126,12 +124,12 @@ export class GestorMapa implements MapaEnJuego {
     for (const clase of await this.#listarEscuadras()) {
       const personajes: Personaje[] = []
       for (const { id, nombre, imagenVtt } of await clase.personajes()) {
-        const casilla = buscarSitio({ ...estancia, elementos: [...estancia.elementos, ...ocupados] }, hueco({ id, nombre }))
-        if (casilla) ocupados.push(hueco({ id, nombre }, casilla))
+        const casilla = buscarSitio({ ...estancia, elementos: [...estancia.elementos, ...ocupados] }, huecoDePersonaje({ id, nombre }))
+        if (casilla) ocupados.push(huecoDePersonaje({ id, nombre }, casilla))
         personajes.push({ id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estancia.id, ...(casilla && { casilla }), turnos: [] })
       }
       const modo = this.configuracion.modosActivacion === 'agresivo-sigiloso' ? await clase.modoActivacion() : undefined
-      escuadras.push({ id: clase.id, nombre: clase.nombre, personajes, ...(modo && { modo }), turnos: [] })
+      escuadras.push({ id: clase.id, nombre: clase.nombre, jugador: clase.jugador, personajes, ...(modo && { modo }), turnos: [] })
     }
     return escuadras
   }
@@ -162,10 +160,40 @@ export class GestorMapa implements MapaEnJuego {
     if (personaje.casilla) return `${personaje.nombre} se mueve arrastrando su ficha`
     const estancia = this.#mapa.estancias.find((e) => e.id === personaje.estancia)
     if (!estancia) return `No hay ninguna estancia «${personaje.estancia}» en el mapa`
-    const otros = personajesDelMapa(this.#mapa).filter((h) => h.estancia === estancia.id && h.casilla)
-    const motivo = motivoParaNoColocar({ ...estancia, elementos: [...estancia.elementos, ...otros.map((h) => hueco(h, h.casilla))] }, hueco(personaje), casilla)
+    const otros = todosLosPersonajes(this.#mapa).filter((h) => h.estancia === estancia.id && h.casilla)
+    const motivo = motivoParaNoColocar({ ...estancia, elementos: [...estancia.elementos, ...otros.map((h) => huecoDePersonaje(h, h.casilla))] }, huecoDePersonaje(personaje), casilla)
     if (motivo) return motivo
     this.#cambiar(conPersonaje(this.#mapa, personajeId, (h) => ({ ...h, casilla })))
+  }
+
+  /**
+   * Añade personajes no jugadores (enemigos…) a una estancia del mapa, como los
+   * de la descripción de una estancia nueva: cada uno en su casilla o en una al
+   * azar de su zona o de la estancia, libre y sin terreno impasable; si no hay
+   * sitio, en la zona de espera. Falla si la estancia no está o un id se repite
+   */
+  anadirPersonajes(estanciaId: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] {
+    const { mapa, anadidos } = anadirPersonajesNoJugadores(this.#mapa, estanciaId, personajes, this.#azar)
+    this.#cambiar(mapa)
+    return anadidos
+  }
+
+  /** Jugador al que le toca activar una escuadra (`ordenActivaciones`); nadie si no hay reparto de jugadores o nadie tiene nada que activar */
+  get jugadorEnTurno(): Jugador | undefined {
+    return jugadorEnTurno(this.#mapa, this.configuracion)
+  }
+
+  cambiarJugadores(jugadores: Jugadores): string | undefined {
+    const motivo = motivoParaNoCambiarJugadores(this.#mapa, jugadores)
+    if (motivo) return motivo
+    this.#cambiar({ ...this.#mapa, jugadores })
+  }
+
+  /** Por qué el personaje de una escuadra no puede actuar ahora (no es su turno, ya actúa otro de su escuadra…), o nada si puede */
+  motivoParaNoActuar(personajeId: string): string | undefined {
+    const escuadra = this.#personajeDe(personajeId)?.escuadra
+    if (!escuadra) return `${personajeId} no es de ninguna escuadra`
+    return motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personajeId)
   }
 
   /**
@@ -198,7 +226,7 @@ export class GestorMapa implements MapaEnJuego {
    * otra escuadra se está activando
    */
   async accionesDisponibles(escuadraId: string, personajeId?: string): Promise<Accion[]> {
-    if (motivoParaNoActuar(this.#mapa, escuadraId)) return []
+    if (motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)) return []
     return [...(await this.#accionesDelPersonaje(escuadraId, personajeId)), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
   }
 
@@ -210,7 +238,7 @@ export class GestorMapa implements MapaEnJuego {
    * devuelve el motivo
    */
   async ejecutarAccion(escuadraId: string, accionId: string, personajeId?: string): Promise<string | undefined> {
-    const motivo = motivoParaNoActuar(this.#mapa, escuadraId)
+    const motivo = motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)
     if (motivo) return motivo
     const delPersonaje = (await this.#accionesDelPersonaje(escuadraId, personajeId)).find((a) => a.id === accionId)
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
@@ -241,7 +269,7 @@ export class GestorMapa implements MapaEnJuego {
    */
   async opcionesMovimiento(personajeId: string): Promise<OpcionesMovimiento | undefined> {
     const encontrado = this.#personajeDe(personajeId)
-    if (!encontrado?.personaje.casilla || motivoParaNoActuar(this.#mapa, encontrado.escuadra.id)) return
+    if (!encontrado?.personaje.casilla || motivoParaNoActuar(this.#mapa, this.configuracion, encontrado.escuadra.id, personajeId)) return
     const clase = await this.#claseDePersonaje(encontrado.escuadra.id, personajeId)
     return clase?.opcionesMovimiento(encontrado.personaje, gastadoPor(this.#mapa, encontrado.personaje))
   }
@@ -260,10 +288,10 @@ export class GestorMapa implements MapaEnJuego {
       const encontrado = this.#personajeDe(personajeId)
       if (!encontrado?.personaje.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
       const { personaje, escuadra } = encontrado
-      if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, escuadra.id) ?? `${personaje.nombre} no puede moverse ahora` }
+      if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personaje.id) ?? `${personaje.nombre} no puede moverse ahora` }
       return { personaje, escuadra: escuadra.id, ...evaluarRecorrido(conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes), personaje, recorrido, opciones, {
         medicion: this.configuracion.medicionMovimiento,
-        enemigos: SIN_ENEMIGOS,
+        enemigos: casillasDeEnemigos(this.#mapa, personaje.id),
       }) }
     }
     const evaluado = evaluar()
@@ -328,8 +356,13 @@ export class GestorMapa implements MapaEnJuego {
     return `estancia-${n}`
   }
 
+  /** Guarda el mapa y avisa del cambio; si ha terminado una activación o el turno, avisa al proveedor de a quién le toca */
   #cambiar(mapa: Mapa) {
+    const antes = this.#mapa
     this.#mapa = mapa
     this.#avisos.forEach((aviso) => aviso(mapa))
+    const relevo = (mapa.rotacion?.length ?? 0) > (antes.rotacion?.length ?? 0) || numeroDeTurno(mapa) > numeroDeTurno(antes)
+    const turno = relevo && this.jugadorEnTurno
+    if (turno) this.#proveedor.turnoDe(turno, this)
   }
 }

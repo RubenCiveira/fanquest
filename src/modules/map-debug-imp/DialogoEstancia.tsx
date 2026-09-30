@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Icono } from '../../components/Icono'
+import { cargarMonstruos } from '../../lib/personajes'
+import { fuenteLocal } from '../../lib/plantillas'
 import {
   construirEstancia,
   largoMuro,
   OPUESTA,
   type DescripcionElemento,
   type DescripcionEstancia,
+  type DescripcionPersonajeNoJugador,
   type Direccion,
   type Mapa,
   type TipoEstancia,
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION } from './mapas'
+import { monstruosDePrueba } from './monstruos'
 import { terrenosDePrueba } from './terrenos'
 import { VistaMapa } from './VistaMapa'
 
@@ -40,8 +44,18 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
   const [salidas, setSalidas] = useState(1)
   const [elementos, setElementos] = useState<DescripcionElemento[]>([])
   const [conTerreno, setConTerreno] = useState(true)
+  // elegidos al abrir, para decir cuáles aparecerán
+  const [monstruos, setMonstruos] = useState<DescripcionPersonajeNoJugador[]>([])
+  const [conMonstruos, setConMonstruos] = useState(true)
 
   useEffect(() => ref.current?.showModal(), [])
+  useEffect(() => {
+    let vigente = true
+    cargarMonstruos(fuenteLocal).then((todos) => vigente && setMonstruos(monstruosDePrueba(Object.values(todos), mapa)))
+    return () => {
+      vigente = false
+    }
+  }, [mapa])
 
   const maxSalidas = largoMuro(tamano, orientacion)
   const descripcion: DescripcionEstancia = {
@@ -51,6 +65,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
     salidas: Math.min(salidas, maxSalidas),
     elementos,
     terrenos: conTerreno ? terrenosDePrueba(tamano) : [],
+    personajesNoJugadores: conMonstruos ? monstruos : [],
   }
   const cambiarElemento = (i: number, cambio: Partial<DescripcionElemento>) =>
     setElementos(elementos.map((el, j) => (j === i ? { ...el, ...cambio } : el)))
@@ -129,6 +144,12 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
         <label className="map-debug-casilla-marcar">
           <input type="checkbox" checked={conTerreno} onChange={(e) => setConTerreno(e.target.checked)} />
           Terreno de prueba: barro difícil, zarzas muy difíciles, un pilar impasable y escombros con imagen (los que quepan)
+        </label>
+
+        <label className="map-debug-casilla-marcar">
+          <input type="checkbox" checked={conMonstruos} onChange={(e) => setConMonstruos(e.target.checked)} />
+          Monstruos de prueba, repartidos al azar donde se pueda estar:{' '}
+          {monstruos.length ? monstruos.map((m) => m.nombre).join(' y ') : 'cargando…'}
         </label>
 
         <fieldset className="map-debug-elementos">

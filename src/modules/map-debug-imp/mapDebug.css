@@ -123,6 +123,15 @@
   pointer-events: none;
 }
 
+.vista-elemento.personaje.no-jugador > circle {
+  cursor: default;
+}
+
+.vista-elemento.personaje.enemigo > circle {
+  stroke: var(--rubrica);
+  stroke-width: 2.5;
+}
+
 .vista-badge circle {
   fill: var(--vitela);
   stroke-width: 1.5;

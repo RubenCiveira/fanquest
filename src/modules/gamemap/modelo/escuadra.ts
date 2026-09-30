@@ -6,13 +6,14 @@ import type { Personaje } from './personaje'
 export type TurnoDeEscuadra = { numero: number; activacion?: Activacion; acciones: AccionEjecutada[] }
 
 /**
- * Estado de una escuadra en el mapa, que guarda el gestor: sus personajes, el que
- * está actuando (`activo`), el último modo en que se activó (o el de partida)
- * y sus turnos
+ * Estado de una escuadra en el mapa, que guarda el gestor: el jugador del
+ * que es (y sus personajes con ella), sus personajes, el que está actuando
+ * (`activo`), el último modo en que se activó (o el de partida) y sus turnos
  */
 export type Escuadra = {
   id: string
   nombre: string
+  jugador: string
   personajes: Personaje[]
   activo?: string
   modo?: ModoActivacion

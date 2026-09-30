@@ -24,7 +24,7 @@ describe('personaje de prueba', () => {
 
 describe('acciones del personaje de prueba', () => {
   const salida: Puerta = { id: 'salida-1', tipo: 'salida', casilla: { x: 2, y: 3 }, lado: 'abajo' }
-  const mapa: MapaEnJuego = { mapa: { estancias: [], turno: 1 }, puertaEn: () => salida, abrirPuerta: vi.fn() }
+  const mapa: MapaEnJuego = { mapa: { estancias: [], turno: 1 }, puertaEn: () => salida, abrirPuerta: vi.fn(), anadirPersonajes: vi.fn(), cambiarJugadores: vi.fn() }
   const enLaPuerta: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 2, y: 3 }, turnos: [] }
   /** El bárbaro, con la puerta de su casilla asociada */
   function barbaro() {

@@ -2,12 +2,15 @@ import {
   activacionDe,
   conEscuadra,
   conPersonaje,
+  conRotacion,
   conTurno,
   escuadraActiva,
   escuadrasDe,
   esperandoA,
   modosPermitidos,
+  motivoDeTurno,
   numeroDeTurno,
+  turnoDeEscuadra,
 } from './activaciones'
 import type { Accion } from './modelo/accion'
 import type { ModoActivacion } from './modelo/activacion'
@@ -30,13 +33,22 @@ export function modoActual(m: Mapa, config: Configuracion, id: string): ModoActi
   return activacionDe(m, id)?.modo ?? escuadrasDe(m).find((e) => e.id === id)?.modo ?? modosPermitidos(config)[0]
 }
 
-/** Por qué la escuadra no puede hacer acciones ahora, o nada si puede: ya terminó su turno u otra está activándose */
-export function motivoParaNoActuar(m: Mapa, id: string): string | undefined {
+/**
+ * Por qué la escuadra (o ese personaje suyo) no puede hacer acciones ahora, o
+ * nada si puede: ya terminó su turno, otra está activándose, es el turno de
+ * otro jugador o, en su activación, ya actúa otro de sus personajes (solo
+ * actúa una miniatura por activación)
+ */
+export function motivoParaNoActuar(m: Mapa, config: Configuracion, id: string, personaje?: string): string | undefined {
   const escuadra = escuadrasDe(m).find((e) => e.id === id)
   if (!escuadra) return `No hay ninguna escuadra «${id}» en el mapa`
   if (activacionDe(m, id)?.terminada) return `${escuadra.nombre} ya ha terminado su turno`
   const activa = escuadraActiva(m)
   if (activa && activa.id !== id) return esperandoA(activa)
+  const turno = motivoDeTurno(m, config, escuadra)
+  if (turno) return turno
+  const otro = turnoDeEscuadra(escuadra, numeroDeTurno(m)).acciones.find((a) => a.personaje && a.personaje !== personaje)?.personaje
+  if (personaje && otro) return `En esta activación ya actúa ${escuadra.personajes.find((p) => p.id === otro)?.nombre ?? otro}`
 }
 
 /** Acciones que el gestor añade a las del personaje: cambiar al otro modo (si hay modos) y terminar turno */
@@ -53,7 +65,7 @@ export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): A
  * la da por terminada. Falla si la escuadra no puede actuar
  */
 export function apuntarAccion(m: Mapa, config: Configuracion, id: string, accion: string, personaje?: string): Mapa {
-  const motivo = motivoParaNoActuar(m, id)
+  const motivo = motivoParaNoActuar(m, config, id, personaje)
   if (motivo) throw new Error(motivo)
   const modo = modoActual(m, config, id)
   const previa = activacionDe(m, id) ?? { modo, terminada: false }
@@ -63,7 +75,7 @@ export function apuntarAccion(m: Mapa, config: Configuracion, id: string, accion
       : accion === TERMINAR_TURNO.id
         ? { ...previa, terminada: true }
         : previa
-  return conEscuadra(m, id, (e) => ({
+  const apuntada = conEscuadra(m, id, (e) => ({
     ...e,
     modo: activacion.modo,
     ...(personaje && { activo: personaje }),
@@ -73,6 +85,7 @@ export function apuntarAccion(m: Mapa, config: Configuracion, id: string, accion
       acciones: [...t.acciones, personaje ? { accion, personaje } : { accion }],
     })),
   }))
+  return activacion.terminada && !previa.terminada ? conRotacion(apuntada, id) : apuntada
 }
 
 /**

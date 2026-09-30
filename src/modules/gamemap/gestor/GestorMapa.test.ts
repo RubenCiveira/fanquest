@@ -8,11 +8,25 @@ import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
 import type { Direccion } from '../modelo/direccion'
 import type { Estancia } from '../modelo/estancia'
 import type { Personaje } from '../modelo/personaje'
+import type { Jugador } from '../modelo/jugador'
 import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { MovimientoGastado } from '../modelo/movimientoGastado'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
 import { GestorMapa } from './GestorMapa'
+import type { Jugadores } from '../modelo/jugadores'
+
+/** Reparto de prueba: Ana (rojos y azules) de los Héroes y la Oscuridad (IA) de los Monstruos, hostiles hacia los Héroes */
+const REPARTO: Jugadores = {
+  alianzas: [
+    { id: 'heroes', nombre: 'Héroes' },
+    { id: 'monstruos', nombre: 'Monstruos', posturas: { heroes: 'hostil' } },
+  ],
+  jugadores: [
+    { id: 'j1', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' },
+    { id: 'oscuridad', nombre: 'La Oscuridad', tipo: 'ia', alianza: 'monstruos' },
+  ],
+}
 
 const sala: DescripcionEstancia = {
   tipo: 'sala',
@@ -45,13 +59,14 @@ function proveedor(descripcion = sala) {
   const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', opcionesMovimiento, acciones }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [] }
   return {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } as const,
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: REPARTO } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
     describirEstancia: vi.fn(async (_mapa?: Mapa, _entrada?: Direccion) => descripcion),
     estanciaCreada: vi.fn((_estancia: Estancia, _mapa: MapaEnJuego) => {}),
+    turnoDe: vi.fn((_jugador: Jugador, _mapa: MapaEnJuego) => {}),
     listarEscuadras: vi.fn(async (): Promise<ClaseDeEscuadra[]> => [
-      { id: 'rojos', nombre: 'Rojos', personajes: async () => [barbaro], modoActivacion: async () => 'agresivo', activar },
-      { id: 'azules', nombre: 'Azules', personajes: async () => [enano], modoActivacion: async () => 'sigiloso', activar },
+      { id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: async () => [barbaro], modoActivacion: async () => 'agresivo', activar },
+      { id: 'azules', nombre: 'Azules', jugador: 'j1', personajes: async () => [enano], modoActivacion: async () => 'sigiloso', activar },
     ]),
     acciones,
     opcionesMovimiento,
@@ -133,7 +148,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: REPARTO } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -323,10 +338,86 @@ describe('gestor del mapa: movimiento', () => {
   it('un personaje de la zona de espera se coloca a mano en una casilla libre', async () => {
     const gestor = new GestorMapa(proveedor(), {
       estancias: [{ id: 'sala', tipo: 'sala', columnas: 3, filas: 3, puertas: [], elementos: [], estancias: [] }],
-      escuadras: [{ id: 'rojos', nombre: 'Rojos', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', turnos: [] }], turnos: [] }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', turnos: [] }], turnos: [] }],
     })
     gestor.colocarPersonaje('barbaro', { x: 1, y: 1 })
     expect(gestor.mapa.escuadras?.[0].personajes[0].casilla).toEqual({ x: 1, y: 1 })
+  })
+})
+
+describe('gestor del mapa: enemigos', () => {
+  const orco = { id: 'orco', nombre: 'Orco', jugador: 'oscuridad' } as const
+
+  it('los personajes no jugadores de la descripción aparecen en la estancia nueva', async () => {
+    const { gestor } = await conInicial({ ...amplia, personajesNoJugadores: [{ ...orco, casilla: { x: 11, y: 7 } }] })
+    expect(gestor.mapa.personajesNoJugadores).toEqual([{ id: 'orco', nombre: 'Orco', estancia: 'estancia-1', casilla: { x: 11, y: 7 }, turnos: [], jugador: 'oscuridad' }])
+  })
+
+  it('se añaden a una estancia del mapa y avisa del cambio', async () => {
+    const { gestor } = await conInicial(amplia)
+    const aviso = vi.fn()
+    gestor.suscribir(aviso)
+    gestor.anadirPersonajes('estancia-1', [{ ...orco, casilla: { x: 0, y: 0 } }])
+    expect(aviso.mock.lastCall?.[0].personajesNoJugadores).toHaveLength(1)
+  })
+
+  it('al azar, con el azar que se le da al gestor', async () => {
+    const gestor = new GestorMapa(proveedor(amplia), undefined, () => 0)
+    await gestor.nuevaEstancia()
+    expect(gestor.anadirPersonajes('estancia-1', [orco])[0].casilla).toEqual({ x: 0, y: 0 })
+  })
+
+  it('no se puede mover a través de un enemigo', async () => {
+    const { gestor, barbaro } = await conInicial(amplia)
+    const desde = barbaro().casilla ?? { x: 0, y: 0 }
+    const hacia = (dx: number) => ({ x: desde.x + dx, y: desde.y })
+    const [colocado] = gestor.anadirPersonajes('estancia-1', [{ ...orco, casilla: hacia(-1) }])
+    expect([colocado.casilla, await gestor.moverPersonaje('barbaro', [desde, hacia(-1), hacia(-2)])]).toEqual([hacia(-1), 'El recorrido pasa por donde no se puede'])
+  })
+})
+
+describe('gestor del mapa: jugadores', () => {
+  it('la estancia inicial guarda el reparto de jugadores de la configuración', async () => {
+    const { gestor } = await conInicial()
+    expect(gestor.mapa.jugadores).toEqual(REPARTO)
+  })
+
+  it('no empieza si una escuadra es de un jugador que no está en el reparto', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa({ ...p, configuracion: { ...p.configuracion, jugadores: { ...REPARTO, jugadores: REPARTO.jugadores.slice(1) } } })
+    await expect(gestor.nuevaEstancia()).rejects.toThrow('No hay ningún jugador «j1» para Rojos')
+  })
+
+  it('dice a qué jugador le toca', async () => {
+    const { gestor } = await conInicial()
+    expect(gestor.jugadorEnTurno?.nombre).toBe('Ana')
+  })
+
+  it('al terminar una activación, avisa al proveedor de a quién le toca', async () => {
+    const { gestor, p } = await conInicial()
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    expect(p.turnoDe.mock.lastCall?.[0].nombre).toBe('Ana')
+  })
+
+  it('mientras una escuadra se activa, dice por qué no puede actuar otro personaje', async () => {
+    const { gestor } = await conInicial()
+    await gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')
+    expect(gestor.motivoParaNoActuar('enano')).toBe('No se puede activar hasta terminar la activación de Rojos')
+  })
+
+  it('un reparto que no vale no cambia nada y dice por qué', async () => {
+    const { gestor } = await conInicial()
+    const antes = gestor.mapa
+    expect([gestor.cambiarJugadores({ ...REPARTO, alianzas: [] }), gestor.mapa]).toEqual(['No hay ninguna alianza «heroes» para Ana', antes])
+  })
+
+  it('un cambio de postura en mitad de la partida cambia quién es enemigo', async () => {
+    const { gestor, barbaro } = await conInicial(amplia)
+    const desde = barbaro().casilla ?? { x: 0, y: 0 }
+    const hacia = (dx: number) => ({ x: desde.x + dx, y: desde.y })
+    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(-1) }])
+    gestor.cambiarJugadores({ ...REPARTO, alianzas: REPARTO.alianzas.map((a) => ({ ...a, posturas: {} })) })
+    expect(await gestor.moverPersonaje('barbaro', [desde, hacia(-1), hacia(-2)])).toBeUndefined()
   })
 })
 
@@ -390,7 +481,7 @@ describe('gestor del mapa: puertas', () => {
   })
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable' } as const }
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', jugadores: REPARTO } as const }
     const gestor = new GestorMapa(p)
     await gestor.nuevaEstancia()
     const [barbaro, enano] = gestor.mapa.escuadras?.map((e) => e.personajes[0].casilla) ?? []

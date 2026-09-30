@@ -1,8 +1,14 @@
+import type { Jugadores } from './jugadores'
 import type { TipoTerreno } from './terreno'
 
 /** Reglas de activación y de movimiento que fija el proyecto */
 export type Configuracion = {
-  /** Personajes y enemigos se van turnando al activarse, o se activan primero todos los personajes */
+  /**
+   * A quién le toca activar una escuadra: `alternas`, tras cada activación la
+   * siguiente alianza (y dentro de ella, el siguiente de sus jugadores);
+   * `personajes-primero`, la primera alianza hasta que no le quede nada que
+   * activar (rotando sus jugadores), luego la siguiente
+   */
   ordenActivaciones: 'alternas' | 'personajes-primero'
   /** Si cada escuadra elige activarse en modo agresivo o sigiloso, o todas las activaciones son normales */
   modosActivacion: 'normal' | 'agresivo-sigiloso'
@@ -15,10 +21,12 @@ export type Configuracion = {
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea'
   /**
    * Cómo cuenta para moverse la casilla en que hay otro personaje que no sea
-   * enemigo (de momento no hay enemigos: cualquier otro personaje). `normal`,
+   * enemigo. `normal`,
    * se pasa por encima como si nada; `dificil` o `muy-dificil`, lo entorpece;
    * `impasable`, lo bloquea (uno parado ante una puerta cierra el paso). Nunca
-   * se puede terminar encima de otro personaje
+   * se puede terminar encima de otro personaje. Los enemigos, siempre impasables
    */
   terrenoPersonajes: 'normal' | TipoTerreno
+  /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
+  jugadores: Jugadores
 }

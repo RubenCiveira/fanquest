@@ -1,8 +1,11 @@
 import type { Activacion, ModoActivacion } from './modelo/activacion'
 import type { Configuracion } from './modelo/configuracion'
 import type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
+import type { Jugador } from './modelo/jugador'
+import type { Jugadores } from './modelo/jugadores'
 import type { Personaje, TurnoDePersonaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
+import type { PersonajeNoJugador } from './modelo/personajeNoJugador'
 
 /** Número del turno en curso */
 export const numeroDeTurno = (m: Mapa) => m.turno ?? 1
@@ -11,6 +14,15 @@ export const escuadrasDe = (m: Mapa): Escuadra[] => m.escuadras ?? []
 
 /** Todos los personajes de todas las escuadras, colocados o en una zona de espera */
 export const personajesDelMapa = (m: Mapa): Personaje[] => escuadrasDe(m).flatMap((e) => e.personajes)
+
+/** Personajes no jugadores del mapa (enemigos…) */
+export const personajesNoJugadoresDe = (m: Mapa): PersonajeNoJugador[] => m.personajesNoJugadores ?? []
+
+/** Reparto de alianzas y jugadores del mapa (vacío si no lo tiene) */
+export const jugadoresDe = (m: Mapa): Jugadores => m.jugadores ?? { alianzas: [], jugadores: [] }
+
+/** Todos los personajes del mapa, de las escuadras y no jugadores */
+export const todosLosPersonajes = (m: Mapa): Personaje[] => [...personajesDelMapa(m), ...personajesNoJugadoresDe(m)]
 
 /** Lo que ha hecho la escuadra en ese turno (vacío si nada) */
 export const turnoDeEscuadra = (e: Escuadra, numero: number): TurnoDeEscuadra => e.turnos.find((t) => t.numero === numero) ?? { numero, acciones: [] }
@@ -51,8 +63,41 @@ export const escuadraActiva = (m: Mapa): Escuadra | undefined =>
     return activacion && !activacion.terminada
   })
 
+/** Los mismos elementos empezando por el de la posición `desde` y dando la vuelta */
+const rotar = <T>(xs: T[], desde: number) => xs.map((_, i) => xs[(i + desde) % xs.length])
+
+/**
+ * Jugador al que le toca: el de la escuadra que se está activando o, si no
+ * hay, el siguiente que tenga alguna escuadra por activar en el turno. Con
+ * activaciones `alternas`, empezando por la alianza siguiente a la del último
+ * que terminó una activación; con `personajes-primero`, por la primera
+ * alianza. Dentro de cada alianza, el siguiente al último de ella que
+ * terminó. Nadie si no hay reparto de jugadores o nadie tiene nada que activar
+ */
+export function jugadorEnTurno(m: Mapa, { ordenActivaciones }: Pick<Configuracion, 'ordenActivaciones'>): Jugador | undefined {
+  const { alianzas, jugadores } = jugadoresDe(m)
+  const activa = escuadraActiva(m)
+  if (activa) return jugadores.find((j) => j.id === activa.jugador)
+  const rotacion = m.rotacion ?? []
+  const pendiente = (j: Jugador) => escuadrasDe(m).some((e) => e.jugador === j.id && e.personajes.length && !activacionDe(m, e.id))
+  const ultimo = jugadores.find((j) => j.id === rotacion.at(-1))
+  const desde = ordenActivaciones === 'alternas' && ultimo ? alianzas.findIndex((a) => a.id === ultimo.alianza) + 1 : 0
+  for (const alianza of rotar(alianzas, desde)) {
+    const suyos = jugadores.filter((j) => j.alianza === alianza.id)
+    const ultimoSuyo = suyos.findIndex((j) => j.id === rotacion.findLast((id) => suyos.some((s) => s.id === id)))
+    const siguiente = rotar(suyos, ultimoSuyo + 1).find(pendiente)
+    if (siguiente) return siguiente
+  }
+}
+
 /** Por qué una escuadra no puede actuar mientras otra se activa */
 export const esperandoA = (activa: Pick<Escuadra, 'nombre'>) => `No se puede activar hasta terminar la activación de ${activa.nombre}`
+
+/** Por qué no puede actuar la escuadra si es el turno de otro jugador */
+export function motivoDeTurno(m: Mapa, config: Pick<Configuracion, 'ordenActivaciones'>, escuadra: Escuadra): string | undefined {
+  const turno = jugadorEnTurno(m, config)
+  if (turno && turno.id !== escuadra.jugador) return `Le toca a ${turno.nombre}`
+}
 
 /** Modos entre los que elige una escuadra al activarse */
 export const modosPermitidos = ({ modosActivacion }: Configuracion): ModoActivacion[] =>
@@ -66,6 +111,12 @@ export const conActivacion = (m: Mapa, id: string, activacion: Activacion): Mapa
     turnos: conTurno(e.turnos, { numero: numeroDeTurno(m), acciones: [] }, (t) => ({ ...t, activacion })),
   }))
 
+/** Apunta en la rotación que el jugador de la escuadra ha terminado una activación: de ahí sale a quién le toca */
+export function conRotacion(m: Mapa, id: string): Mapa {
+  const jugador = escuadrasDe(m).find((e) => e.id === id)?.jugador
+  return jugador ? { ...m, rotacion: [...(m.rotacion ?? []), jugador] } : m
+}
+
 /**
  * Por qué la escuadra no puede activarse en ese modo, o nada si puede: solo
  * una vez por turno, en un modo que permita la configuración y sin otra
@@ -78,6 +129,7 @@ export function motivoParaNoActivar(m: Mapa, config: Configuracion, id: string, 
   if (activacionDe(m, id)) return `${escuadra.nombre} ya se ha activado este turno`
   const activa = escuadraActiva(m)
   if (activa) return esperandoA(activa)
+  return motivoDeTurno(m, config, escuadra)
 }
 
 /** Empieza la activación de la escuadra en ese modo; falla si no puede */
@@ -91,7 +143,7 @@ export function activar(m: Mapa, config: Configuracion, id: string, modo: ModoAc
 export function terminarActivacion(m: Mapa, id: string): Mapa {
   const activacion = activacionDe(m, id)
   if (!activacion || activacion.terminada) throw new Error(`«${id}» no tiene ninguna activación en curso`)
-  return conActivacion(m, id, { ...activacion, terminada: true })
+  return conRotacion(conActivacion(m, id, { ...activacion, terminada: true }), id)
 }
 
 /** Por qué no se puede terminar el turno (escuadras sin activación completa), o nada si se puede */
