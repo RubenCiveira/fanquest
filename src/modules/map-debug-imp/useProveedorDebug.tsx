@@ -16,12 +16,12 @@ export const esCancelacion = (error: unknown) => error instanceof DOMException &
 
 /**
  * Proveedor del mapa de pruebas: las estancias se describen a mano en un
- * diálogo, los héroes son las escuadras de prueba, las reglas son las del
+ * diálogo, los personajes son las escuadras de prueba, las reglas son las del
  * formulario de configuración (`configuracion` y `cambiarConfiguracion`: el
  * gestor las lee cada vez, así que un cambio vale al momento) y las
  * confirmaciones, un diálogo de confirmar o cancelar.
  * A cada estancia creada se le asocian puertas de prueba (`PuertasDePrueba`),
- * cuyas acciones (abrirse) ofrecen los héroes que las pisan. El `dialogo` se pinta en la página; cerrarlo sin
+ * cuyas acciones (abrirse) ofrecen los personajes que las pisan. El `dialogo` se pinta en la página; cerrarlo sin
  * crear rechaza la promesa con una cancelación (`esCancelacion`)
  */
 export function useProveedorDebug() {

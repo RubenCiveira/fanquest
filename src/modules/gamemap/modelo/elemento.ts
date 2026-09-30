@@ -8,5 +8,5 @@ import type { Medida } from './medida'
  */
 export type Objeto = Medida & { id: string; tipo: 'objeto'; nombre: string; posicion?: Casilla }
 
-/** Lo que ocupa casillas de una estancia (los héroes llevan su posición en su propio estado) */
+/** Lo que ocupa casillas de una estancia (los personajes llevan su posición en su propio estado) */
 export type Elemento = Objeto

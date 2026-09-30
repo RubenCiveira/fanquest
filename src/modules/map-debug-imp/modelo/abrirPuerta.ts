@@ -1,7 +1,7 @@
 import type { Comando, MapaEnJuego } from '../../gamemap'
 import type { PuertaDePrueba } from './puerta'
 
-/** Comando que ofrece una puerta de prueba cerrada al héroe que la pisa: al ejecutarlo, la puerta se abre en ese mapa */
+/** Comando que ofrece una puerta de prueba cerrada al personaje que la pisa: al ejecutarlo, la puerta se abre en ese mapa */
 export class AbrirPuerta implements Comando {
   readonly id = 'abrir-puerta'
   readonly nombre = 'Abrir puerta'

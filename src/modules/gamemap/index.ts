@@ -3,7 +3,7 @@ export type { AccionEjecutada } from './modelo/accionEjecutada'
 export type { Activacion, ModoActivacion, ModoAgresivoSigiloso } from './modelo/activacion'
 export type { Casilla } from './modelo/casilla'
 export type { ClaseDeEscuadra } from './modelo/claseDeEscuadra'
-export type { ClaseDeHeroe } from './modelo/claseDeHeroe'
+export type { ClaseDePersonaje } from './modelo/claseDePersonaje'
 export { esComando, type Comando } from './modelo/comando'
 export type { Configuracion } from './modelo/configuracion'
 export type { DescripcionElemento, DescripcionEstancia } from './modelo/descripcionEstancia'
@@ -11,7 +11,7 @@ export { OPUESTA, type Direccion } from './modelo/direccion'
 export type { Elemento, Objeto } from './modelo/elemento'
 export type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
 export type { Estancia, TipoEstancia } from './modelo/estancia'
-export type { Heroe, TurnoDeHeroe } from './modelo/heroe'
+export type { Personaje, TurnoDePersonaje } from './modelo/personaje'
 export type { Mapa } from './modelo/mapa'
 export type { MapaEnJuego } from './modelo/mapaEnJuego'
 export type { Medida } from './modelo/medida'
@@ -28,7 +28,7 @@ export {
   escuadraActiva,
   escuadrasDe,
   esperandoA,
-  heroesDelMapa,
+  personajesDelMapa,
   modosPermitidos,
   motivoParaNoActivar,
   motivoParaNoTerminarTurno,
@@ -36,7 +36,7 @@ export {
   terminarActivacion,
   terminarTurno,
   turnoDeEscuadra,
-  turnoDeHeroe,
+  turnoDePersonaje,
 } from './activaciones'
 export { construirEstancia } from './construccion'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
@@ -64,5 +64,5 @@ export { GestorMapa } from './gestor/GestorMapa'
 export type { ProveedorConfiguracion } from './gestor/ProveedorConfiguracion'
 export type { ProveedorConfirmacion } from './gestor/ProveedorConfirmacion'
 export type { ProveedorEstancias } from './gestor/ProveedorEstancias'
-export type { ProveedorHeroes } from './gestor/ProveedorHeroes'
+export type { ProveedorPersonajes } from './gestor/ProveedorPersonajes'
 export type { ProveedorMapa } from './gestor/ProveedorMapa'

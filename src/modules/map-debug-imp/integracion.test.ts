@@ -24,7 +24,7 @@ async function conSala(proveedor = proveedorDePrueba()) {
 }
 
 /** Estado del bárbaro en el mapa */
-const barbaroDe = (gestor: GestorMapa) => gestor.mapa.escuadras?.[0].heroes.find((h) => h.id === 'barbaro')
+const barbaroDe = (gestor: GestorMapa) => gestor.mapa.escuadras?.[0].personajes.find((h) => h.id === 'barbaro')
 
 /** Lleva al bárbaro a la casilla de la salida de la sala inicial */
 async function barbaroEnLaSalida(gestor: GestorMapa) {
@@ -33,17 +33,17 @@ async function barbaroEnLaSalida(gestor: GestorMapa) {
   const salida = sala.puertas.find((p) => p.tipo === 'salida')
   if (!casilla || !salida) throw new Error('La sala de prueba no tiene bárbaro o salida')
   // la sala inicial está en 0,0: sus casillas son las del mapa
-  await gestor.moverHeroe('barbaro', ruta(gestor.mapa, casilla, salida.casilla) ?? [])
+  await gestor.moverPersonaje('barbaro', ruta(gestor.mapa, casilla, salida.casilla) ?? [])
   return { estancia: sala.id, casilla: salida.casilla }
 }
 
 describe('banco de pruebas', () => {
-  it('al empezar, ningún héroe está en una puerta: no hay nada que abrir', async () => {
+  it('al empezar, ningún personaje está en una puerta: no hay nada que abrir', async () => {
     const gestor = await conSala()
     expect((await gestor.accionesDisponibles('escuadra-barbaro', 'barbaro')).map((a) => a.id)).not.toContain('abrir-puerta')
   })
 
-  it('en la casilla de la salida, el héroe puede abrir la puerta', async () => {
+  it('en la casilla de la salida, el personaje puede abrir la puerta', async () => {
     const gestor = await conSala()
     await barbaroEnLaSalida(gestor)
     expect((await gestor.accionesDisponibles('escuadra-barbaro', 'barbaro')).map((a) => a.id)).toContain('abrir-puerta')
@@ -69,7 +69,7 @@ describe('banco de pruebas', () => {
     })
   })
 
-  it('tras abrir la puerta, en otro turno el héroe cruza a la estancia de detrás', async () => {
+  it('tras abrir la puerta, en otro turno el personaje cruza a la estancia de detrás', async () => {
     const gestor = await conSala()
     const { casilla } = await barbaroEnLaSalida(gestor)
     await gestor.ejecutarAccion('escuadra-barbaro', 'abrir-puerta', 'barbaro')
@@ -77,7 +77,7 @@ describe('banco de pruebas', () => {
     await gestor.ejecutarAccion('escuadra-enano', 'terminar-turno')
     gestor.terminarTurno()
     const dentro = { x: casilla.x, y: casilla.y + 2 }
-    expect(await gestor.moverHeroe('barbaro', ruta(gestor.mapa, casilla, dentro) ?? [])).toBeUndefined()
+    expect(await gestor.moverPersonaje('barbaro', ruta(gestor.mapa, casilla, dentro) ?? [])).toBeUndefined()
     expect(barbaroDe(gestor)?.estancia).toBe(gestor.mapa.estancias[1].id)
   })
 

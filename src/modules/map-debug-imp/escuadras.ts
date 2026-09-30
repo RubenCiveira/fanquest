@@ -1,6 +1,6 @@
 import { cargarHeroes, urlFichaVtt } from '../../lib/personajes'
-import type { AccionEjecutada, ClaseDeEscuadra, ProveedorHeroes, ResultadoActivacion } from '../gamemap'
-import { HeroeDePrueba, MOVER } from './modelo/heroe'
+import type { AccionEjecutada, ClaseDeEscuadra, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
+import { PersonajeDePrueba, MOVER } from './modelo/personaje'
 import type { PuertasDePrueba } from './modelo/puerta'
 
 /** La activación de una escuadra de prueba está completa cuando se ha movido y además ha hecho otra acción (deslizar…) */
@@ -9,22 +9,22 @@ export const activacionDePrueba = (acciones: AccionEjecutada[]): ResultadoActiva
 })
 
 /**
- * Clase de una escuadra de prueba con los héroes de FetenQuest de esos ids
- * (`HeroeDePrueba`, con su ficha VTT vista desde arriba, que abren las puertas
+ * Clase de una escuadra de prueba con los personajes de FetenQuest de esos ids
+ * (`PersonajeDePrueba`, con su ficha VTT vista desde arriba, que abren las puertas
  * de `puertas`); empieza en modo sigiloso y su turno termina según
  * `activacionDePrueba`
  */
 function escuadra(id: string, nombre: string, ids: string[], puertas: PuertasDePrueba): ClaseDeEscuadra {
-  // las mismas clases de héroe cada vez
-  let suyos: Promise<HeroeDePrueba[]> | undefined
+  // las mismas clases de personaje cada vez
+  let suyos: Promise<PersonajeDePrueba[]> | undefined
   return {
     id,
     nombre,
-    heroes: () =>
+    personajes: () =>
       (suyos ??= cargarHeroes().then((todos) =>
         todos
           .filter((h) => ids.includes(h.id))
-          .map((h) => new HeroeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe') }, puertas)),
+          .map((h) => new PersonajeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe') }, puertas)),
       )),
     modoActivacion: async () => 'sigiloso',
     activar: async (acciones) => {
@@ -36,8 +36,8 @@ function escuadra(id: string, nombre: string, ids: string[], puertas: PuertasDeP
   }
 }
 
-/** Dos escuadras de prueba, una con el bárbaro y otra con el enano, cuyos héroes abren las puertas de `puertas` */
-export const escuadrasDePrueba = (puertas: PuertasDePrueba): ProveedorHeroes => ({
+/** Dos escuadras de prueba, una con el bárbaro y otra con el enano, cuyos personajes abren las puertas de `puertas` */
+export const escuadrasDePrueba = (puertas: PuertasDePrueba): ProveedorPersonajes => ({
   listarEscuadras: async () => [
     escuadra('escuadra-barbaro', 'Escuadra del bárbaro', ['barbaro'], puertas),
     escuadra('escuadra-enano', 'Escuadra del enano', ['enano'], puertas),

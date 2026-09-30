@@ -2,19 +2,19 @@ import { describe, expect, it } from 'vitest'
 import { crearEstancia } from './estancias'
 import type { Casilla } from './modelo/casilla'
 import type { Objeto } from './modelo/elemento'
-import type { Heroe } from './modelo/heroe'
+import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
-import { turnoDeHeroe } from './activaciones'
-import { accionesConsumidas, costeDe, evaluarRecorrido, gastadoPor, mover as moverHeroe, ruta } from './movimiento'
+import { turnoDePersonaje } from './activaciones'
+import { accionesConsumidas, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
 import { orientar } from './orientacion'
 
-const barbaro: Heroe = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] }
+const barbaro: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] }
 const mesa: Objeto = { id: 'mesa', nombre: 'Mesa', tipo: 'objeto', columnas: 1, filas: 2, posicion: { x: 1, y: 0 } }
-/** Sala de 12 × 4 con el bárbaro en 0,0, sus objetos y otros héroes */
-const sala = (objetos: Objeto[] = [], otros: Heroe[] = []): Mapa => ({
+/** Sala de 12 × 4 con el bárbaro en 0,0, sus objetos y otros personajes */
+const sala = (objetos: Objeto[] = [], otros: Personaje[] = []): Mapa => ({
   estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 12, filas: 4 }), elementos: objetos }],
-  escuadras: [{ id: 'rojos', nombre: 'Rojos', heroes: [barbaro, ...otros], turnos: [] }],
+  escuadras: [{ id: 'rojos', nombre: 'Rojos', personajes: [barbaro, ...otros], turnos: [] }],
 })
 
 const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
@@ -97,8 +97,8 @@ describe('opciones de movimiento', () => {
     expect(evaluarRecorrido(sala([mesa]), barbaro, porLaMesa, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
   })
 
-  it('pasa por encima de otro héroe, pero no termina encima', () => {
-    const enano: Heroe = { ...barbaro, id: 'enano', nombre: 'Enano', casilla: { x: 0, y: 1 } }
+  it('pasa por encima de otro personaje, pero no termina encima', () => {
+    const enano: Personaje = { ...barbaro, id: 'enano', nombre: 'Enano', casilla: { x: 0, y: 1 } }
     expect(evaluarRecorrido(sala([], [enano]), barbaro, recto(1), opciones)).toEqual({ motivo: 'No se puede terminar encima de Enano' })
   })
 
@@ -118,7 +118,7 @@ describe('opciones de movimiento', () => {
 
 describe('cruzar puertas', () => {
   // la sala de 3 × 3 en 0,0 tiene su salida abajo en 1,2; el pasillo de 3 × 4 está pegado debajo, con su entrada arriba en 1,0 (1,3 del mapa)
-  const enLaSala: Heroe = { ...barbaro, estancia: 'arriba', casilla: { x: 1, y: 1 } }
+  const enLaSala: Personaje = { ...barbaro, estancia: 'arriba', casilla: { x: 1, y: 1 } }
   const salaConSalida = (abierta: boolean): Mapa => {
     const arriba = orientar(crearEstancia({ id: 'arriba', tipo: 'sala', columnas: 3, filas: 3 }), 'abajo', 1)
     const abajo = orientar(crearEstancia({ id: 'abajo', tipo: 'pasillo', columnas: 3, filas: 4 }), 'abajo', 0)
@@ -127,7 +127,7 @@ describe('cruzar puertas', () => {
         { ...arriba, puertas: arriba.puertas.map((p) => (p.tipo === 'salida' ? { ...p, abierta } : p)) },
         { ...abajo, posicion: { x: 0, y: 3 } },
       ],
-      escuadras: [{ id: 'rojos', nombre: 'Rojos', heroes: [enLaSala], turnos: [] }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', personajes: [enLaSala], turnos: [] }],
     }
   }
   const porLaPuerta = [
@@ -162,24 +162,24 @@ describe('cruzar puertas', () => {
   })
 
   const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' } as const
-  const moverPorLaPuerta = () => moverHeroe(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
+  const moverPorLaPuerta = () => moverPersonaje(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
 
-  it('al mover a la otra estancia, el héroe pasa a ella con su casilla en ella', () => {
-    const [movido] = moverPorLaPuerta().escuadras?.[0].heroes ?? []
+  it('al mover a la otra estancia, el personaje pasa a ella con su casilla en ella', () => {
+    const [movido] = moverPorLaPuerta().escuadras?.[0].personajes ?? []
     expect([movido.estancia, movido.casilla]).toEqual(['abajo', { x: 1, y: 1 }])
   })
 
-  it('el movimiento queda en el turno del héroe y cuenta como gastado', () => {
+  it('el movimiento queda en el turno del personaje y cuenta como gastado', () => {
     const m = moverPorLaPuerta()
-    const [movido] = m.escuadras?.[0].heroes ?? []
-    expect([turnoDeHeroe(movido, 1).movimientos, gastadoPor(m, movido)]).toEqual([
+    const [movido] = m.escuadras?.[0].personajes ?? []
+    expect([turnoDePersonaje(movido, 1).movimientos, gastadoPor(m, movido)]).toEqual([
       [{ opcion: 'mover', casillas: 3, acciones: ['mover'] }],
       { casillas: 3, acciones: ['mover'] },
     ])
   })
 
-  it('las acciones que consume el movimiento van al turno de la escuadra, como del héroe', () => {
-    expect(moverPorLaPuerta().escuadras?.[0].turnos[0].acciones).toEqual([{ accion: 'mover', heroe: 'barbaro' }])
+  it('las acciones que consume el movimiento van al turno de la escuadra, como del personaje', () => {
+    expect(moverPorLaPuerta().escuadras?.[0].turnos[0].acciones).toEqual([{ accion: 'mover', personaje: 'barbaro' }])
   })
 })
 
@@ -234,7 +234,7 @@ describe('medición de los movimientos', () => {
 
   it('el movimiento apunta lo que cuesta según la medición', () => {
     const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea' } as const
-    const m = moverHeroe(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
-    expect(gastadoPor(m, m.escuadras?.[0].heroes[0] ?? barbaro).casillas).toBe(5)
+    const m = moverPersonaje(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
+    expect(gastadoPor(m, m.escuadras?.[0].personajes[0] ?? barbaro).casillas).toBe(5)
   })
 })

@@ -2,9 +2,9 @@ import { accionesDelGestor, ejecutarAccion, motivoParaNoActuar } from '../accion
 import {
   activacionDe,
   activar,
-  conHeroe,
+  conPersonaje,
   escuadrasDe,
-  heroesDelMapa,
+  personajesDelMapa,
   motivoParaNoActivar,
   motivoParaNoTerminarTurno,
   numeroDeTurno,
@@ -21,13 +21,13 @@ import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
-import type { ClaseDeHeroe } from '../modelo/claseDeHeroe'
+import type { ClaseDePersonaje } from '../modelo/claseDePersonaje'
 import { esComando } from '../modelo/comando'
 import { OPUESTA } from '../modelo/direccion'
 import type { Objeto } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
 import type { Estancia } from '../modelo/estancia'
-import type { Heroe } from '../modelo/heroe'
+import type { Personaje } from '../modelo/personaje'
 import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
@@ -38,20 +38,20 @@ import type { ProveedorMapa } from './ProveedorMapa'
 /** Casillas de los enemigos: aún no hay, así que no se puede cargar ni hay de quién alejarse */
 const SIN_ENEMIGOS: Casilla[] = []
 
-/** Hueco de una casilla que ocupa un héroe, para buscar sitio a otro sin que se pisen */
-const hueco = (heroe: { id: string; nombre: string }, posicion?: Casilla): Objeto => ({
-  id: `heroe-${heroe.id}`,
+/** Hueco de una casilla que ocupa un personaje, para buscar sitio a otro sin que se pisen */
+const hueco = (personaje: { id: string; nombre: string }, posicion?: Casilla): Objeto => ({
+  id: `personaje-${personaje.id}`,
   tipo: 'objeto',
-  nombre: heroe.nombre,
+  nombre: personaje.nombre,
   columnas: 1,
   filas: 1,
   posicion,
 })
 
 /**
- * Gestiona el estado del mapa (estancias, escuadras y héroes con sus turnos):
+ * Gestiona el estado del mapa (estancias, escuadras y personajes con sus turnos):
  * pide al proveedor del proyecto cada estancia nueva y las clases de sus
- * escuadras y héroes, que dicen qué pueden hacer, y avisa de cada cambio a
+ * escuadras y personajes, que dicen qué pueden hacer, y avisa de cada cambio a
  * quien se suscriba (para dibujarlo o guardarlo). El mapa es inmutable: cada
  * cambio crea uno nuevo
  */
@@ -86,7 +86,7 @@ export class GestorMapa implements MapaEnJuego {
    * Pide al proveedor la descripción de una estancia nueva y la añade al
    * mapa, a la derecha de todo lo que hay (las que se abren desde una puerta
    * se pegan a ella: `abrirPuerta`). En la inicial crea además las escuadras
-   * con sus héroes colocados y, si hay modo agresivo o sigiloso, con el modo en
+   * con sus personajes colocados y, si hay modo agresivo o sigiloso, con el modo en
    * que empieza cada una
    */
   nuevaEstancia(): Promise<Estancia> {
@@ -116,7 +116,7 @@ export class GestorMapa implements MapaEnJuego {
   }
 
   /**
-   * Estado de partida de cada escuadra del proveedor: sus héroes, cada uno en
+   * Estado de partida de cada escuadra del proveedor: sus personajes, cada uno en
    * el sitio libre de la estancia más cercano al centro (o en su zona de
    * espera, si no cabe) y, con modo agresivo o sigiloso, el modo en que empieza
    */
@@ -124,14 +124,14 @@ export class GestorMapa implements MapaEnJuego {
     const ocupados: Objeto[] = []
     const escuadras: Escuadra[] = []
     for (const clase of await this.#listarEscuadras()) {
-      const heroes: Heroe[] = []
-      for (const { id, nombre, imagenVtt } of await clase.heroes()) {
+      const personajes: Personaje[] = []
+      for (const { id, nombre, imagenVtt } of await clase.personajes()) {
         const casilla = buscarSitio({ ...estancia, elementos: [...estancia.elementos, ...ocupados] }, hueco({ id, nombre }))
         if (casilla) ocupados.push(hueco({ id, nombre }, casilla))
-        heroes.push({ id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estancia.id, ...(casilla && { casilla }), turnos: [] })
+        personajes.push({ id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estancia.id, ...(casilla && { casilla }), turnos: [] })
       }
       const modo = this.configuracion.modosActivacion === 'agresivo-sigiloso' ? await clase.modoActivacion() : undefined
-      escuadras.push({ id: clase.id, nombre: clase.nombre, heroes, ...(modo && { modo }), turnos: [] })
+      escuadras.push({ id: clase.id, nombre: clase.nombre, personajes, ...(modo && { modo }), turnos: [] })
     }
     return escuadras
   }
@@ -152,24 +152,24 @@ export class GestorMapa implements MapaEnJuego {
   }
 
   /**
-   * Coloca a mano en esa casilla de su estancia un héroe de la zona de espera:
-   * en el mapa, un héroe se mueve arrastrándolo (`moverHeroe`). Si no puede ir
+   * Coloca a mano en esa casilla de su estancia un personaje de la zona de espera:
+   * en el mapa, un personaje se mueve arrastrándolo (`moverPersonaje`). Si no puede ir
    * ahí, el mapa no cambia y devuelve el motivo
    */
-  colocarHeroe(heroeId: string, casilla: Casilla): string | undefined {
-    const heroe = this.#heroeDe(heroeId)?.heroe
-    if (!heroe) return `No hay ningún héroe «${heroeId}» en el mapa`
-    if (heroe.casilla) return `${heroe.nombre} se mueve arrastrando su ficha`
-    const estancia = this.#mapa.estancias.find((e) => e.id === heroe.estancia)
-    if (!estancia) return `No hay ninguna estancia «${heroe.estancia}» en el mapa`
-    const otros = heroesDelMapa(this.#mapa).filter((h) => h.estancia === estancia.id && h.casilla)
-    const motivo = motivoParaNoColocar({ ...estancia, elementos: [...estancia.elementos, ...otros.map((h) => hueco(h, h.casilla))] }, hueco(heroe), casilla)
+  colocarPersonaje(personajeId: string, casilla: Casilla): string | undefined {
+    const personaje = this.#personajeDe(personajeId)?.personaje
+    if (!personaje) return `No hay ningún personaje «${personajeId}» en el mapa`
+    if (personaje.casilla) return `${personaje.nombre} se mueve arrastrando su ficha`
+    const estancia = this.#mapa.estancias.find((e) => e.id === personaje.estancia)
+    if (!estancia) return `No hay ninguna estancia «${personaje.estancia}» en el mapa`
+    const otros = personajesDelMapa(this.#mapa).filter((h) => h.estancia === estancia.id && h.casilla)
+    const motivo = motivoParaNoColocar({ ...estancia, elementos: [...estancia.elementos, ...otros.map((h) => hueco(h, h.casilla))] }, hueco(personaje), casilla)
     if (motivo) return motivo
-    this.#cambiar(conHeroe(this.#mapa, heroeId, (h) => ({ ...h, casilla })))
+    this.#cambiar(conPersonaje(this.#mapa, personajeId, (h) => ({ ...h, casilla })))
   }
 
   /**
-   * Empieza la activación de la escuadra (todos sus héroes) en ese modo; si
+   * Empieza la activación de la escuadra (todos sus personajes) en ese modo; si
    * no puede, el mapa no cambia y devuelve el motivo
    */
   activarEscuadra(id: string, modo: ModoActivacion): string | undefined {
@@ -193,30 +193,30 @@ export class GestorMapa implements MapaEnJuego {
 
   /**
    * Acciones que puede hacer ahora la escuadra: las que dice la clase del
-   * héroe pulsado (`heroeId`) con su estado, donde está, y detrás las del
+   * personaje pulsado (`personajeId`) con su estado, donde está, y detrás las del
    * gestor (cambiar de modo, terminar turno). Ninguna si ya terminó su turno u
    * otra escuadra se está activando
    */
-  async accionesDisponibles(escuadraId: string, heroeId?: string): Promise<Accion[]> {
+  async accionesDisponibles(escuadraId: string, personajeId?: string): Promise<Accion[]> {
     if (motivoParaNoActuar(this.#mapa, escuadraId)) return []
-    return [...(await this.#accionesDelHeroe(escuadraId, heroeId)), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
+    return [...(await this.#accionesDelPersonaje(escuadraId, personajeId)), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
   }
 
   /**
-   * Ejecuta una de las acciones disponibles de la escuadra (con el héroe
-   * `heroeId` pulsado). Si es un comando, antes ejecuta su código (`exec`): si
-   * falla o se cancela, no se apunta y el error sigue. Las del héroe se apuntan
+   * Ejecuta una de las acciones disponibles de la escuadra (con el personaje
+   * `personajeId` pulsado). Si es un comando, antes ejecuta su código (`exec`): si
+   * falla o se cancela, no se apunta y el error sigue. Las del personaje se apuntan
    * en su turno y en el de su escuadra. Si no puede, el mapa no cambia y
    * devuelve el motivo
    */
-  async ejecutarAccion(escuadraId: string, accionId: string, heroeId?: string): Promise<string | undefined> {
+  async ejecutarAccion(escuadraId: string, accionId: string, personajeId?: string): Promise<string | undefined> {
     const motivo = motivoParaNoActuar(this.#mapa, escuadraId)
     if (motivo) return motivo
-    const delHeroe = (await this.#accionesDelHeroe(escuadraId, heroeId)).find((a) => a.id === accionId)
+    const delPersonaje = (await this.#accionesDelPersonaje(escuadraId, personajeId)).find((a) => a.id === accionId)
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
-    if (!delHeroe && !delGestor) return `«${accionId}» no es una acción disponible ahora`
-    if (delHeroe && esComando(delHeroe)) await delHeroe.exec()
-    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, delHeroe && heroeId))
+    if (!delPersonaje && !delGestor) return `«${accionId}» no es una acción disponible ahora`
+    if (delPersonaje && esComando(delPersonaje)) await delPersonaje.exec()
+    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, delPersonaje && personajeId))
     await this.#preguntarSiCompleta(escuadraId)
   }
 
@@ -235,33 +235,33 @@ export class GestorMapa implements MapaEnJuego {
   }
 
   /**
-   * Cómo puede moverse ahora el héroe, según le diga su clase con su estado y
+   * Cómo puede moverse ahora el personaje, según le diga su clase con su estado y
    * lo que ya ha movido este turno. Nada si no está colocado o su escuadra no
    * puede actuar
    */
-  async opcionesMovimiento(heroeId: string): Promise<OpcionesMovimiento | undefined> {
-    const encontrado = this.#heroeDe(heroeId)
-    if (!encontrado?.heroe.casilla || motivoParaNoActuar(this.#mapa, encontrado.escuadra.id)) return
-    const clase = await this.#claseDeHeroe(encontrado.escuadra.id, heroeId)
-    return clase?.opcionesMovimiento(encontrado.heroe, gastadoPor(this.#mapa, encontrado.heroe))
+  async opcionesMovimiento(personajeId: string): Promise<OpcionesMovimiento | undefined> {
+    const encontrado = this.#personajeDe(personajeId)
+    if (!encontrado?.personaje.casilla || motivoParaNoActuar(this.#mapa, encontrado.escuadra.id)) return
+    const clase = await this.#claseDePersonaje(encontrado.escuadra.id, personajeId)
+    return clase?.opcionesMovimiento(encontrado.personaje, gastadoPor(this.#mapa, encontrado.personaje))
   }
 
   /**
-   * Mueve el héroe por el recorrido (en casillas del mapa, de la suya a la
+   * Mueve el personaje por el recorrido (en casillas del mapa, de la suya a la
    * de destino; puede cruzar puertas abiertas a otras estancias) con la
    * primera de sus opciones de movimiento que lo permita; apunta el movimiento
    * en su turno y las acciones que consume en el de su escuadra. Si consume
    * acciones adicionales (deslizar…), antes pide confirmación al proveedor; sin
    * ella no se mueve. Si no puede moverse, el mapa no cambia y devuelve el motivo
    */
-  async moverHeroe(heroeId: string, recorrido: Casilla[]): Promise<string | undefined> {
-    const opciones = await this.opcionesMovimiento(heroeId)
+  async moverPersonaje(personajeId: string, recorrido: Casilla[]): Promise<string | undefined> {
+    const opciones = await this.opcionesMovimiento(personajeId)
     const evaluar = () => {
-      const encontrado = this.#heroeDe(heroeId)
-      if (!encontrado?.heroe.casilla) return { motivo: `No hay ningún héroe «${heroeId}» colocado en el mapa` }
-      const { heroe, escuadra } = encontrado
-      if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, escuadra.id) ?? `${heroe.nombre} no puede moverse ahora` }
-      return { heroe, escuadra: escuadra.id, ...evaluarRecorrido(this.#mapa, heroe, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: SIN_ENEMIGOS }) }
+      const encontrado = this.#personajeDe(personajeId)
+      if (!encontrado?.personaje.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
+      const { personaje, escuadra } = encontrado
+      if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, escuadra.id) ?? `${personaje.nombre} no puede moverse ahora` }
+      return { personaje, escuadra: escuadra.id, ...evaluarRecorrido(this.#mapa, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: SIN_ENEMIGOS }) }
     }
     const evaluado = evaluar()
     if ('motivo' in evaluado) return evaluado.motivo
@@ -270,7 +270,7 @@ export class GestorMapa implements MapaEnJuego {
     // mientras se confirmaba el mapa ha podido cambiar
     const confirmado = adicionales.length ? evaluar() : evaluado
     if ('motivo' in confirmado) return confirmado.motivo
-    this.#cambiar(mover(this.#mapa, this.configuracion, confirmado.escuadra, confirmado.heroe, recorrido, confirmado))
+    this.#cambiar(mover(this.#mapa, this.configuracion, confirmado.escuadra, confirmado.personaje, recorrido, confirmado))
     await this.#preguntarSiCompleta(confirmado.escuadra)
   }
 
@@ -288,26 +288,26 @@ export class GestorMapa implements MapaEnJuego {
     if (completo && enCurso()) this.#cambiar(terminarActivacion(this.#mapa, escuadraId))
   }
 
-  /** Lo que dice la clase del héroe pulsado de la escuadra (si está colocado) que puede hacer donde está */
-  async #accionesDelHeroe(escuadraId: string, heroeId?: string): Promise<Accion[]> {
-    const encontrado = heroeId ? this.#heroeDe(heroeId) : undefined
-    if (!encontrado?.heroe.casilla || encontrado.escuadra.id !== escuadraId) return []
-    const clase = await this.#claseDeHeroe(escuadraId, encontrado.heroe.id)
-    return clase ? clase.acciones(encontrado.heroe, this) : []
+  /** Lo que dice la clase del personaje pulsado de la escuadra (si está colocado) que puede hacer donde está */
+  async #accionesDelPersonaje(escuadraId: string, personajeId?: string): Promise<Accion[]> {
+    const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
+    if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId) return []
+    const clase = await this.#claseDePersonaje(escuadraId, encontrado.personaje.id)
+    return clase ? clase.acciones(encontrado.personaje, this) : []
   }
 
-  /** Estado del héroe y de su escuadra */
-  #heroeDe(heroeId: string): { escuadra: Escuadra; heroe: Heroe } | undefined {
+  /** Estado del personaje y de su escuadra */
+  #personajeDe(personajeId: string): { escuadra: Escuadra; personaje: Personaje } | undefined {
     for (const escuadra of escuadrasDe(this.#mapa)) {
-      const heroe = escuadra.heroes.find((h) => h.id === heroeId)
-      if (heroe) return { escuadra, heroe }
+      const personaje = escuadra.personajes.find((h) => h.id === personajeId)
+      if (personaje) return { escuadra, personaje }
     }
   }
 
-  /** La clase del proveedor del héroe con ese id, de su escuadra */
-  async #claseDeHeroe(escuadraId: string, heroeId: string): Promise<ClaseDeHeroe | undefined> {
+  /** La clase del proveedor del personaje con ese id, de su escuadra */
+  async #claseDePersonaje(escuadraId: string, personajeId: string): Promise<ClaseDePersonaje | undefined> {
     const escuadra = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
-    return (await escuadra?.heroes())?.find((h) => h.id === heroeId)
+    return (await escuadra?.personajes())?.find((h) => h.id === personajeId)
   }
 
   #listarEscuadras() {

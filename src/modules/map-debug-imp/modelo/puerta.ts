@@ -25,7 +25,7 @@ export class PuertaDePrueba implements ObjetoDePrueba {
     await mapa.abrirPuerta(this.#donde)
   }
 
-  /** Para el héroe que la pisa: abrirla, si es una salida cerrada */
+  /** Para el personaje que la pisa: abrirla, si es una salida cerrada */
   acciones(mapa: MapaEnJuego): Accion[] {
     return this.tipo === 'salida' && !this.abierta(mapa) ? [new AbrirPuerta(this, mapa)] : []
   }

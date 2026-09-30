@@ -17,17 +17,17 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 ## Estructura
 
 - `modelo/`: definiciones del dominio, una por fichero, sin lógica. El
-  **estado** que guarda el gestor (`Mapa`, `Estancia`, `Escuadra`, `Heroe`,
+  **estado** que guarda el gestor (`Mapa`, `Estancia`, `Escuadra`, `Personaje`,
   sus turnos, `Puerta`, `Objeto`…) y las **clases** que implementa el
   proyecto para decir qué puede hacer cada uno (`ClaseDeEscuadra`,
-  `ClaseDeHeroe`).
+  `ClaseDePersonaje`).
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias` y
-  `ProveedorHeroes`): el gestor recibe un solo objeto que los cumple.
+  `ProveedorPersonajes`): el gestor recibe un solo objeto que los cumple.
 
 ## Uso
 
@@ -58,28 +58,28 @@ await gestor.nuevaEstancia()
   Al crearla, el gestor lo pone en el sitio libre más cercano al centro, sin
   tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**
   (sin `posicion`) para colocarlo a mano.
-- **Escuadra y héroe** (estado): el gestor guarda cada escuadra con sus
-  héroes, su héroe activo, su último modo y sus turnos (activación y
-  acciones); y cada héroe con su posición (estancia y casilla; sin casilla, en
+- **Escuadra y personaje** (estado): el gestor guarda cada escuadra con sus
+  personajes, su personaje activo, su último modo y sus turnos (activación y
+  acciones); y cada personaje con su posición (estancia y casilla; sin casilla, en
   la zona de espera) y sus turnos (acciones y movimientos).
-- **Clase de escuadra y de héroe**: las da el proyecto (`ProveedorHeroes`) y
-  dicen qué puede hacer cada uno: sus héroes, su modo de partida y cuándo
+- **Clase de escuadra y de personaje**: las da el proyecto (`ProveedorPersonajes`) y
+  dicen qué puede hacer cada uno: sus personajes, su modo de partida y cuándo
   termina su activación (`ClaseDeEscuadra`); cómo se mueve y qué acciones
-  tiene donde está (`ClaseDeHeroe`).
+  tiene donde está (`ClaseDePersonaje`).
 - **Configuración**: la da el proyecto. `ordenActivaciones` (alternas o todos
-  los héroes primero), `modosActivacion` (agresivo o sigiloso, o normal) y
+  los personajes primero), `modosActivacion` (agresivo o sigiloso, o normal) y
   `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
   redondeando hacia arriba).
 - **Turno y activación**: la activación es de la escuadra y vale para todos
-  sus héroes. Una escuadra se activa una vez por turno y no se activa otra
+  sus personajes. Una escuadra se activa una vez por turno y no se activa otra
   hasta que termine la que está en curso; el turno solo termina cuando todas
   han completado su activación.
-- **Acciones**: al pulsar un héroe, el gestor pregunta a su clase qué puede
+- **Acciones**: al pulsar un personaje, el gestor pregunta a su clase qué puede
   hacer donde está; la clase mira los objetos de su casilla y lo que ya ha
   hecho, y compone sus comandos (acciones con su código en `exec`). El gestor
   añade «Cambiar a …» y «Terminar turno».
 - **Movimiento**: al arrastrar una ficha, el gestor pregunta a la clase del
-  héroe sus `OpcionesMovimiento` (movimiento base y variaciones, en tramos que
+  personaje sus `OpcionesMovimiento` (movimiento base y variaciones, en tramos que
   pueden consumir acciones adicionales). El recorrido vale con la primera
   opción que lo permite, por todo el mapa cruzando puertas abiertas; si
   consume una acción adicional, antes se pide confirmación.

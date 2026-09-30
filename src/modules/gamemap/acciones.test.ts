@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { accionesDelGestor, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
-import { activacionDe, numeroDeTurno, terminarTurno, turnoDeEscuadra, turnoDeHeroe } from './activaciones'
+import { activacionDe, numeroDeTurno, terminarTurno, turnoDeEscuadra, turnoDePersonaje } from './activaciones'
 import { crearEstancia } from './estancias'
 import type { Configuracion } from './modelo/configuracion'
 import type { Mapa } from './modelo/mapa'
@@ -8,14 +8,14 @@ import type { Mapa } from './modelo/mapa'
 const mapa: Mapa = {
   estancias: [crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 3 })],
   escuadras: [
-    { id: 'rojos', nombre: 'Rojos', modo: 'agresivo', heroes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }], turnos: [] },
-    { id: 'azules', nombre: 'Azules', modo: 'sigiloso', heroes: [{ id: 'enano', nombre: 'Enano', estancia: 'sala', turnos: [] }], turnos: [] },
+    { id: 'rojos', nombre: 'Rojos', modo: 'agresivo', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }], turnos: [] },
+    { id: 'azules', nombre: 'Azules', modo: 'sigiloso', personajes: [{ id: 'enano', nombre: 'Enano', estancia: 'sala', turnos: [] }], turnos: [] },
   ],
   turno: 2,
 }
 const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal' }
 const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' }
-const rojos = (m: Mapa) => m.escuadras?.find((e) => e.id === 'rojos') ?? { id: '', nombre: '', heroes: [], turnos: [] }
+const rojos = (m: Mapa) => m.escuadras?.find((e) => e.id === 'rojos') ?? { id: '', nombre: '', personajes: [], turnos: [] }
 
 describe('acciones de las escuadras', () => {
   it('con modos, el gestor ofrece cambiar al otro modo y terminar turno', () => {
@@ -27,16 +27,16 @@ describe('acciones de las escuadras', () => {
     expect(accionesDelGestor(sinModos, normales, 'rojos')).toEqual([TERMINAR_TURNO])
   })
 
-  it('la acción de un héroe queda en el turno de su escuadra, como suya', () => {
-    expect(turnoDeEscuadra(rojos(ejecutarAccion(mapa, conModos, 'rojos', 'gritar', 'barbaro')), 2).acciones).toEqual([{ accion: 'gritar', heroe: 'barbaro' }])
+  it('la acción de un personaje queda en el turno de su escuadra, como suya', () => {
+    expect(turnoDeEscuadra(rojos(ejecutarAccion(mapa, conModos, 'rojos', 'gritar', 'barbaro')), 2).acciones).toEqual([{ accion: 'gritar', personaje: 'barbaro' }])
   })
 
-  it('y en el turno del héroe', () => {
-    const barbaro = rojos(ejecutarAccion(mapa, conModos, 'rojos', 'gritar', 'barbaro')).heroes[0]
-    expect(turnoDeHeroe(barbaro, 2).acciones).toEqual(['gritar'])
+  it('y en el turno del personaje', () => {
+    const barbaro = rojos(ejecutarAccion(mapa, conModos, 'rojos', 'gritar', 'barbaro')).personajes[0]
+    expect(turnoDePersonaje(barbaro, 2).acciones).toEqual(['gritar'])
   })
 
-  it('el héroe que actúa pasa a ser el activo de su escuadra', () => {
+  it('el personaje que actúa pasa a ser el activo de su escuadra', () => {
     expect(rojos(ejecutarAccion(mapa, conModos, 'rojos', 'gritar', 'barbaro')).activo).toBe('barbaro')
   })
 

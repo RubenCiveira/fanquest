@@ -107,19 +107,19 @@
   align-items: center;
 }
 
-.vista-elemento.heroe > circle {
+.vista-elemento.personaje > circle {
   fill: var(--vitela);
   stroke: var(--tinta);
   stroke-width: 1.5;
   cursor: pointer;
 }
 
-.vista-elemento.heroe.activo > circle {
+.vista-elemento.personaje.activo > circle {
   stroke: var(--rubrica);
   stroke-width: 3;
 }
 
-.vista-elemento.heroe image {
+.vista-elemento.personaje image {
   pointer-events: none;
 }
 
@@ -255,7 +255,7 @@
 }
 
 /* arrastrar la ficha no desplaza la página en pantallas táctiles */
-.vista-elemento.heroe {
+.vista-elemento.personaje {
   touch-action: none;
   transition:
     opacity 0.2s var(--ease),
@@ -316,8 +316,8 @@
   fill: var(--grafito);
 }
 
-/* héroes de otras escuadras mientras una se activa: apagados hasta que termine */
-.vista-elemento.heroe.esperando {
+/* personajes de otras escuadras mientras una se activa: apagados hasta que termine */
+.vista-elemento.personaje.esperando {
   opacity: 0.45;
   filter: blur(0.6px) grayscale(0.6);
 }

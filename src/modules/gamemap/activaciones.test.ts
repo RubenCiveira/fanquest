@@ -12,20 +12,20 @@ import {
 } from './activaciones'
 import { crearEstancia } from './estancias'
 import type { Configuracion } from './modelo/configuracion'
-import type { Heroe } from './modelo/heroe'
+import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 
-const heroe = (id: string): Heroe => ({ id, nombre: id, estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] })
+const personaje = (id: string): Personaje => ({ id, nombre: id, estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] })
 const mapa: Mapa = {
   estancias: [crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 3 })],
   escuadras: [
-    { id: 'rojos', nombre: 'Rojos', heroes: [heroe('barbaro'), heroe('elfo')], turnos: [] },
-    { id: 'azules', nombre: 'Azules', heroes: [heroe('enano')], turnos: [] },
+    { id: 'rojos', nombre: 'Rojos', personajes: [personaje('barbaro'), personaje('elfo')], turnos: [] },
+    { id: 'azules', nombre: 'Azules', personajes: [personaje('enano')], turnos: [] },
   ],
   turno: 1,
 }
 const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal' }
-const normales: Configuracion = { ordenActivaciones: 'heroes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' }
+const normales: Configuracion = { ordenActivaciones: 'personajes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' }
 
 const completas = (m: Mapa, config: Configuracion, modos: Record<string, 'normal' | 'agresivo' | 'sigiloso'>) =>
   Object.entries(modos).reduce((a, [id, modo]) => terminarActivacion(activar(a, config, id, modo), id), m)
@@ -44,7 +44,7 @@ describe('activaciones por escuadra', () => {
     expect(activar(mapa, conModos, 'rojos', 'agresivo').escuadras?.[0].modo).toBe('agresivo')
   })
 
-  it('no se activa un héroe suelto, sino su escuadra', () => {
+  it('no se activa un personaje suelto, sino su escuadra', () => {
     expect(motivoParaNoActivar(mapa, conModos, 'barbaro', 'agresivo')).toBe('No hay ninguna escuadra «barbaro» en el mapa')
   })
 

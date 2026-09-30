@@ -1,7 +1,7 @@
 import {
   activacionDe,
   conEscuadra,
-  conHeroe,
+  conPersonaje,
   conTurno,
   escuadraActiva,
   escuadrasDe,
@@ -39,7 +39,7 @@ export function motivoParaNoActuar(m: Mapa, id: string): string | undefined {
   if (activa && activa.id !== id) return esperandoA(activa)
 }
 
-/** Acciones que el gestor añade a las del héroe: cambiar al otro modo (si hay modos) y terminar turno */
+/** Acciones que el gestor añade a las del personaje: cambiar al otro modo (si hay modos) y terminar turno */
 export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): Accion[] {
   const modo = modoActual(m, config, id)
   const cambiar = config.modosActivacion === 'agresivo-sigiloso' && modo !== 'normal' ? [{ id: CAMBIAR_MODO, nombre: `Cambiar a ${OTRO_MODO[modo]}`, icono: ICONO_MODO[OTRO_MODO[modo]] }] : []
@@ -47,12 +47,12 @@ export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): A
 }
 
 /**
- * Apunta la acción en el turno en curso de la escuadra (con el héroe que la
- * hace, que pasa a ser su héroe activo). La primera empieza su activación en
+ * Apunta la acción en el turno en curso de la escuadra (con el personaje que la
+ * hace, que pasa a ser su personaje activo). La primera empieza su activación en
  * su modo actual; cambiar de modo cambia el de la activación y terminar turno
  * la da por terminada. Falla si la escuadra no puede actuar
  */
-export function apuntarAccion(m: Mapa, config: Configuracion, id: string, accion: string, heroe?: string): Mapa {
+export function apuntarAccion(m: Mapa, config: Configuracion, id: string, accion: string, personaje?: string): Mapa {
   const motivo = motivoParaNoActuar(m, id)
   if (motivo) throw new Error(motivo)
   const modo = modoActual(m, config, id)
@@ -66,23 +66,23 @@ export function apuntarAccion(m: Mapa, config: Configuracion, id: string, accion
   return conEscuadra(m, id, (e) => ({
     ...e,
     modo: activacion.modo,
-    ...(heroe && { activo: heroe }),
+    ...(personaje && { activo: personaje }),
     turnos: conTurno(e.turnos, { numero: numeroDeTurno(m), acciones: [] }, (t) => ({
       ...t,
       activacion,
-      acciones: [...t.acciones, heroe ? { accion, heroe } : { accion }],
+      acciones: [...t.acciones, personaje ? { accion, personaje } : { accion }],
     })),
   }))
 }
 
 /**
  * Ejecuta la acción de la escuadra: la apunta en su turno y, si la hace un
- * héroe, también en el turno del héroe
+ * personaje, también en el turno del personaje
  */
-export function ejecutarAccion(m: Mapa, config: Configuracion, id: string, accion: string, heroe?: string): Mapa {
-  const apuntada = apuntarAccion(m, config, id, accion, heroe)
-  if (!heroe) return apuntada
-  return conHeroe(apuntada, heroe, (h) => ({
+export function ejecutarAccion(m: Mapa, config: Configuracion, id: string, accion: string, personaje?: string): Mapa {
+  const apuntada = apuntarAccion(m, config, id, accion, personaje)
+  if (!personaje) return apuntada
+  return conPersonaje(apuntada, personaje, (h) => ({
     ...h,
     turnos: conTurno(h.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, acciones: [...t.acciones, accion] })),
   }))

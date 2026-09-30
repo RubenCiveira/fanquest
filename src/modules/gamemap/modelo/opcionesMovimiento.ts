@@ -22,7 +22,7 @@ export type OpcionMovimiento = {
 }
 
 /**
- * Cómo puede moverse un héroe ahora: su movimiento `base` y las
+ * Cómo puede moverse un personaje ahora: su movimiento `base` y las
  * `variaciones` (cargar, deslizar…). Al soltar, vale la primera que permita
  * el recorrido: la base y después las variaciones, en orden
  */

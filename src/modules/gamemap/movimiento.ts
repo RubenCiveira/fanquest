@@ -1,5 +1,5 @@
 import { apuntarAccion } from './acciones'
-import { conHeroe, conTurno, heroesDelMapa, numeroDeTurno, turnoDeHeroe } from './activaciones'
+import { conPersonaje, conTurno, personajesDelMapa, numeroDeTurno, turnoDePersonaje } from './activaciones'
 import { estanciaEn } from './estancias'
 import type { Accion } from './modelo/accion'
 import type { Casilla } from './modelo/casilla'
@@ -7,7 +7,7 @@ import type { Configuracion } from './modelo/configuracion'
 import type { Direccion } from './modelo/direccion'
 import type { Elemento } from './modelo/elemento'
 import type { Estancia } from './modelo/estancia'
-import type { Heroe } from './modelo/heroe'
+import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 import type { MovimientoGastado } from './modelo/movimientoGastado'
 import type { OpcionMovimiento, OpcionesMovimiento } from './modelo/opcionesMovimiento'
@@ -72,16 +72,16 @@ export function casillaDelMapa(m: Mapa, c: Casilla): { estancia: Estancia; casil
   }
 }
 
-/** Casilla del mapa en que está el héroe; nada si está en una zona de espera */
-export function enElMapa(m: Mapa, heroe: Heroe): Casilla | undefined {
-  const estancia = m.estancias.find((e) => e.id === heroe.estancia)
-  if (!estancia || !heroe.casilla) return
-  return { x: origenDe(estancia).x + heroe.casilla.x, y: origenDe(estancia).y + heroe.casilla.y }
+/** Casilla del mapa en que está el personaje; nada si está en una zona de espera */
+export function enElMapa(m: Mapa, personaje: Personaje): Casilla | undefined {
+  const estancia = m.estancias.find((e) => e.id === personaje.estancia)
+  if (!estancia || !personaje.casilla) return
+  return { x: origenDe(estancia).x + personaje.casilla.x, y: origenDe(estancia).y + personaje.casilla.y }
 }
 
 /**
- * Si un héroe puede estar en la casilla del mapa: es de una estancia (no de
- * una interior) y no la ocupa un objeto. Por encima de otros héroes sí pasa
+ * Si un personaje puede estar en la casilla del mapa: es de una estancia (no de
+ * una interior) y no la ocupa un objeto. Por encima de otros personajes sí pasa
  */
 export function transitable(m: Mapa, c: Casilla): boolean {
   const en = casillaDelMapa(m, c)
@@ -89,7 +89,7 @@ export function transitable(m: Mapa, c: Casilla): boolean {
 }
 
 /**
- * Si un héroe puede pasar de una casilla del mapa a la de al lado: dentro de
+ * Si un personaje puede pasar de una casilla del mapa a la de al lado: dentro de
  * la misma estancia o, entre dos, cruzando una puerta abierta en esa arista.
  * En diagonal (si la medición lo permite), solo dentro de una estancia y sin
  * cortar esquinas: tiene que poder pasarse por las dos casillas en ortogonal
@@ -156,9 +156,9 @@ export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: Medicion
   }
 }
 
-/** Lo que el héroe ya ha movido en el turno en curso: la suma de sus movimientos */
-export function gastadoPor(m: Mapa, heroe: Heroe): MovimientoGastado {
-  const { movimientos } = turnoDeHeroe(heroe, numeroDeTurno(m))
+/** Lo que el personaje ya ha movido en el turno en curso: la suma de sus movimientos */
+export function gastadoPor(m: Mapa, personaje: Personaje): MovimientoGastado {
+  const { movimientos } = turnoDePersonaje(personaje, numeroDeTurno(m))
   return { casillas: movimientos.reduce((suma, mv) => suma + mv.casillas, 0), acciones: movimientos.flatMap((mv) => mv.acciones) }
 }
 
@@ -192,27 +192,27 @@ function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefi
 }
 
 /**
- * Qué opción de movimiento permite el recorrido del héroe (en casillas del
+ * Qué opción de movimiento permite el recorrido del personaje (en casillas del
  * mapa, de la suya a la de destino, paso a paso según la `medicion` y
  * cruzando solo puertas abiertas) y en qué tramo cae cada paso. No puede
- * terminar encima de un objeto ni de otro héroe. `enemigos`: sus casillas del
+ * terminar encima de un objeto ni de otro personaje. `enemigos`: sus casillas del
  * mapa, para las opciones que se alejan de ellos o cargan
  */
 export function evaluarRecorrido(
   m: Mapa,
-  heroe: Heroe,
+  personaje: Personaje,
   recorrido: Casilla[],
   { base, variaciones }: OpcionesMovimiento,
   { medicion = 'ortogonal', enemigos = [] }: { medicion?: MedicionMovimiento; enemigos?: Casilla[] } = {},
 ): RecorridoEvaluado {
   const [salida, ...pasos] = recorrido
   const destino = pasos.at(-1)
-  const donde = enElMapa(m, heroe)
-  if (!salida || !donde || !igual(salida)(donde)) return { motivo: `El recorrido tiene que empezar en ${heroe.nombre}` }
-  if (!destino) return { motivo: `${heroe.nombre} no se ha movido` }
+  const donde = enElMapa(m, personaje)
+  if (!salida || !donde || !igual(salida)(donde)) return { motivo: `El recorrido tiene que empezar en ${personaje.nombre}` }
+  if (!destino) return { motivo: `${personaje.nombre} no se ha movido` }
   if (pasos.some((c, i) => !sePuedePasar(m, recorrido[i], c, medicion))) return { motivo: 'El recorrido pasa por donde no se puede' }
-  const otro = heroesDelMapa(m).find((h) => {
-    const suya = h.id !== heroe.id && enElMapa(m, h)
+  const otro = personajesDelMapa(m).find((h) => {
+    const suya = h.id !== personaje.id && enElMapa(m, h)
     return !!suya && igual(destino)(suya)
   })
   if (otro) return { motivo: `No se puede terminar encima de ${otro.nombre}` }
@@ -242,21 +242,21 @@ export const accionesAdicionales = ({ opcion, tramos }: Valido): Accion[] =>
 export const accionesConsumidas = (valido: Valido): string[] => [valido.opcion.accion.id, ...accionesAdicionales(valido).map((a) => a.id)]
 
 /**
- * Lleva al héroe de la escuadra al final del recorrido ya evaluado (en
+ * Lleva al personaje de la escuadra al final del recorrido ya evaluado (en
  * casillas del mapa: si es otra estancia, pasa a ella), apunta el movimiento en
  * su turno (lo que cuesta según la medición de `config`) y las acciones que
  * consume en el de su escuadra, que empiezan su activación si no había empezado
  */
-export function mover(m: Mapa, config: Configuracion, escuadra: string, heroe: Heroe, recorrido: Casilla[], valido: Valido): Mapa {
+export function mover(m: Mapa, config: Configuracion, escuadra: string, personaje: Personaje, recorrido: Casilla[], valido: Valido): Mapa {
   const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
-  if (!destino) throw new Error(`El recorrido de ${heroe.nombre} no termina en ninguna estancia`)
+  if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
   const acciones = accionesConsumidas(valido)
   const hecho = { opcion: valido.opcion.id, casillas: costeDe(recorrido, config.medicionMovimiento), acciones }
-  const movido = conHeroe(m, heroe.id, (h) => ({
+  const movido = conPersonaje(m, personaje.id, (h) => ({
     ...h,
     estancia: destino.estancia.id,
     casilla: destino.casilla,
     turnos: conTurno(h.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
   }))
-  return acciones.reduce((a, accion) => apuntarAccion(a, config, escuadra, accion, heroe.id), movido)
+  return acciones.reduce((a, accion) => apuntarAccion(a, config, escuadra, accion, personaje.id), movido)
 }

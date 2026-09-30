@@ -5,7 +5,7 @@ export const CONFIGURACION_INICIAL: Configuracion = { ordenActivaciones: 'altern
 
 /** Textos del formulario para cada valor de cada ajuste */
 export const OPCIONES_CONFIGURACION: { [K in keyof Configuracion]: { etiqueta: string; valores: Record<Configuracion[K], string> } } = {
-  ordenActivaciones: { etiqueta: 'Orden de activación', valores: { alternas: 'Alternas', 'heroes-primero': 'Todos los héroes primero' } },
+  ordenActivaciones: { etiqueta: 'Orden de activación', valores: { alternas: 'Alternas', 'personajes-primero': 'Todos los personajes primero' } },
   modosActivacion: { etiqueta: 'Modo de activación', valores: { 'agresivo-sigiloso': 'Agresivo o sigiloso', normal: 'Todas normales' } },
   medicionMovimiento: {
     etiqueta: 'Medición del movimiento',
@@ -13,7 +13,7 @@ export const OPCIONES_CONFIGURACION: { [K in keyof Configuracion]: { etiqueta: s
   },
 }
 
-const CLAVE = 'fetenquest.map-debug.configuracion.v1'
+const CLAVE = 'fetenquest.map-debug.configuracion.v2'
 
 /** La configuración guardada en este navegador, con lo que falte de la inicial */
 export function cargarConfiguracion(): Configuracion {

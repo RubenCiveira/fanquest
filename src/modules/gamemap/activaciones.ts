@@ -1,7 +1,7 @@
 import type { Activacion, ModoActivacion } from './modelo/activacion'
 import type { Configuracion } from './modelo/configuracion'
 import type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
-import type { Heroe, TurnoDeHeroe } from './modelo/heroe'
+import type { Personaje, TurnoDePersonaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 
 /** Número del turno en curso */
@@ -9,14 +9,14 @@ export const numeroDeTurno = (m: Mapa) => m.turno ?? 1
 
 export const escuadrasDe = (m: Mapa): Escuadra[] => m.escuadras ?? []
 
-/** Todos los héroes de todas las escuadras, colocados o en una zona de espera */
-export const heroesDelMapa = (m: Mapa): Heroe[] => escuadrasDe(m).flatMap((e) => e.heroes)
+/** Todos los personajes de todas las escuadras, colocados o en una zona de espera */
+export const personajesDelMapa = (m: Mapa): Personaje[] => escuadrasDe(m).flatMap((e) => e.personajes)
 
 /** Lo que ha hecho la escuadra en ese turno (vacío si nada) */
 export const turnoDeEscuadra = (e: Escuadra, numero: number): TurnoDeEscuadra => e.turnos.find((t) => t.numero === numero) ?? { numero, acciones: [] }
 
-/** Lo que ha hecho el héroe en ese turno (vacío si nada) */
-export const turnoDeHeroe = (h: Heroe, numero: number): TurnoDeHeroe =>
+/** Lo que ha hecho el personaje en ese turno (vacío si nada) */
+export const turnoDePersonaje = (h: Personaje, numero: number): TurnoDePersonaje =>
   h.turnos.find((t) => t.numero === numero) ?? { numero, acciones: [], movimientos: [] }
 
 /** Cambia la entrada de un turno de la lista, o la añade (desde `vacia`) si aún no existe */
@@ -30,9 +30,9 @@ export const conEscuadra = (m: Mapa, id: string, cambio: (e: Escuadra) => Escuad
   escuadras: escuadrasDe(m).map((e) => (e.id === id ? cambio(e) : e)),
 })
 
-export const conHeroe = (m: Mapa, id: string, cambio: (h: Heroe) => Heroe): Mapa => ({
+export const conPersonaje = (m: Mapa, id: string, cambio: (h: Personaje) => Personaje): Mapa => ({
   ...m,
-  escuadras: escuadrasDe(m).map((e) => ({ ...e, heroes: e.heroes.map((h) => (h.id === id ? cambio(h) : h)) })),
+  escuadras: escuadrasDe(m).map((e) => ({ ...e, personajes: e.personajes.map((h) => (h.id === id ? cambio(h) : h)) })),
 })
 
 /** Activación de la escuadra en el turno en curso, si se ha activado */
@@ -41,8 +41,8 @@ export const activacionDe = (m: Mapa, id: string): Activacion | undefined => {
   return escuadra && turnoDeEscuadra(escuadra, numeroDeTurno(m)).activacion
 }
 
-/** Escuadras que juegan: las que tienen algún héroe */
-const enJuego = (m: Mapa) => escuadrasDe(m).filter((e) => e.heroes.length)
+/** Escuadras que juegan: las que tienen algún personaje */
+const enJuego = (m: Mapa) => escuadrasDe(m).filter((e) => e.personajes.length)
 
 /** Escuadra con la activación en curso, si la hay: hasta que termine, las demás no pueden actuar */
 export const escuadraActiva = (m: Mapa): Escuadra | undefined =>
@@ -69,7 +69,7 @@ export const conActivacion = (m: Mapa, id: string, activacion: Activacion): Mapa
 /**
  * Por qué la escuadra no puede activarse en ese modo, o nada si puede: solo
  * una vez por turno, en un modo que permita la configuración y sin otra
- * escuadra a medio activar. La activación vale para todos sus héroes
+ * escuadra a medio activar. La activación vale para todos sus personajes
  */
 export function motivoParaNoActivar(m: Mapa, config: Configuracion, id: string, modo: ModoActivacion): string | undefined {
   const escuadra = enJuego(m).find((e) => e.id === id)
@@ -101,7 +101,7 @@ export function motivoParaNoTerminarTurno(m: Mapa): string | undefined {
 }
 
 /**
- * Pasa al turno siguiente: cada escuadra y cada héroe empiezan una entrada de
+ * Pasa al turno siguiente: cada escuadra y cada personaje empiezan una entrada de
  * turno nueva cuando hagan algo; su último modo queda en la escuadra. Falla si
  * alguna escuadra no ha terminado
  */

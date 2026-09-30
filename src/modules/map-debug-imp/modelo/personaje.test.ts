@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Heroe, MapaEnJuego, Puerta } from '../../gamemap'
-import { HeroeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './heroe'
+import type { Personaje, MapaEnJuego, Puerta } from '../../gamemap'
+import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './personaje'
 import { PuertasDePrueba } from './puerta'
 
-describe('héroe de prueba', () => {
+describe('personaje de prueba', () => {
   it('sin moverse, tiene todo su movimiento', () => {
     expect(movimientoDePrueba({ casillas: 0, acciones: [] })).toEqual(MOVIMIENTO_DE_PRUEBA)
   })
@@ -22,15 +22,15 @@ describe('héroe de prueba', () => {
   })
 })
 
-describe('acciones del héroe de prueba', () => {
+describe('acciones del personaje de prueba', () => {
   const salida: Puerta = { id: 'salida-1', tipo: 'salida', casilla: { x: 2, y: 3 }, lado: 'abajo' }
   const mapa: MapaEnJuego = { mapa: { estancias: [], turno: 1 }, puertaEn: () => salida, abrirPuerta: vi.fn() }
-  const enLaPuerta: Heroe = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 2, y: 3 }, turnos: [] }
+  const enLaPuerta: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 2, y: 3 }, turnos: [] }
   /** El bárbaro, con la puerta de su casilla asociada */
   function barbaro() {
     const puertas = new PuertasDePrueba()
     puertas.asociar({ id: 'estancia-1', tipo: 'sala', columnas: 5, filas: 4, puertas: [salida], elementos: [], estancias: [] })
-    return new HeroeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, puertas)
+    return new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, puertas)
   }
 
   it('en una salida cerrada, compone el comando de abrirla que da la puerta', async () => {

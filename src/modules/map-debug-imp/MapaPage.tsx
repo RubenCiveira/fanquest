@@ -56,12 +56,12 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
 
   useEffect(() => gestor.suscribir((m) => guardarMapa(id, m)), [gestor, id])
 
-  // la miniatura elegida, si es un héroe, muestra en corona sus acciones
-  const escuadraDelElegido = escuadrasDe(mapa).find((e) => e.heroes.some((h) => h.id === seleccion?.elemento))
-  const heroeElegido = escuadraDelElegido?.heroes.find((h) => h.id === seleccion?.elemento)
+  // la miniatura elegida, si es un personaje, muestra en corona sus acciones
+  const escuadraDelElegido = escuadrasDe(mapa).find((e) => e.personajes.some((h) => h.id === seleccion?.elemento))
+  const personajeElegido = escuadraDelElegido?.personajes.find((h) => h.id === seleccion?.elemento)
   const escuadraElegida = escuadraDelElegido?.id
-  // un héroe ya en el mapa no se coloca a mano: se arrastra
-  const heroeEnMapa = !!heroeElegido?.casilla
+  // un personaje ya en el mapa no se coloca a mano: se arrastra
+  const personajeEnMapa = !!personajeElegido?.casilla
   const [acciones, setAcciones] = useState<{ escuadra: string; mapa: Mapa; lista: Accion[] }>()
 
   useEffect(() => {
@@ -96,16 +96,16 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
 
   /**
    * Con un elemento elegido que se coloca a mano, la casilla es su sitio
-   * nuevo; si no (o es un héroe ya en el mapa, que se arrastra), se informa de
+   * nuevo; si no (o es un personaje ya en el mapa, que se arrastra), se informa de
    * qué estancia es
    */
   function elegirCasilla(e: Estancia, c: Casilla) {
-    if (seleccion?.estancia !== e.id || heroeEnMapa) {
+    if (seleccion?.estancia !== e.id || personajeEnMapa) {
       const en = estanciaEn(e, c)
       setNota(en && `Casilla ${c.x},${c.y}: ${en.estancia.id} (${en.estancia.tipo}), casilla ${en.casilla.x},${en.casilla.y}. Ruta: ${en.ruta.map((r) => r.id).join(' › ')}.`)
       return
     }
-    setNota(heroeElegido ? gestor.colocarHeroe(heroeElegido.id, c) : gestor.colocarElemento(e.id, seleccion.elemento, c))
+    setNota(personajeElegido ? gestor.colocarPersonaje(personajeElegido.id, c) : gestor.colocarElemento(e.id, seleccion.elemento, c))
     setSeleccion(undefined)
   }
 
@@ -131,7 +131,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         </button>
       </div>
       <ul className="map-debug-escuadras">
-        {escuadrasDe(mapa).map(({ id: escuadra, nombre, modo, activo, heroes }) => {
+        {escuadrasDe(mapa).map(({ id: escuadra, nombre, modo, activo, personajes }) => {
           const activacion = activacionDe(mapa, escuadra)
           return (
             <li key={escuadra} className="map-debug-turno">
@@ -139,7 +139,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
               {activacion && !activacion.terminada && (
                 <span className="nota">
                   Activándose en modo {activacion.modo}
-                  {activo && ` con ${heroes.find((h) => h.id === activo)?.nombre ?? activo}`}.
+                  {activo && ` con ${personajes.find((h) => h.id === activo)?.nombre ?? activo}`}.
                 </span>
               )}
               {activacion?.terminada && <span className="nota">Activación completa en modo {activacion.modo}.</span>}
@@ -155,20 +155,20 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         elemento={seleccion?.elemento}
         onElegir={elegirCasilla}
         onElegirElemento={(elemento) => {
-          const heroe = escuadrasDe(mapa).flatMap((e) => e.heroes).find((h) => h.id === elemento)
-          const estancia = heroe?.estancia ?? mapa.estancias.find((e) => e.elementos.some((el) => el.id === elemento))?.id
+          const personaje = escuadrasDe(mapa).flatMap((e) => e.personajes).find((h) => h.id === elemento)
+          const estancia = personaje?.estancia ?? mapa.estancias.find((e) => e.elementos.some((el) => el.id === elemento))?.id
           if (estancia) setSeleccion({ estancia, elemento })
         }}
         corona={escuadraElegida ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
-        opcionesMovimiento={(heroe) => gestor.opcionesMovimiento(heroe)}
-        onMover={async (heroe, recorrido) => setNota(await gestor.moverHeroe(heroe, recorrido))}
+        opcionesMovimiento={(personaje) => gestor.opcionesMovimiento(personaje)}
+        onMover={async (personaje, recorrido) => setNota(await gestor.moverPersonaje(personaje, recorrido))}
         medicion={configuracion.medicionMovimiento}
       />
 
       {mapa.estancias.map((e) => {
         const enEspera = [
           ...e.elementos.filter((el) => !el.posicion).map((el) => ({ id: el.id, texto: `${el.nombre} (${el.columnas} × ${el.filas})` })),
-          ...escuadrasDe(mapa).flatMap((esc) => esc.heroes.filter((h) => h.estancia === e.id && !h.casilla).map((h) => ({ id: h.id, texto: h.nombre }))),
+          ...escuadrasDe(mapa).flatMap((esc) => esc.personajes.filter((h) => h.estancia === e.id && !h.casilla).map((h) => ({ id: h.id, texto: h.nombre }))),
         ]
         const elegido = seleccion?.estancia === e.id ? seleccion.elemento : undefined
         return (
@@ -191,13 +191,13 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
                   {el.texto}
                 </button>
               ))}
-              {elegido && !heroeEnMapa && e.elementos.find((el) => el.id === elegido)?.posicion && (
+              {elegido && !personajeEnMapa && e.elementos.find((el) => el.id === elegido)?.posicion && (
                 <button type="button" className="button secondary" onClick={aEspera}>
                   Devolver a la zona de espera
                 </button>
               )}
             </div>
-            {elegido && !heroeEnMapa && <p className="nota">Pulsa la casilla donde quieres su esquina superior izquierda.</p>}
+            {elegido && !personajeEnMapa && <p className="nota">Pulsa la casilla donde quieres su esquina superior izquierda.</p>}
             {elegido && escuadraElegida && motivoParaNoActuar(mapa, escuadraElegida) && <p className="nota">{motivoParaNoActuar(mapa, escuadraElegida)}</p>}
           </article>
         )

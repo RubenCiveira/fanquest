@@ -16,7 +16,7 @@ import {
   type Casilla,
   type Estancia,
   type Escuadra,
-  type Heroe,
+  type Personaje,
   type Mapa,
   type MedicionMovimiento,
   type ModoActivacion,
@@ -58,7 +58,7 @@ function PuertaEnMuro({ puerta: { casilla, lado, tipo, id, abierta, destino }, o
 
 const INICIAL_MODO = { normal: 'N', agresivo: 'A', sigiloso: 'S' }
 
-type PropsFicha = { ficha: Heroe; x: number; y: number; activacion?: Activacion; ultimoModo?: ModoActivacion }
+type PropsFicha = { ficha: Personaje; x: number; y: number; activacion?: Activacion; ultimoModo?: ModoActivacion }
 
 /** Texto del badge al pasar el puntero */
 function estadoBadge(activacion?: Activacion, ultimoModo?: ModoActivacion) {
@@ -67,7 +67,7 @@ function estadoBadge(activacion?: Activacion, ultimoModo?: ModoActivacion) {
 }
 
 /**
- * Ficha redonda de un héroe en la casilla de esquina `x`, `y`: su imagen VTT
+ * Ficha redonda de un personaje en la casilla de esquina `x`, `y`: su imagen VTT
  * o, sin ella, sus iniciales. El badge lleva la inicial del modo: con borde
  * mientras se activa, relleno al terminar y, si aún no se ha activado este
  * turno, discontinuo con su último modo (`ultimoModo`)
@@ -230,11 +230,11 @@ function Flecha({ recorrido, evaluado, marcador, coste }: { recorrido: Casilla[]
 }
 
 type Arrastre = {
-  ficha: Heroe
+  ficha: Personaje
   /** Casilla bajo el puntero: la ruta va de la ficha hasta ella */
   objetivo: Casilla
   recorrido: Casilla[]
-  /** Mientras llegan, sin definir; `null` si el héroe no puede moverse */
+  /** Mientras llegan, sin definir; `null` si el personaje no puede moverse */
   opciones?: OpcionesMovimiento | null
   /** El puntero está en una casilla a la que no llega: soltar ahí no hace nada */
   fuera?: boolean
@@ -264,32 +264,32 @@ function trazar(mapa: Mapa, a: Arrastre, objetivo: Casilla, medicion: MedicionMo
 /** Lo que la vista deja hacer sobre las estancias; `onElegir` recibe la casilla en coordenadas de su estancia */
 type Props = {
   onElegir?: (estancia: Estancia, c: Casilla) => void
-  /** Id del elemento o héroe resaltado */
+  /** Id del elemento o personaje resaltado */
   elemento?: string
   onElegirElemento?: (id: string) => void
   /** Acciones que se dibujan en corona alrededor del elemento resaltado */
   corona?: { acciones: Accion[]; onAccion: (id: string) => void }
-  /** Cómo puede moverse un héroe: se pregunta al empezar a arrastrar su ficha */
-  opcionesMovimiento?: (heroeId: string) => Promise<OpcionesMovimiento | undefined>
+  /** Cómo puede moverse un personaje: se pregunta al empezar a arrastrar su ficha */
+  opcionesMovimiento?: (personajeId: string) => Promise<OpcionesMovimiento | undefined>
   /** Al soltar una ficha arrastrada: sin esto, las fichas no se arrastran */
-  onMover?: (heroeId: string, recorrido: Casilla[]) => void
+  onMover?: (personajeId: string, recorrido: Casilla[]) => void
   /** Cómo se miden los movimientos al arrastrar (sin diagonales, si no se dice) */
   medicion?: MedicionMovimiento
 }
 
-/** Héroe colocado en una estancia, con su escuadra */
-type HeroeColocado = { heroe: Heroe & { casilla: Casilla }; escuadra: Escuadra }
+/** Personaje colocado en una estancia, con su escuadra */
+type PersonajeColocado = { personaje: Personaje & { casilla: Casilla }; escuadra: Escuadra }
 
 /**
  * Una estancia del mapa en su sitio (`origen`, en casillas del mapa), con las
- * suyas dentro, sus puertas, sus objetos colocados y los héroes que están en
+ * suyas dentro, sus puertas, sus objetos colocados y los personajes que están en
  * ella; las casillas se colorean por su tipo. Todo lo de dentro va en
  * coordenadas de la estancia
  */
 function CapaEstancia({
   estancia,
   origen,
-  heroes,
+  personajes,
   fichas,
   numero,
   activa,
@@ -302,24 +302,24 @@ function CapaEstancia({
 }: Props & {
   estancia: Estancia
   origen: Casilla
-  heroes: HeroeColocado[]
-  /** Casillas de todas las fichas de héroe del mapa, en coordenadas de esta estancia */
+  personajes: PersonajeColocado[]
+  /** Casillas de todas las fichas de personaje del mapa, en coordenadas de esta estancia */
   fichas: Casilla[]
   /** Número del turno en curso */
   numero: number
   /**
-   * Escuadra con la activación en curso: los héroes de las demás se ven
+   * Escuadra con la activación en curso: los personajes de las demás se ven
    * apagados y no se arrastran (pulsarlos solo los elige) hasta que termine
    */
   activa?: string
-  /** Al pulsar una ficha de héroe que se puede arrastrar: el arrastre lo lleva el mapa */
-  onArrastrar?: (ev: PointerEvent, heroe: Heroe) => void
+  /** Al pulsar una ficha de personaje que se puede arrastrar: el arrastre lo lleva el mapa */
+  onArrastrar?: (ev: PointerEvent, personaje: Personaje) => void
   /** Mientras se arrastra una ficha no se muestra la corona */
   arrastrando: boolean
 }) {
-  /** Héroe de otra escuadra mientras una se activa */
+  /** Personaje de otra escuadra mientras una se activa */
   const esperando = (escuadra: Escuadra) => !!activa && escuadra.id !== activa
-  const elegido = heroes.find(({ heroe }) => heroe.id === elemento)?.heroe.casilla ?? estancia.elementos.find((el) => el.id === elemento)?.posicion
+  const elegido = personajes.find(({ personaje }) => personaje.id === elemento)?.personaje.casilla ?? estancia.elementos.find((el) => el.id === elemento)?.posicion
   const medidaElegida = estancia.elementos.find((el) => el.id === elemento) ?? { columnas: 1, filas: 1 }
 
   return (
@@ -365,20 +365,20 @@ function CapaEstancia({
             : [],
         ),
       )}
-      {heroes.map(({ heroe, escuadra }) => {
+      {personajes.map(({ personaje, escuadra }) => {
         const activacion = turnoDeEscuadra(escuadra, numero).activacion
         return (
           <g
-            key={heroe.id}
-            className={`vista-elemento heroe${heroe.id === elemento ? ' activo' : ''}${esperando(escuadra) ? ' esperando' : ''}`}
+            key={personaje.id}
+            className={`vista-elemento personaje${personaje.id === elemento ? ' activo' : ''}${esperando(escuadra) ? ' esperando' : ''}`}
             {...(onArrastrar && !esperando(escuadra)
-              ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, heroe) }
-              : { onClick: () => onElegirElemento?.(heroe.id) })}
+              ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, personaje) }
+              : { onClick: () => onElegirElemento?.(personaje.id) })}
           >
             <FichaEnMapa
-              ficha={heroe}
-              x={heroe.casilla.x * LADO}
-              y={heroe.casilla.y * LADO}
+              ficha={personaje}
+              x={personaje.casilla.x * LADO}
+              y={personaje.casilla.y * LADO}
               activacion={activacion}
               ultimoModo={escuadra.modo === 'normal' ? undefined : escuadra.modo}
             />
@@ -406,7 +406,7 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
 /**
  * El mapa: cada estancia en su sitio, en un solo dibujo que las abarca a
  * todas. La estancia de la ficha elegida se pinta la última, para que su
- * corona quede por encima de las demás. Las fichas de héroe se arrastran
+ * corona quede por encima de las demás. Las fichas de personaje se arrastran
  * casilla a casilla por todo el mapa (cruzando puertas abiertas), con la
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
@@ -426,7 +426,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     return { x: Math.floor(p.x / LADO), y: Math.floor(p.y / LADO) }
   }
 
-  function empezar(ev: PointerEvent, ficha: Heroe) {
+  function empezar(ev: PointerEvent, ficha: Personaje) {
     const desde = enElMapa(mapa, ficha)
     if (!desde) return
     svg.current?.setPointerCapture(ev.pointerId)
@@ -461,13 +461,13 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const x1 = Math.max(...estancias.map((e) => origenDe(e).x + e.columnas))
   const y1 = Math.max(...estancias.map((e) => origenDe(e).y + e.filas))
   const colocados = escuadrasDe(mapa).flatMap((escuadra) =>
-    escuadra.heroes.flatMap((heroe) => (heroe.casilla ? [{ heroe: { ...heroe, casilla: heroe.casilla }, escuadra }] : [])),
+    escuadra.personajes.flatMap((personaje) => (personaje.casilla ? [{ personaje: { ...personaje, casilla: personaje.casilla }, escuadra }] : [])),
   )
   const numero = numeroDeTurno(mapa)
   const activa = escuadraActiva(mapa)?.id
   const conElegido = (e: Estancia) =>
     Number(
-      colocados.some(({ heroe }) => heroe.id === props.elemento && heroe.estancia === e.id) ||
+      colocados.some(({ personaje }) => personaje.id === props.elemento && personaje.estancia === e.id) ||
         estanciasDe(e).some(({ estancia }) => estancia.elementos.some((el) => el.id === props.elemento)),
     )
   return (
@@ -495,9 +495,9 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
             key={e.id}
             estancia={e}
             origen={origenDe(e)}
-            heroes={colocados.filter(({ heroe }) => heroe.estancia === e.id)}
-            fichas={colocados.flatMap(({ heroe }) => {
-              const c = enElMapa(mapa, heroe)
+            personajes={colocados.filter(({ personaje }) => personaje.estancia === e.id)}
+            fichas={colocados.flatMap(({ personaje }) => {
+              const c = enElMapa(mapa, personaje)
               return c ? [{ x: c.x - origenDe(e).x, y: c.y - origenDe(e).y }] : []
             })}
             numero={numero}
