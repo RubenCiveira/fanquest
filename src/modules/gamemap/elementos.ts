@@ -51,3 +51,13 @@ export const situar = (e: Estancia, elementos: Elemento[]): Estancia =>
     const posicion = buscarSitio(hecha, elemento)
     return { ...hecha, elementos: [...hecha.elementos, posicion ? { ...elemento, posicion } : elemento] }
   }, e)
+
+/** Añade los elementos a la estancia, cada uno en un sitio libre al azar o, si no cabe, en la zona de espera */
+export const situarAleatorio = (e: Estancia, elementos: Elemento[], azar: () => number): Estancia =>
+  elementos.reduce((hecha, elemento) => {
+    const posibles = casillasDe({ columnas: Math.max(0, hecha.columnas - elemento.columnas + 1), filas: Math.max(0, hecha.filas - elemento.filas + 1) }, { x: 0, y: 0 }).filter(
+      (c) => !motivoParaNoColocar(hecha, elemento, c),
+    )
+    const posicion = posibles[Math.floor(azar() * posibles.length)]
+    return { ...hecha, elementos: [...hecha.elementos, posicion ? { ...elemento, posicion } : elemento] }
+  }, e)

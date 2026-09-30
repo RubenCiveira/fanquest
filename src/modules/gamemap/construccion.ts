@@ -14,10 +14,10 @@ import { motivoParaNoAnadirTerreno } from './terrenos'
  */
 export function construirEstancia(
   id: string,
-  { tipo, tamano, orientacion, salidas, elementos, terrenos = [] }: DescripcionEstancia,
+  { tipo, tamano, orientacion, salidas, elementos, muebles = [], terrenos = [] }: DescripcionEstancia,
   entrada?: Direccion,
 ): Estancia {
-  const invalido = elementos.find(({ columnas, filas }) => ![columnas, filas].every((n) => Number.isInteger(n) && n > 0))
+  const invalido = [...elementos, ...muebles].find(({ columnas, filas }) => ![columnas, filas].every((n) => Number.isInteger(n) && n > 0))
   if (invalido) throw new Error(`«${invalido.nombre}» necesita filas y columnas enteras y positivas`)
   const orientada = orientar(crearEstancia({ id, tipo, ...tamano }), orientacion, salidas, entrada)
   const fuera = terrenos.map((t) => motivoParaNoAnadirTerreno(orientada, t)).find(Boolean)
@@ -26,6 +26,6 @@ export function construirEstancia(
   const vacia = terrenos.length ? { ...orientada, terrenos } : orientada
   return situar(
     vacia,
-    elementos.map((descripcion, i) => ({ ...descripcion, id: `${id}-elemento-${i + 1}` })),
+    [...elementos.map((descripcion, i) => ({ ...descripcion, id: `${id}-elemento-${i + 1}` })), ...muebles],
   )
 }

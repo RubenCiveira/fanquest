@@ -1,7 +1,10 @@
 import type { Estancia } from './estancia'
+import type { DescripcionMueble } from './descripcionEstancia'
 import type { DescripcionPersonajeNoJugador } from './descripcionPersonaje'
+import type { Elemento } from './elemento'
 import type { Jugadores } from './jugadores'
 import type { Mapa } from './mapa'
+import type { Personaje } from './personaje'
 import type { PersonajeNoJugador } from './personajeNoJugador'
 import type { Puerta } from './puerta'
 import type { Ubicacion } from './ubicacion'
@@ -16,6 +19,14 @@ export interface MapaEnJuego {
   tieneFlag(estancia: string, flag: string): boolean
   /** Marca esa bandera de estado en la estancia, si existe */
   marcarFlag(estancia: string, flag: string): string | undefined
+  /** Elementos colocados junto al personaje */
+  dameLoQueEstaAlLado(personaje: Personaje): Elemento[]
+  /** Quita el elemento de su estancia (un personaje coge el objeto…); si no está, el motivo */
+  quitarElemento(elemento: string): string | undefined
+  /** Si ese mueble tiene marcada esa bandera de estado */
+  tieneFlagMueble(mueble: string, flag: string): boolean
+  /** Marca esa bandera de estado en el mueble, si existe */
+  marcarFlagMueble(mueble: string, flag: string): string | undefined
   /**
    * Abre la puerta de esa casilla: pide al proveedor la estancia a la que da
    * y la marca abierta hacia ella. Falla si no hay puerta, ya está abierta o
@@ -26,8 +37,10 @@ export interface MapaEnJuego {
    * Añade a la estancia esos personajes no jugadores, cada uno donde diga su
    * aparición (en una casilla libre que no sea impasable; si no hay sitio, en la
    * zona de espera). Falla si la estancia no existe o un id ya está en el mapa
-   */
+  */
   anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[]
+  /** Añade muebles nuevos a la estancia, colocándolos al azar donde quepan */
+  anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[]
   /**
    * Cambia las alianzas, los jugadores o sus posturas en mitad de la partida
    * (un evento vuelve enemigos a unos acólitos…). Si el reparto no vale, no

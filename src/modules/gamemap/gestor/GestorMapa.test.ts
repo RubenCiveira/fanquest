@@ -13,6 +13,7 @@ import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { MovimientoGastado } from '../modelo/movimientoGastado'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
+import { gastadoPor } from '../movimiento'
 import { GestorMapa } from './GestorMapa'
 import type { Jugadores } from '../modelo/jugadores'
 
@@ -401,6 +402,139 @@ describe('gestor del mapa: enemigos', () => {
     const hacia = (dx: number) => ({ x: desde.x + dx, y: desde.y })
     const [colocado] = gestor.anadirPersonajes('estancia-1', [{ ...orco, casilla: hacia(-1) }])
     expect([colocado.casilla, await gestor.moverPersonaje('barbaro', [desde, hacia(-1), hacia(-2)])]).toEqual([hacia(-1), 'El recorrido pasa por donde no se puede'])
+  })
+})
+
+describe('gestor del mapa: muebles', () => {
+  it('añade muebles a una estancia del mapa y avisa del cambio', async () => {
+    const { gestor } = await conInicial(amplia)
+    const aviso = vi.fn()
+    gestor.suscribir(aviso)
+    const [mesa] = gestor.anadirMuebles('estancia-1', [{ id: 'mesa', tipo: 'mueble', nombre: 'Mesa', columnas: 1, filas: 1 }])
+    expect([!!mesa.posicion, Boolean(aviso.mock.lastCall?.[0].estancias[0].elementos.find((el: { id: string }) => el.id === 'mesa'))]).toEqual([true, true])
+  })
+
+  it('no permite mover muebles a mano', async () => {
+    const { gestor } = await conInicial(amplia)
+    gestor.anadirMuebles('estancia-1', [{ id: 'mesa', tipo: 'mueble', nombre: 'Mesa', columnas: 1, filas: 1 }])
+    expect(gestor.colocarElemento('estancia-1', 'mesa', { x: 1, y: 1 })).toBe('El mueble «Mesa» no se puede mover')
+  })
+
+  it('marca flags de muebles y los consulta', async () => {
+    const { gestor } = await conInicial(amplia)
+    gestor.anadirMuebles('estancia-1', [{ id: 'mesa', tipo: 'mueble', nombre: 'Mesa', columnas: 1, filas: 1 }])
+    gestor.marcarFlagMueble('mesa', 'revisado')
+    expect(gestor.tieneFlagMueble('mesa', 'revisado')).toBe(true)
+  })
+
+  it('devuelve los muebles colocados al lado de un personaje', async () => {
+    const gestor = new GestorMapa(proveedor(), {
+      estancias: [{ id: 'sala', tipo: 'sala', columnas: 3, filas: 3, puertas: [], elementos: [{ id: 'mesa', tipo: 'mueble', nombre: 'Mesa', columnas: 1, filas: 1, posicion: { x: 2, y: 1 } }], estancias: [] }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }], turnos: [] }],
+    })
+    expect(gestor.dameLoQueEstaAlLado(gestor.mapa.escuadras?.[0].personajes[0] ?? { id: '', nombre: '', estancia: '', turnos: [] }).map((el) => el.id)).toEqual(['mesa'])
+  })
+})
+
+describe('gestor del mapa: agrupar y coger', () => {
+  /**
+   * Los rojos con el bárbaro en 0,0 y el elfo en `elfo`, en una sala de 5 × 3.
+   * La clase del elfo mueve 2 por turno, menos lo que ya haya gastado
+   */
+  async function conElfo(elfo: Casilla) {
+    const p = proveedor()
+    const [rojos] = await p.listarEscuadras()
+    const [barbaro] = await rojos.personajes()
+    const gestor = new GestorMapa(
+      { ...p, listarEscuadras: async () => [{ ...rojos, personajes: async () => [
+            barbaro,
+            {
+              ...barbaro,
+              id: 'elfo',
+              nombre: 'Elfo',
+              opcionesMovimiento: async (_personaje: Personaje, { casillas }: MovimientoGastado) => ({
+                base: { ...opciones.base, tramos: [{ distancia: Math.max(0, 2 - casillas) }] },
+                variaciones: [],
+              }),
+            },
+          ] }] },
+      {
+        estancias: [{ id: 'sala', tipo: 'sala', columnas: 5, filas: 3, puertas: [], elementos: [], estancias: [] }],
+        escuadras: [
+          {
+            id: 'rojos',
+            nombre: 'Rojos',
+            jugador: 'j1',
+            personajes: [
+              { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [] },
+              { id: 'elfo', nombre: 'Elfo', estancia: 'sala', casilla: elfo, turnos: [] },
+            ],
+            turnos: [],
+          },
+        ],
+        turno: 1,
+      },
+    )
+    const elfoDe = () => gestor.mapa.escuadras?.[0].personajes[1] ?? { id: '', nombre: '', estancia: '', turnos: [] }
+    return { gestor, elfoDe }
+  }
+
+  it('un personaje de una escuadra con más personajes puede agrupar', async () => {
+    const { gestor } = await conElfo({ x: 4, y: 2 })
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toContain('agrupar')
+  })
+
+  it('solo, no tiene a quién agrupar', async () => {
+    const { gestor } = await conInicial()
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).not.toContain('agrupar')
+  })
+
+  it('agrupar trae al resto de la escuadra a su lado con su movimiento, que queda gastado', async () => {
+    const { gestor, elfoDe } = await conElfo({ x: 3, y: 0 })
+    await gestor.ejecutarAccion('rojos', 'agrupar', 'barbaro')
+    expect([elfoDe().casilla, turnoDePersonaje(elfoDe(), 1).movimientos]).toEqual([{ x: 1, y: 0 }, [{ opcion: 'mover', casillas: 2, acciones: ['mover'] }]])
+  })
+
+  it('sin movimiento para llegar, se queda a medio camino', async () => {
+    const { gestor, elfoDe } = await conElfo({ x: 4, y: 0 })
+    await gestor.ejecutarAccion('rojos', 'agrupar', 'barbaro')
+    expect(elfoDe().casilla).toEqual({ x: 2, y: 0 })
+  })
+
+  it('el que ya ha gastado su movimiento no se mueve al agrupar', async () => {
+    const { gestor, elfoDe } = await conElfo({ x: 3, y: 0 })
+    await gestor.moverPersonaje('elfo', [{ x: 3, y: 0 }, { x: 3, y: 1 }, { x: 3, y: 2 }])
+    await gestor.ejecutarAccion('rojos', 'agrupar', 'barbaro')
+    expect([elfoDe().casilla, gastadoPor(gestor.mapa, elfoDe()).casillas]).toEqual([{ x: 3, y: 2 }, 2])
+  })
+
+  it('el que ha gastado parte de su movimiento solo se acerca con lo que le queda', async () => {
+    const { gestor, elfoDe } = await conElfo({ x: 4, y: 0 })
+    await gestor.moverPersonaje('elfo', [{ x: 4, y: 0 }, { x: 4, y: 1 }])
+    await gestor.ejecutarAccion('rojos', 'agrupar', 'barbaro')
+    // de 4,1 (a 5 del bárbaro) le queda 1: acaba a 4, en 4,0 o en 3,1
+    const { x, y } = elfoDe().casilla ?? { x: Number.NaN, y: Number.NaN }
+    expect([x + y, gastadoPor(gestor.mapa, elfoDe()).casillas]).toEqual([4, 2])
+  })
+
+  it('agrupar se apunta como acción del que agrupa, y el movimiento, del que se mueve', async () => {
+    const { gestor } = await conElfo({ x: 3, y: 0 })
+    await gestor.ejecutarAccion('rojos', 'agrupar', 'barbaro')
+    expect(turnoDeEscuadra(gestor.mapa.escuadras?.[0] ?? { id: '', nombre: '', jugador: '', personajes: [], turnos: [] }, 1).acciones).toEqual([
+      { accion: 'mover', personaje: 'elfo' },
+      { accion: 'agrupar', personaje: 'barbaro' },
+    ])
+  })
+
+  it('quita un elemento de su estancia', async () => {
+    const { gestor } = await conInicial()
+    gestor.quitarElemento('estancia-1-elemento-1')
+    expect(gestor.mapa.estancias[0].elementos).toEqual([])
+  })
+
+  it('no quita lo que no está', async () => {
+    const { gestor } = await conInicial()
+    expect(gestor.quitarElemento('nada')).toBe('No hay ningún elemento «nada» en el mapa')
   })
 })
 

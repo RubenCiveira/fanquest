@@ -37,18 +37,37 @@ describe('escuadras de prueba', () => {
   })
 
   it('moverse sin más no completa la activación', () => {
-    expect(activacionDePrueba([{ accion: 'mover', personaje: 'barbaro' }])).toEqual({ completo: false })
+    expect(activacionDePrueba([{ accion: 'mover', personaje: 'barbaro' }], ['barbaro'])).toEqual({ completo: false })
   })
 
   it('moverse y deslizar completa la activación', () => {
-    expect(activacionDePrueba([{ accion: 'mover', personaje: 'barbaro' }, { accion: 'deslizar', personaje: 'barbaro' }])).toEqual({ completo: true })
+    expect(activacionDePrueba([{ accion: 'mover', personaje: 'barbaro' }, { accion: 'deslizar', personaje: 'barbaro' }], ['barbaro'])).toEqual({ completo: true })
   })
 
-  it('moverse y usar otra acción de la escuadra completa la activación', () => {
-    expect(activacionDePrueba([{ accion: 'cambiar-modo' }, { accion: 'mover', personaje: 'barbaro' }])).toEqual({ completo: true })
+  it('las acciones de la escuadra sin personaje (cambiar de modo) no agotan a nadie', () => {
+    expect(activacionDePrueba([{ accion: 'cambiar-modo' }, { accion: 'mover', personaje: 'barbaro' }], ['barbaro'])).toEqual({ completo: false })
+  })
+
+  it('con varios personajes, no se completa mientras a alguno le queden acciones', () => {
+    const acciones = [
+      { accion: 'mover', personaje: 'orco-1' },
+      { accion: 'coger-objeto-cofre', personaje: 'orco-1' },
+      { accion: 'mover', personaje: 'orco-2' },
+    ]
+    expect(activacionDePrueba(acciones, ['orco-1', 'orco-2'])).toEqual({ completo: false })
+  })
+
+  it('se completa cuando cada personaje se ha movido y ha hecho otra acción', () => {
+    const acciones = [
+      { accion: 'mover', personaje: 'orco-1' },
+      { accion: 'agrupar', personaje: 'orco-1' },
+      { accion: 'mover', personaje: 'orco-2' },
+      { accion: 'deslizar', personaje: 'orco-2' },
+    ]
+    expect(activacionDePrueba(acciones, ['orco-1', 'orco-2'])).toEqual({ completo: true })
   })
 
   it('usar una acción sin moverse no completa la activación', () => {
-    expect(activacionDePrueba([{ accion: 'cambiar-modo' }])).toEqual({ completo: false })
+    expect(activacionDePrueba([{ accion: 'cambiar-modo' }], ['barbaro'])).toEqual({ completo: false })
   })
 })

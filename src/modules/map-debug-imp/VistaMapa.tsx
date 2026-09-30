@@ -402,9 +402,14 @@ function CapaEstancia({
                     width={el.columnas * LADO - 6}
                     height={el.filas * LADO - 6}
                   />
-                  <text x={(origen.x + el.posicion.x + el.columnas / 2) * LADO} y={(origen.y + el.posicion.y + el.filas / 2) * LADO + 4}>
-                    {el.nombre}
-                  </text>
+                  {el.tipo === 'mueble' && el.imagenVtt ? (
+                    <image href={el.imagenVtt} x={(origen.x + el.posicion.x) * LADO + 3} y={(origen.y + el.posicion.y) * LADO + 3} width={el.columnas * LADO - 6} height={el.filas * LADO - 6} />
+                  ) : (
+                    <text x={(origen.x + el.posicion.x + el.columnas / 2) * LADO} y={(origen.y + el.posicion.y + el.filas / 2) * LADO + 4}>
+                      {el.nombre}
+                    </text>
+                  )}
+                  <title>{el.tipo === 'mueble' && el.flags?.length ? `${el.nombre}: ${el.flags.join(', ')}` : el.nombre}</title>
                 </g>,
               ]
             : [],

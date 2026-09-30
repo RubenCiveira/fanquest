@@ -1,7 +1,9 @@
 import { numeroDeTurno, turnoDePersonaje, type Accion, type ClaseDePersonaje, type Personaje, type MapaEnJuego, type MovimientoGastado, type OpcionesMovimiento } from '../../gamemap'
+import { CogerObjeto } from './cogerObjeto'
 import type { PuertasDePrueba } from './puerta'
 
 export const MOVER = { id: 'mover', nombre: 'Mover', icono: '🥾' }
+export const REVISAR_MUEBLE = { id: 'revisar-mueble', nombre: 'Revisar mueble', icono: '🧰' }
 const DESLIZAR = { id: 'deslizar', nombre: 'Deslizar', icono: '💨' }
 
 /** Casillas del movimiento de un personaje de prueba */
@@ -45,7 +47,8 @@ export function movimientoDePrueba({ casillas, acciones }: MovimientoGastado): O
 /**
  * Clase de un personaje del mapa de prueba: se mueve según `movimientoDePrueba` y,
  * si aún no ha hecho ninguna acción en el turno, ofrece las acciones de los
- * objetos de su casilla (abrir la puerta que pisa…)
+ * objetos de su casilla (abrir la puerta que pisa…), revisar los muebles sin
+ * revisar que tiene al lado y coger cada objeto que tiene al lado
  */
 export class PersonajeDePrueba implements ClaseDePersonaje {
   readonly id: string
@@ -66,6 +69,12 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
 
   async acciones(personaje: Personaje, mapa: MapaEnJuego): Promise<Accion[]> {
     if (!personaje.casilla || turnoDePersonaje(personaje, numeroDeTurno(mapa.mapa)).acciones.length) return []
-    return this.#puertas.objetosEn({ estancia: personaje.estancia, casilla: personaje.casilla }).flatMap((objeto) => objeto.acciones(mapa))
+    const alLado = mapa.dameLoQueEstaAlLado(personaje)
+    const muebles = alLado.some((el) => el.tipo === 'mueble' && !el.flags?.includes('revisado'))
+    return [
+      ...this.#puertas.objetosEn({ estancia: personaje.estancia, casilla: personaje.casilla }).flatMap((objeto) => objeto.acciones(mapa)),
+      ...(muebles ? [REVISAR_MUEBLE] : []),
+      ...alLado.flatMap((el) => (el.tipo === 'objeto' ? [new CogerObjeto(el, mapa)] : [])),
+    ]
   }
 }

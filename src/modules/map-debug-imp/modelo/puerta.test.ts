@@ -10,8 +10,13 @@ const mapaCon = (puerta?: Puerta): MapaEnJuego => ({
   puertaEn: () => puerta,
   tieneFlag: () => false,
   marcarFlag: vi.fn(),
+  dameLoQueEstaAlLado: () => [],
+  tieneFlagMueble: () => false,
+  marcarFlagMueble: vi.fn(),
+  quitarElemento: vi.fn(),
   abrirPuerta: vi.fn(),
   anadirPersonajes: vi.fn(),
+  anadirMuebles: vi.fn(),
   cambiarJugadores: vi.fn(),
   terminarTurno: vi.fn(),
 })

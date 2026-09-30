@@ -1,4 +1,4 @@
-import { accionesDelGestor, accionesDelModo, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
+import { accionesDelGestor, accionesDelModo, AGRUPAR, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
 import {
   activacionDe,
   activacionDeNoJugador,
@@ -18,9 +18,10 @@ import {
   terminarTurno,
   turnoDeEscuadra,
 } from '../activaciones'
+import { aAgrupar, recorridoParaAgrupar } from '../agrupar'
 import { anadirPersonajesNoJugadores, huecoDePersonaje } from '../apariciones'
 import { construirEstancia } from '../construccion'
-import { colocarElemento, motivoParaNoColocar } from '../elementos'
+import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { estanciasDe } from '../estancias'
 import { motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
@@ -32,8 +33,9 @@ import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { ClaseDePersonaje } from '../modelo/claseDePersonaje'
 import { esComando } from '../modelo/comando'
 import { OPUESTA } from '../modelo/direccion'
+import type { DescripcionMueble } from '../modelo/descripcionEstancia'
 import type { DescripcionPersonajeNoJugador } from '../modelo/descripcionPersonaje'
-import type { Objeto } from '../modelo/elemento'
+import type { Elemento, Objeto } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
 import type { Estancia } from '../modelo/estancia'
 import type { Jugador } from '../modelo/jugador'
@@ -108,7 +110,7 @@ export class GestorMapa implements MapaEnJuego {
     const puerta = desde && this.puertaEn(desde)
     const entrada = puerta && OPUESTA[puerta.lado]
     const descripcion = await this.#proveedor.describirEstancia(inicial ? undefined : this.#mapa, entrada)
-    const construida = construirEstancia(this.#idLibre(), descripcion, entrada)
+    const construida = this.#situarMuebles(construirEstancia(this.#idLibre(), descripcion, entrada))
     const estancia = desde ? pegar(this.#mapa, desde, construida) : { ...construida, posicion: aparte(this.#mapa) }
     const escuadras = inicial ? await this.#escuadrasIniciales(estancia) : undefined
     const { jugadores } = this.configuracion
@@ -184,6 +186,7 @@ export class GestorMapa implements MapaEnJuego {
     const estancia = this.#mapa.estancias.find((e) => e.id === estanciaId)
     const elemento = estancia?.elementos.find((el) => el.id === elementoId)
     if (!estancia || !elemento) return `No hay ningún elemento «${elementoId}» en «${estanciaId}»`
+    if (elemento.tipo === 'mueble') return `El mueble «${elemento.nombre}» no se puede mover`
     const motivo = posicion && motivoParaNoColocar(estancia, elemento, posicion)
     if (motivo) return motivo
     const colocada = colocarElemento(estancia, elementoId, posicion)
@@ -216,6 +219,19 @@ export class GestorMapa implements MapaEnJuego {
   anadirPersonajes(estanciaId: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] {
     const { mapa, anadidos } = anadirPersonajesNoJugadores(this.#mapa, estanciaId, personajes, this.#azar)
     this.#cambiar(mapa)
+    return anadidos
+  }
+
+  /** Añade muebles nuevos a la estancia, colocándolos al azar donde quepan */
+  anadirMuebles(estanciaId: string, muebles: DescripcionMueble[]): Elemento[] {
+    const estancia = this.#mapa.estancias.find((e) => e.id === estanciaId)
+    if (!estancia) throw new Error(`No hay ninguna estancia «${estanciaId}» en el mapa`)
+    const repetido = muebles.find((mueble) => this.#elemento(mueble.id))
+    if (repetido) throw new Error(`Ya hay un elemento «${repetido.id}» en el mapa`)
+    const personajes = todosLosPersonajes(this.#mapa).filter((p) => p.estancia === estanciaId && p.casilla).map((p) => huecoDePersonaje(p, p.casilla))
+    const colocada = situarAleatorio({ ...estancia, elementos: [...estancia.elementos, ...personajes] }, muebles, this.#azar)
+    const anadidos = colocada.elementos.filter((el) => muebles.some((mueble) => mueble.id === el.id))
+    this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map((e) => (e.id === estanciaId ? { ...colocada, elementos: colocada.elementos.filter((el) => !personajes.some((p) => p.id === el.id)) } : e)) })
     return anadidos
   }
 
@@ -292,7 +308,12 @@ export class GestorMapa implements MapaEnJuego {
    */
   async accionesDisponibles(escuadraId: string, personajeId?: string): Promise<Accion[]> {
     if (motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)) return []
-    return [...(await this.#accionesDelPersonaje(escuadraId, personajeId)), ...this.#accionesDeEstancia(escuadraId, personajeId), ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId)]
+    return [
+      ...(await this.#accionesDelPersonaje(escuadraId, personajeId)),
+      ...this.#accionesDeEstancia(escuadraId, personajeId),
+      ...this.#accionesDeEscuadra(escuadraId, personajeId),
+      ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId),
+    ]
   }
 
   /** Acciones de gestor disponibles para un PNJ: cambiar modo y terminar activación */
@@ -314,11 +335,13 @@ export class GestorMapa implements MapaEnJuego {
     if (motivo) return motivo
     const delPersonaje = (await this.#accionesDelPersonaje(escuadraId, personajeId)).find((a) => a.id === accionId)
     const deEstancia = this.#accionesDeEstancia(escuadraId, personajeId).find((a) => a.id === accionId)
+    const deEscuadra = this.#accionesDeEscuadra(escuadraId, personajeId).find((a) => a.id === accionId)
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
-    if (!delPersonaje && !deEstancia && !delGestor) return `«${accionId}» no es una acción disponible ahora`
+    if (!delPersonaje && !deEstancia && !deEscuadra && !delGestor) return `«${accionId}» no es una acción disponible ahora`
     if (delPersonaje && esComando(delPersonaje)) await delPersonaje.exec()
     if (deEstancia && personajeId) this.marcarFlag(this.#personajeDe(personajeId)?.personaje.estancia ?? '', 'sin_trampas')
-    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, (delPersonaje || deEstancia) && personajeId))
+    if (deEscuadra && personajeId) await this.#agrupar(escuadraId, personajeId)
+    this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, (delPersonaje || deEstancia || deEscuadra) && personajeId))
     await this.#preguntarSiCompleta(escuadraId)
   }
 
@@ -342,6 +365,33 @@ export class GestorMapa implements MapaEnJuego {
   marcarFlag(estancia: string, flag: string): string | undefined {
     if (!this.#estancia(estancia)) return `No hay ninguna estancia «${estancia}» en el mapa`
     this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map((e) => this.#marcarFlag(e, estancia, flag)) })
+  }
+
+  dameLoQueEstaAlLado(personaje: Personaje): Elemento[] {
+    if (!personaje.casilla) return []
+    const estancia = this.#estancia(personaje.estancia)
+    if (!estancia) return []
+    return estancia.elementos.filter((el) => el.posicion && this.#estaAlLado(personaje.casilla ?? { x: Number.NaN, y: Number.NaN }, el))
+  }
+
+  /**
+   * Quita el elemento de su estancia (un personaje coge el objeto y pasa a su
+   * inventario, se rompe…). Si no está en el mapa, devuelve el motivo
+   */
+  quitarElemento(elementoId: string): string | undefined {
+    if (!this.#elemento(elementoId)) return `No hay ningún elemento «${elementoId}» en el mapa`
+    const sin = (e: Estancia): Estancia => ({ ...e, elementos: e.elementos.filter((el) => el.id !== elementoId), estancias: e.estancias.map(sin) })
+    this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map(sin) })
+  }
+
+  tieneFlagMueble(mueble: string, flag: string): boolean {
+    const elemento = this.#elemento(mueble)
+    return elemento?.tipo === 'mueble' && (elemento.flags?.includes(flag) ?? false)
+  }
+
+  marcarFlagMueble(mueble: string, flag: string): string | undefined {
+    if (!this.#elemento(mueble)) return `No hay ningún mueble «${mueble}» en el mapa`
+    this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map((e) => this.#marcarFlagMueble(e, mueble, flag)) })
   }
 
   async abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> {
@@ -496,13 +546,62 @@ export class GestorMapa implements MapaEnJuego {
     return [BUSCAR_TRAMPAS]
   }
 
+  /**
+   * Acerca a los demás personajes colocados de la escuadra al personaje, uno
+   * tras otro, cada uno con su movimiento restante (`recorridoParaAgrupar`):
+   * el movimiento se apunta en su turno como uno más
+   */
+  async #agrupar(escuadraId: string, personajeId: string) {
+    for (const { id } of aAgrupar(this.#mapa, personajeId)) {
+      const opciones = await this.opcionesMovimiento(id)
+      const lider = this.#personajeDe(personajeId)?.personaje
+      const miembro = this.#personajeDe(id)?.personaje
+      const plan = opciones && lider && miembro && recorridoParaAgrupar(this.#mapa, this.configuracion, lider, miembro, opciones)
+      if (plan && miembro) this.#cambiar(mover(this.#mapa, this.configuracion, escuadraId, miembro, plan.recorrido, plan))
+    }
+  }
+
+  /** «Agrupar aquí», para el personaje colocado de una escuadra con más personajes */
+  #accionesDeEscuadra(escuadraId: string, personajeId?: string): Accion[] {
+    const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
+    if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId || encontrado.escuadra.personajes.length < 2) return []
+    return [AGRUPAR]
+  }
+
   #estancia(id: string): Estancia | undefined {
     return this.#mapa.estancias.flatMap((e) => estanciasDe(e).map(({ estancia }) => estancia)).find((e) => e.id === id)
+  }
+
+  #elemento(id: string): Elemento | undefined {
+    return this.#mapa.estancias.flatMap((e) => estanciasDe(e).flatMap(({ estancia }) => estancia.elementos)).find((el) => el.id === id)
   }
 
   #marcarFlag(estancia: Estancia, id: string, flag: string): Estancia {
     if (estancia.id !== id) return { ...estancia, estancias: estancia.estancias.map((e) => this.#marcarFlag(e, id, flag)) }
     return estancia.flags?.includes(flag) ? estancia : { ...estancia, flags: [...(estancia.flags ?? []), flag] }
+  }
+
+  #marcarFlagMueble(estancia: Estancia, id: string, flag: string): Estancia {
+    return {
+      ...estancia,
+      elementos: estancia.elementos.map((el) => (el.id === id && el.tipo === 'mueble' && !el.flags?.includes(flag) ? { ...el, flags: [...(el.flags ?? []), flag] } : el)),
+      estancias: estancia.estancias.map((e) => this.#marcarFlagMueble(e, id, flag)),
+    }
+  }
+
+  #estaAlLado(casilla: Casilla, elemento: Elemento): boolean {
+    const posicion = elemento.posicion
+    if (!posicion) return false
+    const enContacto = (x: number, y: number) => Math.abs(casilla.x - x) + Math.abs(casilla.y - y) === 1
+    return Array.from({ length: elemento.columnas * elemento.filas }, (_, i) => ({ x: posicion.x + (i % elemento.columnas), y: posicion.y + Math.floor(i / elemento.columnas) })).some(
+      ({ x, y }) => enContacto(x, y),
+    )
+  }
+
+  #situarMuebles(estancia: Estancia): Estancia {
+    const muebles = estancia.elementos.filter((el) => el.tipo === 'mueble').map((el) => ({ ...el, posicion: undefined }))
+    if (!muebles.length) return estancia
+    return situarAleatorio({ ...estancia, elementos: estancia.elementos.filter((el) => el.tipo !== 'mueble') }, muebles, this.#azar)
   }
 
   /** Estado del personaje y de su escuadra */

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Personaje, MapaEnJuego, Puerta } from '../../gamemap'
+import { esComando } from '../../gamemap'
 import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './personaje'
 import { PuertasDePrueba } from './puerta'
 
@@ -29,8 +30,13 @@ describe('acciones del personaje de prueba', () => {
     puertaEn: () => salida,
     tieneFlag: () => false,
     marcarFlag: vi.fn(),
+    dameLoQueEstaAlLado: () => [],
+    tieneFlagMueble: () => false,
+    marcarFlagMueble: vi.fn(),
+    quitarElemento: vi.fn(),
     abrirPuerta: vi.fn(),
     anadirPersonajes: vi.fn(),
+    anadirMuebles: vi.fn(),
     cambiarJugadores: vi.fn(),
     terminarTurno: vi.fn(),
   }
@@ -65,5 +71,52 @@ describe('acciones del personaje de prueba', () => {
     const lejos = { ...enLaPuerta, casilla: { x: 0, y: 0 } }
     const enEspera = { ...enLaPuerta, casilla: undefined }
     expect([await barbaro().acciones(lejos, mapa), await barbaro().acciones(enEspera, mapa)]).toEqual([[], []])
+  })
+
+  it('junto a un mueble sin revisar puede revisarlo', async () => {
+    const conMueble = { ...mapa, dameLoQueEstaAlLado: () => [{ id: 'mesa', tipo: 'mueble' as const, nombre: 'Mesa', columnas: 1, filas: 1 }] }
+    expect((await barbaro().acciones(enLaPuerta, conMueble)).map((a) => a.id)).toEqual(['abrir-puerta', 'revisar-mueble'])
+  })
+
+  it('junto a un mueble revisado no puede volver a revisarlo', async () => {
+    const conMueble = { ...mapa, dameLoQueEstaAlLado: () => [{ id: 'mesa', tipo: 'mueble' as const, nombre: 'Mesa', columnas: 1, filas: 1, flags: ['revisado'] }] }
+    expect((await barbaro().acciones(enLaPuerta, conMueble)).map((a) => a.id)).toEqual(['abrir-puerta'])
+  })
+})
+
+describe('coger objetos', () => {
+  const cofre = { id: 'cofre', tipo: 'objeto' as const, nombre: 'Cofre', columnas: 1, filas: 1, posicion: { x: 3, y: 3 } }
+  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 2, y: 3 }, turnos: [] }
+  const mapaCon = (motivo?: string) => ({
+    mapa: { estancias: [], turno: 1 },
+    puertaEn: () => undefined,
+    tieneFlag: () => false,
+    marcarFlag: vi.fn(),
+    dameLoQueEstaAlLado: () => [cofre],
+    quitarElemento: vi.fn(() => motivo),
+    tieneFlagMueble: () => false,
+    marcarFlagMueble: vi.fn(),
+    abrirPuerta: vi.fn(),
+    anadirPersonajes: vi.fn(),
+    anadirMuebles: vi.fn(),
+    cambiarJugadores: vi.fn(),
+    terminarTurno: vi.fn(),
+  })
+  const clase = () => new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, new PuertasDePrueba())
+
+  it('junto a un objeto puede cogerlo', async () => {
+    expect((await clase().acciones(barbaro, mapaCon())).map((a) => a.nombre)).toEqual(['Coger Cofre'])
+  })
+
+  it('cogerlo lo quita de la estancia', async () => {
+    const mapa = mapaCon()
+    const [coger] = await clase().acciones(barbaro, mapa)
+    await (esComando(coger) && coger.exec())
+    expect(mapa.quitarElemento).toHaveBeenCalledWith('cofre')
+  })
+
+  it('si el mapa no lo deja quitar, el comando falla y no se apunta', async () => {
+    const [coger] = await clase().acciones(barbaro, mapaCon('No hay ningún elemento «cofre» en el mapa'))
+    await expect(esComando(coger) && coger.exec()).rejects.toThrow('No hay ningún elemento «cofre» en el mapa')
   })
 })

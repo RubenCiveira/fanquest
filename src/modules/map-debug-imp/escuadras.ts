@@ -4,9 +4,17 @@ import { JUGADOR_MONSTRUOS } from './configuracion'
 import { PersonajeDePrueba, MOVER } from './modelo/personaje'
 import type { PuertasDePrueba } from './modelo/puerta'
 
-/** La activación de una escuadra de prueba está completa cuando se ha movido y además ha hecho otra acción (deslizar…) */
-export const activacionDePrueba = (acciones: AccionEjecutada[]): ResultadoActivacion => ({
-  completo: acciones.some((a) => a.accion === MOVER.id) && acciones.some((a) => a.accion !== MOVER.id),
+/**
+ * La activación de una escuadra de prueba está completa cuando a ninguno de sus
+ * `personajes` (ids) le quedan acciones: cada uno se ha movido y además ha
+ * hecho otra acción suya (deslizar, coger…). Las de la escuadra sin personaje
+ * (cambiar de modo) no cuentan
+ */
+export const activacionDePrueba = (acciones: AccionEjecutada[], personajes: string[]): ResultadoActivacion => ({
+  completo: personajes.every((id) => {
+    const suyas = acciones.filter((a) => a.personaje === id)
+    return suyas.some((a) => a.accion === MOVER.id) && suyas.some((a) => a.accion !== MOVER.id)
+  }),
 })
 
 /**
@@ -30,7 +38,7 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
       )),
     modoActivacion: async () => 'sigiloso',
     activar: async (acciones) => {
-      const resultado = activacionDePrueba(acciones)
+      const resultado = activacionDePrueba(acciones, ids)
       // banco de pruebas: se ve en la consola qué recibe y qué responde cada escuadra
       console.log(`[map-debug] activar ${id}`, acciones, resultado)
       return resultado
@@ -51,7 +59,7 @@ export const escuadrasDePrueba = (puertas: PuertasDePrueba, escuadrasMonstruos: 
         jugador: JUGADOR_MONSTRUOS,
         personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas))),
         modoActivacion: async () => 'sigiloso',
-        activar: async (acciones) => activacionDePrueba(acciones),
+        activar: async (acciones) => activacionDePrueba(acciones, personajes.map((p) => p.id)),
       }
     }),
   ],

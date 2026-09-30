@@ -8,5 +8,8 @@ import type { Medida } from './medida'
  */
 export type Objeto = Medida & { id: string; tipo: 'objeto'; nombre: string; posicion?: Casilla }
 
+/** Mueble fijo de la estancia: ocupa casillas, puede tener imagen y estado propio */
+export type Mueble = Medida & { id: string; tipo: 'mueble'; nombre: string; posicion?: Casilla; imagenVtt?: string; flags?: string[] }
+
 /** Lo que ocupa casillas de una estancia (los personajes llevan su posición en su propio estado) */
-export type Elemento = Objeto
+export type Elemento = Objeto | Mueble

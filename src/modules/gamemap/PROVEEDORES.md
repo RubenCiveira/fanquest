@@ -64,6 +64,7 @@ movimientos con las acciones que consumieron.
 | `ProveedorEstancias` | `describirEstancia(mapa?, entrada?)` | En cada `nuevaEstancia()` y `abrirPuerta()` |
 | `ProveedorEstancias` | `estanciaCreada(estancia, mapa)` | Cuando la estancia ya está creada y en su sitio |
 | `ProveedorTurnos` | `turnoDe(jugador, mapa)` | Tras cada activación que termina y al empezar un turno, si a alguien le toca |
+| `ProveedorTurnos` | `finDeTurno(mapa)` | Cuando termina la última activación pendiente del turno |
 | `ProveedorPersonajes` | `listarEscuadras()` | La primera vez que necesita las clases (una sola vez por gestor) |
 | `ClaseDeEscuadra` | `personajes()` | Al crear la estancia inicial y al buscar la clase de un personaje |
 | `ClaseDeEscuadra` | `modoActivacion()` | Al crear la estancia inicial, con modo agresivo o sigiloso |
@@ -104,8 +105,9 @@ configuracion: {
   T (alianza 1)… Con `personajes-primero`, la primera alianza hasta que no le
   quede nada que activar (rotando sus jugadores), luego la siguiente. Se salta
   a quien no tiene escuadras por activar en el turno. Solo se pueden elegir
-  las miniaturas del jugador al que le toca (`gestor.jugadorEnTurno`) y, en
-  cada activación, actúa una sola miniatura: la primera que hace algo.
+  las miniaturas del jugador al que le toca (`gestor.jugadorEnTurno`). En la
+  activación de una escuadra pueden actuar todos sus personajes; cada
+  personaje no jugador tiene su propia activación.
 - `modosActivacion`: con `agresivo-sigiloso`, cada escuadra se activa en uno
   de esos dos modos y puede cambiar de uno a otro; con `normal`, todas las
   activaciones son normales.
@@ -141,12 +143,15 @@ usa al soltar una ficha en un tramo que consume una acción adicional
 
 ```ts
 turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
+finDeTurno(mapa: MapaEnJuego): void
 ```
 
 Tras cada activación que termina (y al pasar a un turno nuevo), el gestor
 dice a qué jugador le toca, si a alguno le queda algo por activar: para
 avisarle o, si es la IA, jugar por ella. El banco de pruebas abre un diálogo
-«Le toca a …».
+«Le toca a …». Si al terminar una activación ya nadie tiene nada pendiente,
+llama a `finDeTurno`: el proyecto decide cuándo pasar al siguiente
+(`mapa.terminarTurno()`).
 
 ## ProveedorEstancias
 
@@ -166,6 +171,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   orientacion: 'arriba' | 'abajo' | 'izquierda' | 'derecha', // muro de las salidas; no puede ser el de `entrada`
   salidas: number,
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
+  muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
   terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
   personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
@@ -176,6 +182,10 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   puede haber más salidas que casillas tiene ese muro.
 - Los objetos no llevan posición: el gestor busca un hueco para cada uno y,
   si no cabe, lo deja en la zona de espera para colocarlo a mano.
+- Los `muebles` son fijos: el proyecto les da un id estable, el gestor los
+  pone al azar donde quepan y no se mueven a mano. Llevan su estado en
+  `flags` (`marcarFlagMueble`, `tieneFlagMueble`): el banco de pruebas marca
+  `revisado` al revisar uno.
 - Los `terrenos` sí la llevan (en casillas de la estancia): zonas en las que
   entrar en cada casilla cuesta dos (`dificil`) o tres (`muy-dificil`), o que
   no se pueden pisar (`impasable`). Ni objetos ni personajes se colocan en
@@ -227,7 +237,8 @@ interface ClaseDePersonaje {
 ```
 
 - Al crear la estancia inicial, el gestor crea el estado de cada escuadra y
-  de sus personajes, que coloca en el sitio libre más cercano al centro (o en la
+  de sus personajes: cada alianza empieza hacia una esquina y cada personaje,
+  en una casilla libre con aire alrededor y lejos de otras alianzas (o en la
   zona de espera). El id de cada personaje debe ser único en todo el mapa.
 - `modoActivacion()`: el modo con el que empieza la escuadra. Solo se llama
   con `modosActivacion: 'agresivo-sigiloso'`, pero hay que implementarlo.
@@ -235,12 +246,18 @@ interface ClaseDePersonaje {
   escuadra todas las acciones del turno (`{ accion, personaje? }`). Si responde
   `{ completo: true }`, termina su turno como con «Terminar turno». No se
   llama tras «Terminar turno».
-- Una escuadra puede tener varios personajes, pero en cada activación solo
-  actúa uno.
+- En la activación de una escuadra pueden actuar todos sus personajes. Si
+  tiene más de uno, «Terminar turno» se llama «Terminar turno de escuadra».
 - Un jugador con personajes no jugadores también aparece en `jugadorEnTurno`:
   con `alternas`, rota entre alianzas; con `personajes-primero`, completa una
-  alianza antes de pasar a la siguiente. El banco de pruebas mueve a mano los
-  PNJ de un jugador IA y después termina su activación.
+  alianza antes de pasar a la siguiente. Cada PNJ tiene su activación
+  (`mapa.activacionesJugadores`): solo actúa uno cada vez y sus acciones son
+  las del gestor (cambiar de modo, terminar turno). Los PNJ no tienen clase:
+  quien los mueve le pasa sus opciones a
+  `moverPersonajeNoJugador(id, recorrido, opciones)`, con las mismas reglas
+  que los personajes de escuadra. El banco de pruebas los mueve a mano con
+  `movimientoDePrueba` y termina su activación con
+  `terminarActivacionJugador`.
 - El gestor pide las clases una sola vez. Un gestor creado con un mapa
   guardado vuelve a pedirlas: deben tener los mismos ids.
 
@@ -250,8 +267,21 @@ Al pulsar la ficha de un personaje, el gestor pregunta **solo a su clase**
 (`acciones(personaje, mapa)`) con su estado. La clase decide qué puede hacer ahí:
 mira qué objetos suyos hay en su casilla, comprueba en sus turnos lo que ya
 ha hecho y compone sus acciones. El gestor no pregunta a los objetos ni
-mezcla nada: solo añade detrás las suyas, «Cambiar a agresivo/sigiloso» (si
-hay modos) y «Terminar turno». No uses sus ids (`cambiar-modo`,
+mezcla nada: solo añade detrás las suyas:
+
+- «Buscar trampas» (`buscar-trampas`), mientras la estancia no esté marcada
+  `sin_trampas`; al ejecutarla la marca.
+- «Agrupar aquí» (`agrupar`), si la escuadra tiene más personajes: cada uno de
+  los demás que está colocado se mueve, con su movimiento restante
+  (`opcionesMovimiento` de su clase, solo la opción base: sin acciones
+  adicionales como deslizar y con sus reglas, como alejarse de enemigos), a
+  la casilla libre más cercana al pulsado a la que llega; si no le alcanza
+  para ponerse a su lado, se acerca todo lo que puede. Cada movimiento se
+  apunta en su turno como uno más y «agrupar», como acción del pulsado. Los
+  que ya están a su lado y los de la zona de espera no se mueven.
+- «Cambiar a agresivo/sigiloso» (si hay modos) y «Terminar turno».
+
+No uses sus ids (`buscar-trampas`, `agrupar`, `cambiar-modo`,
 `terminar-turno`).
 
 Cada acción es `{ id, nombre, icono }`: la corona pinta el `icono` y
@@ -266,9 +296,17 @@ interface Comando extends Accion {
 interface MapaEnJuego {
   readonly mapa: Mapa                                  // el mapa tal como está
   puertaEn(ubicacion: Ubicacion): Puerta | undefined   // la puerta de esa casilla
+  tieneFlag(estancia: string, flag: string): boolean   // marcas de estado de una estancia (`sin_trampas`…)
+  marcarFlag(estancia: string, flag: string): string | undefined
+  dameLoQueEstaAlLado(personaje: Personaje): Elemento[] // objetos y muebles colocados junto a él (sin diagonales)
+  quitarElemento(elemento: string): string | undefined // lo saca de su estancia (el personaje lo coge…)
+  tieneFlagMueble(mueble: string, flag: string): boolean // marcas de estado de un mueble (`revisado`…)
+  marcarFlagMueble(mueble: string, flag: string): string | undefined
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // pide la estancia de detrás y la deja abierta
   anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] // como los de la descripción
+  anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[] // al azar donde quepan
   cambiarJugadores(jugadores: Jugadores): string | undefined // otro reparto de alianzas, jugadores o posturas; si no vale, el motivo
+  terminarTurno(): string | undefined                  // pasa al turno siguiente si nadie tiene nada pendiente
 }
 ```
 
@@ -293,9 +331,14 @@ En el banco de pruebas (`map-debug-imp/modelo/`):
 - `PuertaDePrueba` es un objeto del debug: su estado (abierta o no) es el del
   mapa y, si es una salida cerrada, ofrece el comando `AbrirPuerta`, cuyo
   `exec()` llama a `puerta.abrir()` → `mapa.abrirPuerta(donde)`.
-- `PersonajeDePrueba` (`implements ClaseDePersonaje`) compone sus acciones con las de
-  los objetos de su casilla, si aún no ha hecho ninguna acción en el turno
-  (moverse no cuenta).
+- `PersonajeDePrueba` (`implements ClaseDePersonaje`) compone sus acciones, si
+  aún no ha hecho ninguna en el turno (moverse no cuenta): las de los objetos
+  de su casilla, «Revisar mueble» si tiene al lado un mueble sin revisar y un
+  `CogerObjeto` («Coger …») por cada objeto que tiene al lado, cuyo `exec()`
+  llama a `mapa.quitarElemento(objeto)`: el objeto sale de la estancia (en
+  teoría pasa a su inventario).
+- «Revisar mueble» no es un comando: la página del banco de pruebas pregunta
+  qué mueble, si hay varios, y lo marca `revisado` tras ejecutar la acción.
 
 ## Movimiento: ClaseDePersonaje.opcionesMovimiento
 
@@ -389,6 +432,7 @@ const proveedor: ProveedorMapa = {
   }),
   estanciaCreada: () => {},
   turnoDe: (jugador) => window.alert(`Le toca a ${jugador.nombre}`),
+  finDeTurno: (mapa) => mapa.terminarTurno(),
   listarEscuadras: async () => [grupo],
 }
 

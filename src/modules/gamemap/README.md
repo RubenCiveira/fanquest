@@ -24,7 +24,7 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
-  `jugadores.ts`), cada una con sus tests.
+  `jugadores.ts`, `agrupar.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
@@ -66,7 +66,13 @@ mismo sitio.
 - **Objeto** (elemento): ocupa `filas` × `columnas` casillas de una estancia.
   Al crearla, el gestor lo pone en el sitio libre más cercano al centro, sin
   tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**
-  (sin `posicion`) para colocarlo a mano.
+  (sin `posicion`) para colocarlo a mano. Un personaje puede cogerlo: sale de
+  la estancia (`quitarElemento`).
+- **Mueble** (elemento): fijo, con id del proyecto, imagen opcional y marcas
+  de estado (`flags`, como `revisado`). El gestor lo pone al azar donde quepa
+  y no se mueve a mano.
+- **Marcas de estancia** (`flags`): estado que cambia en la partida, como
+  `sin_trampas` tras «Buscar trampas».
 - **Escuadra y personaje** (estado): el gestor guarda cada escuadra con sus
   personajes, su personaje activo, su último modo y sus turnos (activación y
   acciones); y cada personaje con su posición (estancia y casilla; sin casilla, en
@@ -92,19 +98,23 @@ mismo sitio.
   `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
   redondeando hacia arriba) y `terrenoPersonajes` (cómo cuenta la casilla de
   otro personaje: normal, difícil, muy difícil o impasable).
-- **Turno y activación**: la activación es de la escuadra y en ella actúa
-  una sola de sus miniaturas. Una escuadra se activa una vez por turno y no
+- **Turno y activación**: la activación es de la escuadra y en ella pueden
+  actuar todos sus personajes. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las
   del jugador al que le toca (`jugadorEnTurno`), que rota entre alianzas y
   entre los jugadores de cada una según `ordenActivaciones`. Un jugador con
   personajes no jugadores también ocupa su activación del turno; por ahora el
   banco de pruebas permite moverlos a mano y terminar su activación. Al
   terminar cada activación, el gestor avisa al proveedor de a quién le toca
-  (`turnoDe`). El turno solo termina cuando todas han completado su activación.
+  (`turnoDe`) o, si ya nadie tiene nada pendiente, de que el turno puede
+  terminar (`finDeTurno`). El turno solo termina cuando todas han completado
+  su activación.
 - **Acciones**: al pulsar un personaje, el gestor pregunta a su clase qué puede
   hacer donde está; la clase mira los objetos de su casilla y lo que ya ha
   hecho, y compone sus comandos (acciones con su código en `exec`). El gestor
-  añade «Cambiar a …» y «Terminar turno».
+  añade «Buscar trampas», «Agrupar aquí» (con más personajes en la escuadra:
+  los demás se acercan a su alrededor con el movimiento que les queda),
+  «Cambiar a …» y «Terminar turno».
 - **Movimiento**: al arrastrar una ficha, el gestor pregunta a la clase del
   personaje sus `OpcionesMovimiento` (movimiento base y variaciones, en tramos que
   pueden consumir acciones adicionales). El recorrido vale con la primera

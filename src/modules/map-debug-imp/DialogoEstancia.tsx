@@ -8,6 +8,7 @@ import {
   OPUESTA,
   type DescripcionElemento,
   type DescripcionEstancia,
+  type DescripcionMueble,
   type DescripcionPersonajeNoJugador,
   type Direccion,
   type Mapa,
@@ -46,6 +47,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
   const [orientacion, setOrientacion] = useState<Direccion>(entrada ? OPUESTA[entrada] : 'abajo')
   const [salidas, setSalidas] = useState(1)
   const [elementos, setElementos] = useState<DescripcionElemento[]>([])
+  const [muebles, setMuebles] = useState<DescripcionMueble[]>([])
   const [conTerreno, setConTerreno] = useState(true)
   const inicial = !mapa
   const [monstruosDisponibles, setMonstruosDisponibles] = useState<Monstruo[]>([])
@@ -81,11 +83,14 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
     orientacion,
     salidas: Math.min(salidas, maxSalidas),
     elementos,
+    muebles,
     terrenos: conTerreno ? terrenosDePrueba(tamano) : [],
     personajesNoJugadores: monstruos,
   }
   const cambiarElemento = (i: number, cambio: Partial<DescripcionElemento>) =>
     setElementos(elementos.map((el, j) => (j === i ? { ...el, ...cambio } : el)))
+  const cambiarMueble = (i: number, cambio: Partial<DescripcionMueble>) =>
+    setMuebles(muebles.map((el, j) => (j === i ? { ...el, ...cambio } : el)))
   const cambiarEscuadrasMonstruos = (n: number) => {
     setEscuadrasMonstruos(n)
     if (n > 0) setTamano((t) => ({ columnas: Math.max(t.columnas, 10), filas: Math.max(t.filas, 8) }))
@@ -218,6 +223,45 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
           >
             <Icono nombre="mas" />
             Añadir objeto
+          </button>
+        </fieldset>
+
+        <fieldset className="map-debug-elementos">
+          <legend>Muebles</legend>
+          {muebles.map((mueble, i) => (
+            <div key={i} className="map-debug-elemento">
+              <label className="campo">
+                Id
+                <input type="text" required value={mueble.id} onChange={(e) => cambiarMueble(i, { id: e.target.value })} />
+              </label>
+              <label className="campo">
+                Nombre
+                <input type="text" required value={mueble.nombre} onChange={(e) => cambiarMueble(i, { nombre: e.target.value })} />
+              </label>
+              <label className="campo">
+                Columnas
+                <input type="number" min={1} max={MAX_LADO} value={mueble.columnas} onChange={(e) => cambiarMueble(i, { columnas: lado(e.target.valueAsNumber) })} />
+              </label>
+              <label className="campo">
+                Filas
+                <input type="number" min={1} max={MAX_LADO} value={mueble.filas} onChange={(e) => cambiarMueble(i, { filas: lado(e.target.valueAsNumber) })} />
+              </label>
+              <label className="campo">
+                Imagen
+                <input type="text" value={mueble.imagenVtt ?? ''} onChange={(e) => cambiarMueble(i, { imagenVtt: e.target.value || undefined })} />
+              </label>
+              <button type="button" className="icon-button" aria-label={`Quitar ${mueble.nombre || 'mueble'}`} onClick={() => setMuebles(muebles.filter((_, j) => j !== i))}>
+                <Icono nombre="cerrar" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => setMuebles([...muebles, { id: `mueble-${muebles.length + 1}`, tipo: 'mueble', nombre: `Mueble ${muebles.length + 1}`, columnas: 1, filas: 1 }])}
+          >
+            <Icono nombre="mas" />
+            Añadir mueble
           </button>
         </fieldset>
 

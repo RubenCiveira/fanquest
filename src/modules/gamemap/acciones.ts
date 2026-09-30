@@ -25,6 +25,9 @@ export const TERMINAR_TURNO_ESCUADRA: Accion = { ...TERMINAR_TURNO, nombre: 'Ter
 /** Acción del gestor para dejar una estancia marcada como libre de trampas */
 export const BUSCAR_TRAMPAS: Accion = { id: 'buscar-trampas', nombre: 'Buscar trampas', icono: '🕵️' }
 
+/** Acción del gestor para que el resto de la escuadra se coloque alrededor del personaje */
+export const AGRUPAR: Accion = { id: 'agrupar', nombre: 'Agrupar aquí', icono: '🫂' }
+
 /** Id de la acción del gestor que pasa de agresivo a sigiloso o al revés */
 export const CAMBIAR_MODO = 'cambiar-modo'
 

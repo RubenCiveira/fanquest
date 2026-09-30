@@ -14,16 +14,18 @@ import {
   BUSCAR_TRAMPAS,
   type Accion,
   type Casilla,
+  type Elemento,
   type Estancia,
   type Mapa,
 } from '../gamemap'
 import { FormularioConfiguracion } from './FormularioConfiguracion'
-import { AvisoTrampas } from './AvisoTurno'
+import { AvisoTrampas, DialogoRevisarMueble } from './AvisoTurno'
 import { ETIQUETA_ORIENTACION, guardarMapa, obtenerMapa } from './mapas'
 import { PanelJugadores } from './PanelJugadores'
 import { esCancelacion, useProveedorDebug } from './useProveedorDebug'
 import { VistaMapa } from './VistaMapa'
 import { movimientoDePrueba } from './modelo/personaje'
+import { REVISAR_MUEBLE } from './modelo/personaje'
 import { tieneEnemigosActivosEnEstancia } from './trampas'
 import './mapDebug.css'
 
@@ -61,6 +63,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   const [seleccion, setSeleccion] = useState<Seleccion>()
   const [nota, setNota] = useState<string>()
   const [avisoTrampas, setAvisoTrampas] = useState<{ titulo: string; texto: string }>()
+  const [mueblesARevisar, setMueblesARevisar] = useState<{ escuadra: string; personaje: string; muebles: Elemento[] }>()
 
   useEffect(() => gestor.suscribir((m) => guardarMapa(id, m)), [gestor, id])
 
@@ -94,6 +97,12 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
       setAvisoTrampas({ titulo: 'No se pueden buscar trampas', texto: 'Con enemigos activos no se pueden buscar trampas.' })
       return
     }
+    if (accion === REVISAR_MUEBLE.id && escuadraElegida && personajeElegido) {
+      const muebles = gestor.dameLoQueEstaAlLado(personajeElegido).filter((el) => el.tipo === 'mueble' && !el.flags?.includes('revisado'))
+      if (muebles.length === 1) await revisarMueble(escuadraElegida, personajeElegido.id, muebles[0].id)
+      else if (muebles.length > 1) setMueblesARevisar({ escuadra: escuadraElegida, personaje: personajeElegido.id, muebles })
+      return
+    }
     try {
       const motivo = escuadraElegida ? await gestor.ejecutarAccion(escuadraElegida, accion, seleccion?.elemento) : gestor.ejecutarAccionNoJugador(actorElegido, accion)
       setNota(motivo)
@@ -101,6 +110,16 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
     } catch (error) {
       if (!esCancelacion(error)) throw error
     }
+  }
+
+  async function revisarMueble(escuadra: string, personaje: string, mueble: string) {
+    const motivo = await gestor.ejecutarAccion(escuadra, REVISAR_MUEBLE.id, personaje)
+    setNota(motivo)
+    if (!motivo) {
+      gestor.marcarFlagMueble(mueble, 'revisado')
+      setAvisoTrampas({ titulo: 'Mueble revisado', texto: 'Mueble revisado.' })
+    }
+    setMueblesARevisar(undefined)
   }
 
   async function nuevaEstancia() {
@@ -130,7 +149,8 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
       setNota(en && `Casilla ${c.x},${c.y}: ${en.estancia.id} (${en.estancia.tipo}), casilla ${en.casilla.x},${en.casilla.y}. Ruta: ${en.ruta.map((r) => r.id).join(' › ')}.`)
       return
     }
-    setNota(personajeElegido ? gestor.colocarPersonaje(personajeElegido.id, c) : gestor.colocarElemento(e.id, seleccion.elemento, c))
+    const elemento = e.elementos.find((el) => el.id === seleccion.elemento)
+    setNota(personajeElegido ? gestor.colocarPersonaje(personajeElegido.id, c) : elemento?.tipo === 'mueble' ? `El mueble «${elemento.nombre}» no se puede mover` : gestor.colocarElemento(e.id, seleccion.elemento, c))
     setSeleccion(undefined)
   }
 
@@ -209,6 +229,9 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
       />
 
       {avisoTrampas && <AvisoTrampas {...avisoTrampas} onCerrar={() => setAvisoTrampas(undefined)} />}
+      {mueblesARevisar && (
+        <DialogoRevisarMueble muebles={mueblesARevisar.muebles} onElegir={(mueble) => revisarMueble(mueblesARevisar.escuadra, mueblesARevisar.personaje, mueble)} onCancelar={() => setMueblesARevisar(undefined)} />
+      )}
       {mapa.estancias.map((e) => {
         const enEspera = [
           ...e.elementos.filter((el) => !el.posicion).map((el) => ({ id: el.id, texto: `${el.nombre} (${el.columnas} × ${el.filas})` })),
@@ -235,7 +258,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
                   {el.texto}
                 </button>
               ))}
-              {elegido && !personajeEnMapa && e.elementos.find((el) => el.id === elegido)?.posicion && (
+              {elegido && !personajeEnMapa && e.elementos.find((el) => el.id === elegido && el.tipo !== 'mueble')?.posicion && (
                 <button type="button" className="button secondary" onClick={aEspera}>
                   Devolver a la zona de espera
                 </button>
