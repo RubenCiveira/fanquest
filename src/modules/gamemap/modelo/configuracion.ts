@@ -1,3 +1,5 @@
+import type { TipoTerreno } from './terreno'
+
 /** Reglas de activación y de movimiento que fija el proyecto */
 export type Configuracion = {
   /** Personajes y enemigos se van turnando al activarse, o se activan primero todos los personajes */
@@ -11,4 +13,11 @@ export type Configuracion = {
    * (√2 cada paso en diagonal), redondeado hacia arriba
    */
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea'
+  /**
+   * Cómo cuenta para moverse la casilla en que hay otro personaje (un aliado):
+   * `normal` se pasa por encima como si nada; `dificil` o `muy-dificil` la
+   * entorpece; `impasable` la bloquea (uno parado ante una puerta cierra el
+   * paso). Nunca se puede terminar encima de otro personaje
+   */
+  terrenoAliados: 'normal' | TipoTerreno
 }

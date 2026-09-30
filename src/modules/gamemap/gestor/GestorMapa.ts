@@ -15,7 +15,7 @@ import {
 import { construirEstancia } from '../construccion'
 import { buscarSitio, colocarElemento, motivoParaNoColocar } from '../elementos'
 import { estanciasDe } from '../estancias'
-import { accionesAdicionales, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { accionesAdicionales, conAliados, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
@@ -261,7 +261,10 @@ export class GestorMapa implements MapaEnJuego {
       if (!encontrado?.personaje.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
       const { personaje, escuadra } = encontrado
       if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, escuadra.id) ?? `${personaje.nombre} no puede moverse ahora` }
-      return { personaje, escuadra: escuadra.id, ...evaluarRecorrido(this.#mapa, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: SIN_ENEMIGOS }) }
+      return { personaje, escuadra: escuadra.id, ...evaluarRecorrido(conAliados(this.#mapa, personaje.id, this.configuracion.terrenoAliados), personaje, recorrido, opciones, {
+        medicion: this.configuracion.medicionMovimiento,
+        enemigos: SIN_ENEMIGOS,
+      }) }
     }
     const evaluado = evaluar()
     if ('motivo' in evaluado) return evaluado.motivo

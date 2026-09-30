@@ -72,7 +72,8 @@ await gestor.nuevaEstancia()
 - **Configuración**: la da el proyecto. `ordenActivaciones` (alternas o todos
   los personajes primero), `modosActivacion` (agresivo o sigiloso, o normal) y
   `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
-  redondeando hacia arriba).
+  redondeando hacia arriba) y `terrenoAliados` (cómo cuenta la casilla de
+  otro personaje: normal, difícil, muy difícil o impasable).
 - **Turno y activación**: la activación es de la escuadra y vale para todos
   sus personajes. Una escuadra se activa una vez por turno y no se activa otra
   hasta que termine la que está en curso; el turno solo termina cuando todas

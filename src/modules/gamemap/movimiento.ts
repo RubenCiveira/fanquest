@@ -1,5 +1,5 @@
 import { apuntarAccion } from './acciones'
-import { conPersonaje, conTurno, personajesDelMapa, numeroDeTurno, turnoDePersonaje } from './activaciones'
+import { conPersonaje, conTurno, numeroDeTurno, personajesDelMapa, turnoDePersonaje } from './activaciones'
 import { estanciaEn } from './estancias'
 import { factorDeTerreno, terrenoEn } from './terrenos'
 import type { Accion } from './modelo/accion'
@@ -88,6 +88,23 @@ export function enElMapa(m: Mapa, personaje: Personaje): Casilla | undefined {
 export function transitable(m: Mapa, c: Casilla): boolean {
   const en = casillaDelMapa(m, c)
   return !!en && terrenoEn(en.estancia, en.casilla)?.tipo !== 'impasable' && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
+}
+
+/**
+ * El mapa tal como lo ve un personaje al moverse: cada uno de los demás
+ * personajes colocados es una casilla de terreno `terrenoAliados` (con
+ * `normal`, el mapa no cambia). Solo para medir y trazar rutas: no se guarda
+ */
+export function conAliados(m: Mapa, personaje: string, terrenoAliados: Configuracion['terrenoAliados']): Mapa {
+  if (terrenoAliados === 'normal') return m
+  const aliados = personajesDelMapa(m).filter((p) => p.id !== personaje && p.casilla)
+  return {
+    ...m,
+    estancias: m.estancias.map((e) => {
+      const suyos = aliados.flatMap((p) => (p.estancia === e.id && p.casilla ? [{ tipo: terrenoAliados, posicion: p.casilla, columnas: 1, filas: 1 }] : []))
+      return suyos.length ? { ...e, terrenos: [...(e.terrenos ?? []), ...suyos] } : e
+    }),
+  }
 }
 
 /** Veces que cuesta entrar en la casilla del mapa lo que una normal: dos en terreno difícil y tres en muy difícil */
@@ -253,14 +270,14 @@ export const accionesConsumidas = (valido: Valido): string[] => [valido.opcion.a
 /**
  * Lleva al personaje de la escuadra al final del recorrido ya evaluado (en
  * casillas del mapa: si es otra estancia, pasa a ella), apunta el movimiento en
- * su turno (lo que cuesta según la medición de `config`) y las acciones que
+ * su turno (lo que cuesta según la medición y los aliados de `config`) y las acciones que
  * consume en el de su escuadra, que empiezan su activación si no había empezado
  */
 export function mover(m: Mapa, config: Configuracion, escuadra: string, personaje: Personaje, recorrido: Casilla[], valido: Valido): Mapa {
   const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
   if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
   const acciones = accionesConsumidas(valido)
-  const hecho = { opcion: valido.opcion.id, casillas: costeDe(m, recorrido, config.medicionMovimiento), acciones }
+  const hecho = { opcion: valido.opcion.id, casillas: costeDe(conAliados(m, personaje.id, config.terrenoAliados), recorrido, config.medicionMovimiento), acciones }
   const movido = conPersonaje(m, personaje.id, (h) => ({
     ...h,
     estancia: destino.estancia.id,

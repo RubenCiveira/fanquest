@@ -47,6 +47,7 @@ export {
   accionesConsumidas,
   alcance,
   casillaDelMapa,
+  conAliados,
   costeDe,
   costesDe,
   enElMapa,

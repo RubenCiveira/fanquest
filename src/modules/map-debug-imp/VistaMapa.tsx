@@ -2,6 +2,7 @@ import { useId, useRef, useState, type PointerEvent } from 'react'
 import { sitiosDeBotones } from './corona'
 import {
   alcance,
+  conAliados,
   costeDe,
   costesDe,
   enElMapa,
@@ -14,6 +15,7 @@ import {
   type Accion,
   type Activacion,
   type Casilla,
+  type Configuracion,
   type Estancia,
   type Escuadra,
   type Personaje,
@@ -276,6 +278,8 @@ type Props = {
   onMover?: (personajeId: string, recorrido: Casilla[]) => void
   /** Cómo se miden los movimientos al arrastrar (sin diagonales, si no se dice) */
   medicion?: MedicionMovimiento
+  /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
+  terrenoAliados?: Configuracion['terrenoAliados']
 }
 
 /** Personaje colocado en una estancia, con su escuadra */
@@ -452,7 +456,9 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onElegirElemento, medicion = 'ortogonal' } = props
+  const { opcionesMovimiento, onMover, onElegirElemento, medicion = 'ortogonal', terrenoAliados = 'normal' } = props
+  /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con el terreno de los aliados */
+  const vistoPor = (ficha: Personaje) => conAliados(mapa, ficha.id, terrenoAliados)
   const { estancias } = mapa
   const svg = useRef<SVGSVGElement>(null)
   // ids de las puntas de flecha, únicos aunque haya varios mapas en la página
@@ -474,13 +480,13 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     setArrastre({ ficha, objetivo: desde, recorrido: [desde] })
     // al llegar las opciones, la ruta que ya se estuviera mostrando se recorta a su alcance
     opcionesMovimiento?.(ficha.id).then((opciones) =>
-      setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(mapa, { ...a, opciones: opciones ?? null }, a.objetivo, medicion) : a)),
+      setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(vistoPor(a.ficha), { ...a, opciones: opciones ?? null }, a.objetivo, medicion) : a)),
     )
   }
 
   function arrastrar(ev: PointerEvent) {
     const c = casillaBajo(ev)
-    if (c) setArrastre((a) => (a && !misma(a.objetivo, c) ? trazar(mapa, a, c, medicion) : a))
+    if (c) setArrastre((a) => (a && !misma(a.objetivo, c) ? trazar(vistoPor(a.ficha), a, c, medicion) : a))
   }
 
   function soltar() {
@@ -496,7 +502,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const evaluado: RecorridoEvaluado | undefined =
     arrastre?.opciones === null
       ? { motivo: `${arrastre.ficha.nombre} no puede moverse ahora` }
-      : arrastre?.opciones && evaluarRecorrido(mapa, arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion })
+      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion })
   const x0 = Math.min(...estancias.map((e) => origenDe(e).x))
   const y0 = Math.min(...estancias.map((e) => origenDe(e).y))
   const x1 = Math.max(...estancias.map((e) => origenDe(e).x + e.columnas))
@@ -555,7 +561,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
           recorrido={arrastre.recorrido}
           evaluado={arrastre.fuera ? { motivo: 'Fuera de alcance' } : evaluado}
           marcador={marcador}
-          coste={costeDe(mapa, arrastre.recorrido, medicion)}
+          coste={costeDe(vistoPor(arrastre.ficha), arrastre.recorrido, medicion)}
         />
       )}
     </svg>

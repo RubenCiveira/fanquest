@@ -6,7 +6,7 @@ import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
 import type { Terreno } from './modelo/terreno'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
-import { costeDe, evaluarRecorrido, ruta } from './movimiento'
+import { conAliados, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
 import { factorDeTerreno, terrenoEn } from './terrenos'
 
 const barro: Terreno = { tipo: 'dificil', posicion: { x: 1, y: 0 }, columnas: 1, filas: 3 }
@@ -21,6 +21,11 @@ const seis: OpcionesMovimiento = { base: { id: 'mover', nombre: 'Mover', tipo: '
 const porArriba = (hasta: number): Casilla[] => Array.from({ length: hasta + 1 }, (_, x) => ({ x, y: 0 }))
 
 describe('terrenos', () => {
+  it('si dos terrenos cubren la casilla, cuenta el peor', () => {
+    const encima = { ...estancia, terrenos: [barro, { ...zarzas, posicion: barro.posicion }] }
+    expect(factorDeTerreno(encima, barro.posicion)).toBe(3)
+  })
+
   it('cada casilla tiene el terreno que la cubre', () => {
     expect([terrenoEn(estancia, { x: 1, y: 2 })?.tipo, terrenoEn(estancia, { x: 0, y: 0 })]).toEqual(['dificil', undefined])
   })
@@ -77,5 +82,41 @@ describe('terrenos', () => {
       terrenos: [todoMuro],
     })
     expect(construida.elementos[0].posicion?.y).toBe(2)
+  })
+})
+
+describe('casillas con aliados', () => {
+  // pasillo de 5 × 1: el bárbaro en 0,0 y el enano en medio, en 2,0
+  const pasillo = crearEstancia({ id: 'pasillo', tipo: 'pasillo', columnas: 5, filas: 1 })
+  const enano: Personaje = { ...barbaro, id: 'enano', nombre: 'Enano', estancia: 'pasillo', casilla: { x: 2, y: 0 } }
+  const enElPasillo: Personaje = { ...barbaro, estancia: 'pasillo' }
+  const conEnano: Mapa = { estancias: [pasillo], escuadras: [{ id: 'grupo', nombre: 'Grupo', personajes: [enElPasillo, enano], turnos: [] }] }
+  const hastaElFondo = porArriba(4)
+
+  it('con aliados normales, el mapa no cambia', () => {
+    expect(conAliados(conEnano, 'barbaro', 'normal')).toBe(conEnano)
+  })
+
+  it('el propio personaje no cuenta como aliado', () => {
+    expect(conAliados(conEnano, 'barbaro', 'dificil').estancias[0].terrenos).toEqual([{ tipo: 'dificil', posicion: { x: 2, y: 0 }, columnas: 1, filas: 1 }])
+  })
+
+  it('con aliados difíciles, pasar por encima del enano cuesta dos', () => {
+    expect(costeDe(conAliados(conEnano, 'barbaro', 'dificil'), hastaElFondo)).toBe(5)
+  })
+
+  it('con aliados impasables, el enano parado en el pasillo cierra el paso', () => {
+    expect(ruta(conAliados(conEnano, 'barbaro', 'impasable'), { x: 0, y: 0 }, { x: 4, y: 0 })).toBeUndefined()
+  })
+
+  it('un aliado sobre terreno peor que su regla no lo mejora: cuenta el peor', () => {
+    const conZarzas = { ...conEnano, estancias: [{ ...pasillo, terrenos: [{ tipo: 'muy-dificil' as const, posicion: { x: 2, y: 0 }, columnas: 1, filas: 1 }] }] }
+    expect(costeDe(conAliados(conZarzas, 'barbaro', 'dificil'), hastaElFondo)).toBe(6)
+  })
+
+  it('al moverse, lo gastado cuenta el paso por encima del aliado', () => {
+    const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoAliados: 'dificil' } as const
+    const movido = moverPersonaje(conEnano, config, 'grupo', enElPasillo, hastaElFondo, { opcion: seis.base, tramos: [0, 0, 0, 0] })
+    expect(gastadoPor(movido, movido.escuadras?.[0].personajes[0] ?? enElPasillo).casillas).toBe(5)
   })
 })

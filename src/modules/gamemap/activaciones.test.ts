@@ -24,8 +24,8 @@ const mapa: Mapa = {
   ],
   turno: 1,
 }
-const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal' }
-const normales: Configuracion = { ordenActivaciones: 'personajes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal' }
+const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' }
+const normales: Configuracion = { ordenActivaciones: 'personajes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' }
 
 const completas = (m: Mapa, config: Configuracion, modos: Record<string, 'normal' | 'agresivo' | 'sigiloso'>) =>
   Object.entries(modos).reduce((a, [id, modo]) => terminarActivacion(activar(a, config, id, modo), id), m)

@@ -1,7 +1,7 @@
 import type { Configuracion } from '../gamemap'
 
-/** Reglas del ejemplo si no se han cambiado: activaciones alternas, modo agresivo o sigiloso y movimiento sin diagonales */
-export const CONFIGURACION_INICIAL: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal' }
+/** Reglas del ejemplo si no se han cambiado: activaciones alternas, modo agresivo o sigiloso, movimiento sin diagonales y por encima de los aliados */
+export const CONFIGURACION_INICIAL: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoAliados: 'normal' }
 
 /** Textos del formulario para cada valor de cada ajuste */
 export const OPCIONES_CONFIGURACION: { [K in keyof Configuracion]: { etiqueta: string; valores: Record<Configuracion[K], string> } } = {
@@ -10,6 +10,10 @@ export const OPCIONES_CONFIGURACION: { [K in keyof Configuracion]: { etiqueta: s
   medicionMovimiento: {
     etiqueta: 'Medición del movimiento',
     valores: { ortogonal: 'Sin diagonales', diagonal: 'Diagonal como recta', euclidea: 'Por Pitágoras (redondeando hacia arriba)' },
+  },
+  terrenoAliados: {
+    etiqueta: 'Casilla con un aliado',
+    valores: { normal: 'Normal (se pasa por encima)', dificil: 'Difícil', 'muy-dificil': 'Muy difícil', impasable: 'Impasable (bloquea el paso)' },
   },
 }
 

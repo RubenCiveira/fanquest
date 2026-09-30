@@ -8,14 +8,16 @@ export const COSTE_TERRENO: Record<Exclude<TipoTerreno, 'impasable'>, number> = 
 const cubre = ({ posicion, columnas, filas }: Terreno, { x, y }: Casilla) =>
   x >= posicion.x && y >= posicion.y && x < posicion.x + columnas && y < posicion.y + filas
 
-/** Terreno de esa casilla de la estancia, si no es normal */
-export const terrenoEn = (e: Estancia, c: Casilla): Terreno | undefined => e.terrenos?.find((t) => cubre(t, c))
+const factorDe = (tipo: TipoTerreno) => (tipo === 'impasable' ? Number.POSITIVE_INFINITY : COSTE_TERRENO[tipo])
+
+/** Terreno de esa casilla de la estancia, si no es normal; si hay varios, el peor */
+export const terrenoEn = (e: Estancia, c: Casilla): Terreno | undefined =>
+  e.terrenos?.filter((t) => cubre(t, c)).reduce<Terreno | undefined>((peor, t) => (!peor || factorDe(t.tipo) > factorDe(peor.tipo) ? t : peor), undefined)
 
 /** Veces que cuesta entrar en esa casilla de la estancia lo que una normal; infinito si es impasable */
 export function factorDeTerreno(e: Estancia, c: Casilla): number {
   const tipo = terrenoEn(e, c)?.tipo
-  if (!tipo) return 1
-  return tipo === 'impasable' ? Number.POSITIVE_INFINITY : COSTE_TERRENO[tipo]
+  return tipo ? factorDe(tipo) : 1
 }
 
 /** Por qué el terreno no puede ir en la estancia (se sale o no tiene tamaño), o nada si puede */
