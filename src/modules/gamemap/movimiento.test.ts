@@ -192,15 +192,15 @@ describe('medición de los movimientos', () => {
   })
 
   it('con diagonales que cuentan como uno, tres pasos en diagonal cuestan tres', () => {
-    expect(costeDe(enDiagonal(3), 'diagonal')).toBe(3)
+    expect(costeDe(sala(), enDiagonal(3), 'diagonal')).toBe(3)
   })
 
   it('por Pitágoras, tres pasos en diagonal cuestan lo que su largo redondeado hacia arriba', () => {
-    expect(costeDe(enDiagonal(3), 'euclidea')).toBe(5)
+    expect(costeDe(sala(), enDiagonal(3), 'euclidea')).toBe(5)
   })
 
   it('por Pitágoras, dos diagonales no llegan a tres casillas', () => {
-    expect(costeDe(enDiagonal(2), 'euclidea')).toBe(3)
+    expect(costeDe(sala(), enDiagonal(2), 'euclidea')).toBe(3)
   })
 
   it('los tramos se cuentan por lo que cuesta cada paso: 3 diagonales por Pitágoras ya tocan el tramo de deslizar', () => {
@@ -229,7 +229,7 @@ describe('medición de los movimientos', () => {
 
   it('por Pitágoras, la ruta es la más corta de largo', () => {
     const camino = ruta(sala(), { x: 0, y: 0 }, { x: 3, y: 1 }, 'euclidea') ?? []
-    expect([camino.length - 1, costeDe(camino, 'euclidea')]).toEqual([3, 4])
+    expect([camino.length - 1, costeDe(sala(), camino, 'euclidea')]).toEqual([3, 4])
   })
 
   it('el movimiento apunta lo que cuesta según la medición', () => {

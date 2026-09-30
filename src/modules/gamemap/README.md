@@ -54,6 +54,9 @@ await gestor.nuevaEstancia()
 - **Puerta**: va en una arista del muro exterior, no dentro de una casilla:
   la casilla del borde y el `lado` por el que se sale de ella. Al abrirla, la
   estancia de detrás se pega a ella y las dos quedan abiertas.
+- **Terreno**: zona de una estancia difícil (entrar en cada casilla cuesta
+  dos), muy difícil (tres) o impasable, con o sin imagen que la cubra. La
+  ruta de un personaje lo tiene en cuenta y lo rodea si sale más barato.
 - **Objeto** (elemento): ocupa `filas` × `columnas` casillas de una estancia.
   Al crearla, el gestor lo pone en el sitio libre más cercano al centro, sin
   tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**

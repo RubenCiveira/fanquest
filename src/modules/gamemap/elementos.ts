@@ -1,4 +1,5 @@
 import { estanciaEn } from './estancias'
+import { terrenoEn } from './terrenos'
 import type { Casilla } from './modelo/casilla'
 import type { Elemento } from './modelo/elemento'
 import type { Estancia } from './modelo/estancia'
@@ -11,14 +12,15 @@ const misma = (a: Casilla) => (b: Casilla) => a.x === b.x && a.y === b.y
 
 /**
  * Por qué el elemento no puede ir en esa casilla de la estancia, o nada si
- * puede: no se sale, no tapa una puerta, no pisa una estancia interior ni
- * otro elemento colocado
+ * puede: no se sale, no tapa una puerta, no cae en terreno impasable ni pisa
+ * una estancia interior u otro elemento colocado
  */
 export function motivoParaNoColocar(e: Estancia, elemento: Elemento, posicion: Casilla): string | undefined {
   const casillas = casillasDe(elemento, posicion)
   if (casillas.some((c) => estanciaEn(e, c) === undefined)) return `«${elemento.nombre}» se sale de «${e.id}»`
   const puerta = e.puertas.find((p) => casillas.some(misma(p.casilla)))
   if (puerta) return `«${elemento.nombre}» tapa la puerta «${puerta.id}»`
+  if (casillas.some((c) => terrenoEn(e, c)?.tipo === 'impasable')) return `«${elemento.nombre}» cae en terreno impasable`
   const interior = casillas.map((c) => estanciaEn(e, c)?.estancia).find((de) => de && de.id !== e.id)
   if (interior) return `«${elemento.nombre}» pisa la estancia «${interior.id}»`
   const choque = e.elementos.find(

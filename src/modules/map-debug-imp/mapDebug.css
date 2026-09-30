@@ -335,3 +335,37 @@
   border: 1.5px solid var(--trazo-suave);
   border-radius: var(--boceto-2);
 }
+
+/* terreno: sin recibir el puntero, para que las casillas sigan respondiendo */
+.vista-terreno {
+  pointer-events: none;
+}
+
+.vista-rayado {
+  stroke-width: 2;
+}
+
+.vista-rayado.dificil {
+  stroke: var(--pergamino-oscuro);
+}
+
+.vista-rayado.muy-dificil {
+  stroke: var(--grafito);
+  stroke-width: 1.5;
+}
+
+.vista-rayado.impasable {
+  stroke: var(--tinta);
+  stroke-width: 2.5;
+}
+
+.vista-rayado-fondo {
+  fill: var(--grafito);
+  opacity: 0.35;
+}
+
+.map-debug-casilla-marcar {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}

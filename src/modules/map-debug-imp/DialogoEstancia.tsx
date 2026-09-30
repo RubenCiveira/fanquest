@@ -11,6 +11,7 @@ import {
   type TipoEstancia,
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION } from './mapas'
+import { terrenosDePrueba } from './terrenos'
 import { VistaMapa } from './VistaMapa'
 
 /** Lado máximo de una estancia de prueba, como el de la rejilla de la partida */
@@ -38,11 +39,19 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
   const [orientacion, setOrientacion] = useState<Direccion>(entrada ? OPUESTA[entrada] : 'abajo')
   const [salidas, setSalidas] = useState(1)
   const [elementos, setElementos] = useState<DescripcionElemento[]>([])
+  const [conTerreno, setConTerreno] = useState(true)
 
   useEffect(() => ref.current?.showModal(), [])
 
   const maxSalidas = largoMuro(tamano, orientacion)
-  const descripcion: DescripcionEstancia = { tipo, tamano, orientacion, salidas: Math.min(salidas, maxSalidas), elementos }
+  const descripcion: DescripcionEstancia = {
+    tipo,
+    tamano,
+    orientacion,
+    salidas: Math.min(salidas, maxSalidas),
+    elementos,
+    terrenos: conTerreno ? terrenosDePrueba(tamano) : [],
+  }
   const cambiarElemento = (i: number, cambio: Partial<DescripcionElemento>) =>
     setElementos(elementos.map((el, j) => (j === i ? { ...el, ...cambio } : el)))
 
@@ -116,6 +125,11 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
             />
           </label>
         </div>
+
+        <label className="map-debug-casilla-marcar">
+          <input type="checkbox" checked={conTerreno} onChange={(e) => setConTerreno(e.target.checked)} />
+          Terreno de prueba: barro difícil, zarzas muy difíciles, un pilar impasable y escombros con imagen (los que quepan)
+        </label>
 
         <fieldset className="map-debug-elementos">
           <legend>Objetos</legend>

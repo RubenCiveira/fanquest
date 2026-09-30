@@ -23,6 +23,7 @@ import {
   type OpcionesMovimiento,
   type Puerta,
   type RecorridoEvaluado,
+  type TipoTerreno,
   numeroDeTurno,
   turnoDeEscuadra,
 } from '../gamemap'
@@ -242,9 +243,9 @@ type Arrastre = {
 
 const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
 
-/** El recorrido recortado hasta donde llega el alcance, según la medición */
-function recortado(recorrido: Casilla[], maximo: number, medicion: MedicionMovimiento) {
-  const pasa = costesDe(recorrido, medicion).findIndex((coste) => coste > maximo)
+/** El recorrido recortado hasta donde llega el alcance, según la medición y el terreno */
+function recortado(mapa: Mapa, recorrido: Casilla[], maximo: number, medicion: MedicionMovimiento) {
+  const pasa = costesDe(mapa, recorrido, medicion).findIndex((coste) => coste > maximo)
   return pasa < 0 ? recorrido : recorrido.slice(0, pasa + 1)
 }
 
@@ -257,7 +258,7 @@ function recortado(recorrido: Casilla[], maximo: number, medicion: MedicionMovim
 function trazar(mapa: Mapa, a: Arrastre, objetivo: Casilla, medicion: MedicionMovimiento): Arrastre {
   const camino = ruta(mapa, a.recorrido[0], objetivo, medicion)
   if (!camino) return { ...a, objetivo, fuera: true }
-  const recorrido = a.opciones ? recortado(camino, alcance(a.opciones), medicion) : camino
+  const recorrido = a.opciones ? recortado(mapa, camino, alcance(a.opciones), medicion) : camino
   return { ...a, objetivo, recorrido, fuera: recorrido.length < camino.length }
 }
 
@@ -290,6 +291,7 @@ function CapaEstancia({
   estancia,
   origen,
   personajes,
+  patrones,
   fichas,
   numero,
   activa,
@@ -303,6 +305,8 @@ function CapaEstancia({
   estancia: Estancia
   origen: Casilla
   personajes: PersonajeColocado[]
+  /** Prefijo de los ids de los rayados del terreno (`<prefijo>-dificil`…), definidos en el mapa */
+  patrones: string
   /** Casillas de todas las fichas de personaje del mapa, en coordenadas de esta estancia */
   fichas: Casilla[]
   /** Número del turno en curso */
@@ -336,6 +340,19 @@ function CapaEstancia({
             height={LADO}
             onClick={() => onElegir?.(estancia, c)}
           />
+        )
+      })}
+      {estancia.terrenos?.map((t, i) => {
+        const [x, y, width, height] = [t.posicion.x * LADO, t.posicion.y * LADO, t.columnas * LADO, t.filas * LADO]
+        // con imagen, solo la imagen; sin ella, el rayado de su tipo
+        return t.imagen ? (
+          <image key={i} className="vista-terreno" href={t.imagen} x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid slice">
+            <title>{NOMBRE_TERRENO[t.tipo]}</title>
+          </image>
+        ) : (
+          <rect key={i} className={`vista-terreno ${t.tipo}`} x={x} y={y} width={width} height={height} fill={`url(#${patrones}-${t.tipo})`}>
+            <title>{NOMBRE_TERRENO[t.tipo]}</title>
+          </rect>
         )
       })}
       {estanciasDe(estancia).map(({ estancia: e, origen }) => (
@@ -397,6 +414,30 @@ function CapaEstancia({
         />
       )}
     </g>
+  )
+}
+
+const NOMBRE_TERRENO: Record<TipoTerreno, string> = { dificil: 'Terreno difícil', 'muy-dificil': 'Terreno muy difícil', impasable: 'Terreno impasable' }
+
+/**
+ * Rayados con que se marca el terreno sin imagen: rayas sueltas el difícil,
+ * trama cruzada el muy difícil y rayas densas sobre fondo oscuro el impasable
+ */
+function RayadosDeTerreno({ prefijo }: { prefijo: string }) {
+  return (
+    <>
+      <pattern id={`${prefijo}-dificil`} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line className="vista-rayado dificil" x1="0" y1="0" x2="0" y2="8" />
+      </pattern>
+      <pattern id={`${prefijo}-muy-dificil`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <line className="vista-rayado muy-dificil" x1="0" y1="0" x2="0" y2="7" />
+        <line className="vista-rayado muy-dificil" x1="0" y1="0" x2="7" y2="0" />
+      </pattern>
+      <pattern id={`${prefijo}-impasable`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect className="vista-rayado-fondo" width="5" height="5" />
+        <line className="vista-rayado impasable" x1="0" y1="0" x2="0" y2="5" />
+      </pattern>
+    </>
   )
 }
 
@@ -482,6 +523,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
       aria-label="Mapa"
     >
       <defs>
+        <RayadosDeTerreno prefijo={marcador} />
         {CLASES_FLECHA.map((clase) => (
           <marker key={clase} id={`${marcador}-${clase}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
             <path className={`vista-recorrido-punta ${clase}`} d="M0 0L10 5L0 10z" />
@@ -496,6 +538,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
             estancia={e}
             origen={origenDe(e)}
             personajes={colocados.filter(({ personaje }) => personaje.estancia === e.id)}
+            patrones={marcador}
             fichas={colocados.flatMap(({ personaje }) => {
               const c = enElMapa(mapa, personaje)
               return c ? [{ x: c.x - origenDe(e).x, y: c.y - origenDe(e).y }] : []
@@ -512,7 +555,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
           recorrido={arrastre.recorrido}
           evaluado={arrastre.fuera ? { motivo: 'Fuera de alcance' } : evaluado}
           marcador={marcador}
-          coste={costeDe(arrastre.recorrido, medicion)}
+          coste={costeDe(mapa, arrastre.recorrido, medicion)}
         />
       )}
     </svg>

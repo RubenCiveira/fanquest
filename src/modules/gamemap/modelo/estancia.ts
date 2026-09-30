@@ -3,6 +3,7 @@ import type { Direccion } from './direccion'
 import type { Elemento } from './elemento'
 import type { Medida } from './medida'
 import type { Puerta } from './puerta'
+import type { Terreno } from './terreno'
 
 export type TipoEstancia = 'exterior' | 'sala' | 'pasillo'
 
@@ -23,5 +24,7 @@ export type Estancia = Medida & {
   orientacion?: Direccion
   puertas: Puerta[]
   elementos: Elemento[]
+  /** Zonas de terreno difícil o impasable (sin ellas, todo es terreno normal) */
+  terrenos?: Terreno[]
   estancias: Estancia[]
 }

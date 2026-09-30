@@ -120,6 +120,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   orientacion: 'arriba' | 'abajo' | 'izquierda' | 'derecha', // muro de las salidas; no puede ser el de `entrada`
   salidas: number,
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
+  terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
 }
 ```
 
@@ -128,6 +129,12 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   puede haber más salidas que casillas tiene ese muro.
 - Los objetos no llevan posición: el gestor busca un hueco para cada uno y,
   si no cabe, lo deja en la zona de espera para colocarlo a mano.
+- Los `terrenos` sí la llevan (en casillas de la estancia): zonas en las que
+  entrar en cada casilla cuesta dos (`dificil`) o tres (`muy-dificil`), o que
+  no se pueden pisar (`impasable`). Ni objetos ni personajes se colocan en
+  terreno impasable, y un terreno que se sale de la estancia no se puede
+  construir. Con `imagen`, la vista pinta solo la imagen sobre todas sus
+  casillas; sin ella, un rayado según el tipo.
 - Si la promesa se rechaza, no se crea ninguna estancia y el error sigue. El
   banco de pruebas rechaza con un `DOMException` `AbortError` al cancelar su
   diálogo.
@@ -250,7 +257,8 @@ type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la ad
   estancias interiores. Las `distancia` de los tramos y `gastado.casillas` se
   cuentan en lo que cuesta el camino según esa medición. Entre dos
   estancias solo se pasa por una puerta abierta. Puede pasar por encima de
-  otros personajes, pero no terminar encima.
+  otros personajes, pero no terminar encima. Entrar en terreno difícil cuesta
+  dos veces lo normal y en muy difícil, tres; el impasable no se pisa.
 - Vale la primera opción que permite el recorrido: la base y después las
   variaciones, en orden. Ordénalas de la más barata a la más cara.
 - Si el recorrido llega a un tramo con acción adicional, el gestor pide

@@ -1,6 +1,7 @@
 import { apuntarAccion } from './acciones'
 import { conPersonaje, conTurno, personajesDelMapa, numeroDeTurno, turnoDePersonaje } from './activaciones'
 import { estanciaEn } from './estancias'
+import { factorDeTerreno, terrenoEn } from './terrenos'
 import type { Accion } from './modelo/accion'
 import type { Casilla } from './modelo/casilla'
 import type { Configuracion } from './modelo/configuracion'
@@ -81,11 +82,18 @@ export function enElMapa(m: Mapa, personaje: Personaje): Casilla | undefined {
 
 /**
  * Si un personaje puede estar en la casilla del mapa: es de una estancia (no de
- * una interior) y no la ocupa un objeto. Por encima de otros personajes sí pasa
+ * una interior), no es terreno impasable y no la ocupa un objeto. Por encima
+ * de otros personajes sí pasa
  */
 export function transitable(m: Mapa, c: Casilla): boolean {
   const en = casillaDelMapa(m, c)
-  return !!en && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
+  return !!en && terrenoEn(en.estancia, en.casilla)?.tipo !== 'impasable' && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
+}
+
+/** Veces que cuesta entrar en la casilla del mapa lo que una normal: dos en terreno difícil y tres en muy difícil */
+function factorEn(m: Mapa, c: Casilla) {
+  const en = casillaDelMapa(m, c)
+  return en ? factorDeTerreno(en.estancia, en.casilla) : 1
 }
 
 /**
@@ -146,7 +154,7 @@ export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: Medicion
     for (const paso of pasosDe(medicion)) {
       const c = { x: actual.x + paso.x, y: actual.y + paso.y }
       if (cerradas.has(clave(c)) || !sePuedePasar(m, actual, c, medicion)) continue
-      const nuevo = (coste.get(clave(actual)) ?? 0) + (enDiagonal(actual, c) ? PESO_DIAGONAL[medicion] : 1)
+      const nuevo = (coste.get(clave(actual)) ?? 0) + (enDiagonal(actual, c) ? PESO_DIAGONAL[medicion] : 1) * factorEn(m, c)
       if (nuevo < (coste.get(clave(c)) ?? Number.POSITIVE_INFINITY)) {
         if (!coste.has(clave(c))) abiertas.push(c)
         coste.set(clave(c), nuevo)
@@ -167,21 +175,22 @@ export const alcance = ({ base, variaciones }: OpcionesMovimiento) =>
   Math.max(...[base, ...variaciones].map((o) => o.tramos.reduce((suma, t) => suma + t.distancia, 0)))
 
 /**
- * Lo que se lleva movido al final de cada paso del recorrido, según la
- * medición: un paso recto cuenta uno y uno en diagonal, uno o √2 (redondeando
- * hacia arriba lo acumulado)
+ * Lo que se lleva movido al final de cada paso del recorrido (en casillas del
+ * mapa), según la medición: un paso recto cuenta uno y uno en diagonal, uno o
+ * √2, por dos si entra en terreno difícil o por tres si es muy difícil
+ * (redondeando hacia arriba lo acumulado)
  */
-export function costesDe(recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal'): number[] {
+export function costesDe(m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal'): number[] {
   let largo = 0
   return recorrido.slice(1).map((c, i) => {
-    largo += enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1
+    largo += (enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c)
     // sin arrastrar el error de coma flotante: 2 × √2 no llega a 3
     return Math.ceil(largo - 1e-9)
   })
 }
 
-/** Lo que cuesta el recorrido entero según la medición */
-export const costeDe = (recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal') => costesDe(recorrido, medicion).at(-1) ?? 0
+/** Lo que cuesta el recorrido entero según la medición y el terreno */
+export const costeDe = (m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal') => costesDe(m, recorrido, medicion).at(-1) ?? 0
 
 /** Tramo de la opción en que cae cada paso, según lo movido al final de cada uno; nada si no le llegan */
 function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefined {
@@ -221,13 +230,13 @@ export function evaluarRecorrido(
   const permite = (o: OpcionMovimiento) =>
     (!o.alejarseDeEnemigos || pasos.every((c) => enemigos.every((en) => distancia(c, en) > (o.alejarseDeEnemigos ?? 0)))) &&
     (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
-  const costes = costesDe(recorrido, medicion)
+  const costes = costesDe(m, recorrido, medicion)
   for (const opcion of opciones) {
     const tramos = tramosDe(opcion, costes)
     if (tramos && permite(opcion)) return { opcion, tramos }
   }
   const maximo = alcance({ base, variaciones })
-  const coste = costeDe(recorrido, medicion)
+  const coste = costeDe(m, recorrido, medicion)
   if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }
   return { motivo: 'Ninguna forma de moverse permite ese recorrido' }
 }
@@ -251,7 +260,7 @@ export function mover(m: Mapa, config: Configuracion, escuadra: string, personaj
   const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
   if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
   const acciones = accionesConsumidas(valido)
-  const hecho = { opcion: valido.opcion.id, casillas: costeDe(recorrido, config.medicionMovimiento), acciones }
+  const hecho = { opcion: valido.opcion.id, casillas: costeDe(m, recorrido, config.medicionMovimiento), acciones }
   const movido = conPersonaje(m, personaje.id, (h) => ({
     ...h,
     estancia: destino.estancia.id,
