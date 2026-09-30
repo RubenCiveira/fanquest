@@ -14,6 +14,8 @@ const mapaCon = (puerta?: Puerta): MapaEnJuego => ({
   tieneFlagMueble: () => false,
   marcarFlagMueble: vi.fn(),
   quitarElemento: vi.fn(),
+  reducirVida: vi.fn(),
+  eliminarPersonaje: vi.fn(),
   abrirPuerta: vi.fn(),
   anadirPersonajes: vi.fn(),
   anadirMuebles: vi.fn(),
@@ -48,7 +50,7 @@ describe('puertas de prueba', () => {
   it('el comando abre la puerta en el mapa con el que se ofreció', async () => {
     const mapa = mapaCon(salida)
     const [abrir] = new PuertaDePrueba(donde, 'salida').acciones(mapa)
-    await (abrir as AbrirPuerta).exec()
+    await (abrir as AbrirPuerta).hacer()
     expect(mapa.abrirPuerta).toHaveBeenCalledWith(donde)
   })
 

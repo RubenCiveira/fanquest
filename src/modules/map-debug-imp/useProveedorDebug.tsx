@@ -4,6 +4,7 @@ import {
   activacionDeJugador,
   escuadrasDe,
   personajesNoJugadoresDe,
+  type Ataque,
   type Configuracion,
   type DescripcionEstancia,
   type DescripcionPersonajeNoJugador,
@@ -14,8 +15,9 @@ import {
   type ModoActivacion,
   type ProveedorMapa,
 } from '../gamemap'
-import { AvisoFinTurno, AvisoTurno } from './AvisoTurno'
+import { AvisoFinTurno, AvisoTrampas, AvisoTurno } from './AvisoTurno'
 import { cargarConfiguracion, guardarConfiguracion, JUGADOR_MONSTRUOS } from './configuracion'
+import { DialogoAtaque } from './DialogoAtaque'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
 import { PuertasDePrueba } from './modelo/puerta'
@@ -44,6 +46,8 @@ export function useProveedorDebug(inicial?: Mapa) {
   const [confirmacion, setConfirmacion] = useState<Confirmacion>()
   const [turno, setTurno] = useState<{ jugador: Jugador; modo?: ModoActivacion }>()
   const [finTurno, setFinTurno] = useState<MapaEnJuego>()
+  const [ataque, setAtaque] = useState<{ ataque: Ataque; responder: (dano: number) => void; cancelar: () => void }>()
+  const [aviso, setAviso] = useState<{ titulo: string; texto: string; cerrar: () => void }>()
   const [configuracion, setConfiguracion] = useState(cargarConfiguracion)
   // la que lee el gestor: la del proveedor no cambia al volver a pintar
   const vigente = useRef(configuracion)
@@ -75,7 +79,17 @@ export function useProveedorDebug(inicial?: Mapa) {
       },
       confirmar: (mensaje) =>
         new Promise((resolve) => setConfirmacion({ mensaje, responder: (si) => (setConfirmacion(undefined), resolve(si)) })),
-      ...escuadrasDePrueba(puertas, escuadrasMonstruos.listar),
+      ...escuadrasDePrueba(puertas, escuadrasMonstruos.listar, {
+        resolverAtaque: (ataque) =>
+          new Promise((resolve, reject) =>
+            setAtaque({
+              ataque,
+              responder: (dano) => (setAtaque(undefined), resolve(dano)),
+              cancelar: () => (setAtaque(undefined), reject(new DOMException('Ataque cancelado', 'AbortError'))),
+            }),
+          ),
+        avisar: (aviso) => new Promise((resolve) => setAviso({ ...aviso, cerrar: () => (setAviso(undefined), resolve()) })),
+      }),
       estanciaCreada: (estancia) => puertas.asociar(estancia),
       turnoDe: (jugador, mapa) =>
         setTurno({
@@ -109,6 +123,8 @@ export function useProveedorDebug(inicial?: Mapa) {
         />
       )}
       {turno && <AvisoTurno key={turno.jugador.id} jugador={turno.jugador} modo={turno.modo} onCerrar={() => setTurno(undefined)} />}
+      {aviso && <AvisoTrampas titulo={aviso.titulo} texto={aviso.texto} onCerrar={aviso.cerrar} />}
+      {ataque && <DialogoAtaque ataque={ataque.ataque} onAtacar={ataque.responder} onCancelar={ataque.cancelar} />}
       {finTurno && <AvisoFinTurno onTerminar={() => (setFinTurno(undefined), finTurno.terminarTurno())} />}
       {confirmacion && (
         // al confirmar, el diálogo también se cierra: la segunda respuesta ya no cuenta

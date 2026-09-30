@@ -64,6 +64,12 @@ export const activacionDeJugador = (m: Mapa, jugador: string) => activacionesDeJ
 
 export const activacionDeNoJugador = (m: Mapa, personaje: string) => m.activacionesJugadores?.find((a) => a.numero === numeroDeTurno(m) && a.personaje === personaje)
 
+/** Si su clase dijo, tras su última acción del turno en curso, que al personaje ya no le quedan acciones: su activación ha terminado */
+export const sinAcciones = (m: Mapa, personaje: Personaje) => turnoDePersonaje(personaje, numeroDeTurno(m)).quedanAcciones === false
+
+/** Si a ninguno de los personajes de la escuadra le quedan acciones en el turno en curso */
+export const escuadraSinAcciones = (m: Mapa, escuadra: Escuadra) => escuadra.personajes.length > 0 && escuadra.personajes.every((p) => sinAcciones(m, p))
+
 /** Escuadras que juegan: las que tienen algún personaje */
 const enJuego = (m: Mapa) => escuadrasDe(m).filter((e) => e.personajes.length)
 

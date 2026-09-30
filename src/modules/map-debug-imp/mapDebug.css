@@ -146,6 +146,41 @@
   text-anchor: middle;
 }
 
+/* puntos de vida que le quedan */
+.vista-vida circle {
+  fill: var(--rubrica);
+}
+
+.vista-vida text {
+  font-family: var(--versalitas);
+  font-size: 8px;
+  font-weight: 700;
+  text-anchor: middle;
+  fill: var(--vitela);
+}
+
+/* al arrastrar sobre un enemigo: línea hasta él e icono del ataque */
+.vista-ataque {
+  pointer-events: none;
+}
+
+.vista-ataque line {
+  stroke: var(--rubrica);
+  stroke-width: 3;
+  stroke-dasharray: 6 4;
+}
+
+.vista-ataque circle {
+  fill: var(--vitela);
+  stroke: var(--rubrica);
+  stroke-width: 2;
+}
+
+.vista-ataque text {
+  font-size: 12px;
+  text-anchor: middle;
+}
+
 .vista-badge.agresivo circle {
   stroke: var(--rubrica);
 }

@@ -1,13 +1,18 @@
 import type { Casilla } from './casilla'
 import type { MovimientoHecho } from './movimientoHecho'
 
-/** Lo que ha hecho un personaje en un turno: sus acciones (sin contar moverse) y sus movimientos */
-export type TurnoDePersonaje = { numero: number; acciones: string[]; movimientos: MovimientoHecho[] }
+/**
+ * Lo que ha hecho un personaje en un turno: sus acciones (sin contar moverse),
+ * sus movimientos y, tras su última acción, si su clase dijo que aún le
+ * quedaban acciones
+ */
+export type TurnoDePersonaje = { numero: number; acciones: string[]; movimientos: MovimientoHecho[]; quedanAcciones?: boolean }
 
 /**
  * Estado de un personaje en el mapa, que guarda el gestor: dónde está (la
  * estancia y su casilla en ella; sin casilla, en la zona de espera de la
- * estancia) y sus turnos
+ * estancia), los puntos de vida que le quedan (sin ellos, no se lleva la
+ * cuenta) y sus turnos
  */
 export type Personaje = {
   id: string
@@ -15,5 +20,6 @@ export type Personaje = {
   imagenVtt?: string
   estancia: string
   casilla?: Casilla
+  vida?: number
   turnos: TurnoDePersonaje[]
 }

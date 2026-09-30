@@ -1,10 +1,11 @@
-import type { Comando, MapaEnJuego, Objeto } from '../../gamemap'
+import type { MapaEnJuego, Objeto } from '../../gamemap'
+import type { AccionDeObjeto } from './objeto'
 
 /**
- * Comando que ofrece un objeto de prueba al personaje que está a su lado: al
- * ejecutarlo, el objeto sale de la estancia (en teoría pasa a su inventario)
+ * Lo que ofrece un objeto de prueba al personaje que está a su lado: al
+ * hacerlo, el objeto sale de la estancia (en teoría pasa a su inventario)
  */
-export class CogerObjeto implements Comando {
+export class CogerObjeto implements AccionDeObjeto {
   readonly id: string
   readonly nombre: string
   readonly icono = '✋'
@@ -12,14 +13,14 @@ export class CogerObjeto implements Comando {
   #mapa: MapaEnJuego
 
   constructor(objeto: Objeto, mapa: MapaEnJuego) {
-    // un comando por objeto: con varios al lado, cada uno el suyo
+    // una acción por objeto: con varios al lado, cada uno la suya
     this.id = `coger-objeto-${objeto.id}`
     this.nombre = `Coger ${objeto.nombre}`
     this.#objeto = objeto
     this.#mapa = mapa
   }
 
-  async exec() {
+  async hacer() {
     const motivo = this.#mapa.quitarElemento(this.#objeto.id)
     if (motivo) throw new Error(motivo)
   }

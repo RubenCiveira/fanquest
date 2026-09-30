@@ -40,6 +40,7 @@ type Personaje = {
   imagenVtt?: string
   estancia: string            // la estancia en que está
   casilla?: Casilla           // su casilla en ella; sin ella, en la zona de espera
+  vida?: number               // puntos de vida que le quedan; sin ellos, no se lleva la cuenta
   turnos: TurnoDePersonaje[]      // { numero, acciones: string[], movimientos: [{ opcion, casillas, acciones }] }
 }
 ```
@@ -71,6 +72,7 @@ movimientos con las acciones que consumieron.
 | `ClaseDeEscuadra` | `activar(acciones)` | Tras cada acción o movimiento de la escuadra, mientras se activa |
 | `ClaseDePersonaje` | `acciones(personaje, mapa)` | Al pulsar su ficha y al ejecutar una de sus acciones |
 | `ClaseDePersonaje` | `opcionesMovimiento(personaje, gastado)` | Al empezar a arrastrar su ficha y al soltarla |
+| `ClaseDePersonaje` | `atacar(ataque, mapa)` | Al soltar su ficha arrastrada sobre la de un enemigo |
 | `Comando` | `exec()` | Al elegir una acción que es un comando |
 
 ## ProveedorConfiguracion
@@ -173,7 +175,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
   muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
   terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
-  personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
+  personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, vida?: number, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
 ```
 
@@ -231,8 +233,10 @@ interface ClaseDePersonaje {
   id: string
   nombre: string
   imagenVtt?: string // URL de la ficha VTT vista desde arriba
+  vida?: number      // puntos de vida con los que empieza
   opcionesMovimiento(personaje: Personaje, gastado: MovimientoGastado): Promise<OpcionesMovimiento | undefined>
   acciones(personaje: Personaje, mapa: MapaEnJuego): Promise<Accion[]>
+  atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion>
 }
 ```
 
@@ -290,7 +294,7 @@ su código ya empaquetado:
 
 ```ts
 interface Comando extends Accion {
-  exec(): Promise<void>
+  exec(): Promise<ResultadoAccion> // { quedanAcciones: boolean }: el estado del personaje tras la acción
 }
 
 interface MapaEnJuego {
@@ -305,6 +309,8 @@ interface MapaEnJuego {
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // pide la estancia de detrás y la deja abierta
   anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] // como los de la descripción
   anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[] // al azar donde quepan
+  reducirVida(personaje: string, puntos: number): string | undefined // sin bajar de cero; si no lleva la cuenta, el motivo
+  eliminarPersonaje(personaje: string): string | undefined // lo quita del mapa (muere, huye…)
   cambiarJugadores(jugadores: Jugadores): string | undefined // otro reparto de alianzas, jugadores o posturas; si no vale, el motivo
   terminarTurno(): string | undefined                  // pasa al turno siguiente si nadie tiene nada pendiente
 }
@@ -312,7 +318,17 @@ interface MapaEnJuego {
 
 Al elegir una acción del personaje, el gestor llama a `exec()` y después la apunta
 en el turno del personaje y en el de su escuadra, que lo marca como su personaje
-activo. Si `exec` falla (o se cancela un diálogo que abre), no se apunta.
+activo. `exec` resuelve, como `atacar`, con el estado del personaje tras la
+acción: `{ quedanAcciones }`, si aún le quedan acciones en el turno, que el
+gestor guarda en su turno (`TurnoDePersonaje.quedanAcciones`). Si `exec`
+falla o se cancela (un diálogo que abre, o porque ya no le quedan acciones),
+no se apunta.
+
+Con `quedanAcciones: false`, la activación de ese personaje termina: ya no
+puede actuar ni moverse en el turno. Cuando a ninguno de los personajes de su
+escuadra le quedan acciones, el gestor termina la activación de la escuadra
+sin esperar a `activar`; en una escuadra de un solo personaje, en cuanto él
+se queda sin acciones.
 
 `abrirPuerta` llama a `describirEstancia` con el muro de entrada, añade la
 estancia pegada a la puerta y la marca `abierta` con su `destino`. Falla si no
@@ -328,17 +344,58 @@ En el banco de pruebas (`map-debug-imp/modelo/`):
 
 - `PuertasDePrueba` asocia una `PuertaDePrueba` a cada puerta de la estancia
   creada y da los objetos de una casilla (`objetosEn`).
-- `PuertaDePrueba` es un objeto del debug: su estado (abierta o no) es el del
-  mapa y, si es una salida cerrada, ofrece el comando `AbrirPuerta`, cuyo
-  `exec()` llama a `puerta.abrir()` → `mapa.abrirPuerta(donde)`.
-- `PersonajeDePrueba` (`implements ClaseDePersonaje`) compone sus acciones, si
-  aún no ha hecho ninguna en el turno (moverse no cuenta): las de los objetos
-  de su casilla, «Revisar mueble» si tiene al lado un mueble sin revisar y un
-  `CogerObjeto` («Coger …») por cada objeto que tiene al lado, cuyo `exec()`
-  llama a `mapa.quitarElemento(objeto)`: el objeto sale de la estancia (en
-  teoría pasa a su inventario).
-- «Revisar mueble» no es un comando: la página del banco de pruebas pregunta
-  qué mueble, si hay varios, y lo marca `revisado` tras ejecutar la acción.
+- Los objetos del debug solo dicen qué efecto tienen (`AccionDeObjeto`, con
+  `hacer()`): `PuertaDePrueba`, cuyo estado (abierta o no) es el del mapa, da
+  `AbrirPuerta` si es una salida cerrada (`puerta.abrir()` →
+  `mapa.abrirPuerta(donde)`); `CogerObjeto` quita el objeto de la estancia
+  (`mapa.quitarElemento`: en teoría pasa a su inventario) y `RevisarMueble`
+  lo marca `revisado` (`mapa.marcarFlagMueble`).
+- `PersonajeDePrueba` (`implements ClaseDePersonaje`) hace **una acción por
+  turno** (moverse no cuenta). Compone sus comandos con las acciones de los
+  objetos de su casilla, las de revisar cada mueble sin revisar y coger cada
+  objeto que tiene al lado. Cada comando, al ejecutarse, comprueba con su
+  estado del mapa si aún le queda su acción: si no, lo avisa en un diálogo y
+  se cancela; si sí, la hace y resuelve `{ quedanAcciones: false }`.
+
+## Ataques: ClaseDePersonaje.atacar
+
+Durante la activación de un personaje, al arrastrar su ficha sobre la de un
+enemigo suyo (de una alianza hostil hacia la suya) la vista cambia la flecha
+del recorrido por el icono del ataque; al soltarla, el gestor
+(`atacar(personaje, objetivo)`) comprueba que puede actuar y que el objetivo
+es enemigo, y llama a `atacar` de su clase:
+
+```ts
+type Ataque = {
+  atacante: Personaje
+  objetivo: Personaje
+  tipo: 'cuerpo-a-cuerpo' | 'distancia' // pegados, también en diagonal, sin muro ni esquina en medio; si no, a distancia
+  distancia: number                    // casillas, en recto o en diagonal
+}
+```
+
+- La clase presenta el ataque (un diálogo, dados…) y aplica el resultado con
+  `mapa.reducirVida(objetivo, puntos)` y, si se queda sin vida,
+  `mapa.eliminarPersonaje(objetivo)`: el gestor no mata a nadie por su
+  cuenta. También decide si puede atacar (alcance, línea de visión, si ya ha
+  actuado…): para no hacerlo, falla.
+- Si resuelve, el gestor apunta «atacar» en el turno del personaje y en el de
+  su escuadra, y le pregunta si su activación está completa. Si falla o se
+  cancela, no se apunta y el error sigue.
+- Si resuelve `{ quedanAcciones: false }`, la activación del atacante termina
+  (como la de cualquier personaje tras una acción que resuelve así).
+
+- Los personajes empiezan con la `vida` de su clase (o de su descripción, los
+  no jugadores).
+- De momento solo atacan los personajes de escuadra: los no jugadores no
+  tienen clase.
+
+En el banco de pruebas, `PersonajeDePrueba` empieza con el cuerpo de su
+héroe o monstruo como vida. Atacar gasta su acción del turno: si ya no le
+queda, lo avisa en un diálogo y se cancela. Por ahora, un héroe mata sin más
+al monstruo que ataca (lo elimina de la estancia); en los demás ataques pide
+el daño en un diálogo (`DialogoAtaque`), se lo quita al objetivo y, si se
+queda sin vida, lo elimina. Resuelve `{ quedanAcciones: false }`.
 
 ## Movimiento: ClaseDePersonaje.opcionesMovimiento
 
@@ -400,8 +457,14 @@ const barbaro: ClaseDePersonaje = {
     const donde = { estancia: personaje.estancia, casilla: personaje.casilla }
     const puerta = mapa.puertaEn(donde)
     return puerta && !puerta.abierta
-      ? [{ id: 'abrir-puerta', nombre: 'Abrir puerta', icono: '🚪', exec: () => mapa.abrirPuerta(donde).then(() => {}) }]
+      ? [{ id: 'abrir-puerta', nombre: 'Abrir puerta', icono: '🚪', exec: () => mapa.abrirPuerta(donde).then(() => ({ quedanAcciones: false })) }]
       : []
+  },
+  atacar: async ({ objetivo, tipo }, mapa) => {
+    if (tipo !== 'cuerpo-a-cuerpo') throw new Error('El bárbaro solo ataca cuerpo a cuerpo')
+    mapa.reducirVida(objetivo.id, 1)
+    if ((objetivo.vida ?? 0) <= 1) mapa.eliminarPersonaje(objetivo.id)
+    return { quedanAcciones: false }
   },
 }
 

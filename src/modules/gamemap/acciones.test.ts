@@ -62,6 +62,11 @@ describe('acciones de las escuadras', () => {
     expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', TERMINAR_TURNO.id), conModos, 'rojos')).toBe('Rojos ya ha terminado su turno')
   })
 
+  it('un personaje al que su clase dijo que ya no le quedan acciones no puede actuar', () => {
+    const sinQuedar = ejecutarAccion(mapa, conModos, 'rojos', 'gritar', 'barbaro', { quedanAcciones: false })
+    expect(motivoParaNoActuar(sinQuedar, conModos, 'rojos', 'barbaro')).toBe('Bárbaro ya ha terminado su activación')
+  })
+
   it('mientras una escuadra se activa, las demás no pueden actuar', () => {
     expect(motivoParaNoActuar(ejecutarAccion(mapa, conModos, 'rojos', 'gritar'), conModos, 'azules')).toBe('No se puede activar hasta terminar la activación de Rojos')
   })

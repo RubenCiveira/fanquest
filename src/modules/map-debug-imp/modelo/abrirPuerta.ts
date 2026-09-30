@@ -1,8 +1,9 @@
-import type { Comando, MapaEnJuego } from '../../gamemap'
+import type { MapaEnJuego } from '../../gamemap'
+import type { AccionDeObjeto } from './objeto'
 import type { PuertaDePrueba } from './puerta'
 
-/** Comando que ofrece una puerta de prueba cerrada al personaje que la pisa: al ejecutarlo, la puerta se abre en ese mapa */
-export class AbrirPuerta implements Comando {
+/** Lo que ofrece una puerta de prueba cerrada al personaje que la pisa: al hacerlo, la puerta se abre en ese mapa */
+export class AbrirPuerta implements AccionDeObjeto {
   readonly id = 'abrir-puerta'
   readonly nombre = 'Abrir puerta'
   readonly icono = '🚪'
@@ -14,7 +15,7 @@ export class AbrirPuerta implements Comando {
     this.#mapa = mapa
   }
 
-  exec() {
+  hacer() {
     return this.#puerta.abrir(this.#mapa)
   }
 }

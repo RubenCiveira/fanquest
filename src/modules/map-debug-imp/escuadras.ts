@@ -1,7 +1,7 @@
 import { cargarHeroes, urlFichaVtt } from '../../lib/personajes'
 import type { AccionEjecutada, ClaseDeEscuadra, DescripcionPersonajeNoJugador, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
 import { JUGADOR_MONSTRUOS } from './configuracion'
-import { PersonajeDePrueba, MOVER } from './modelo/personaje'
+import { PersonajeDePrueba, MOVER, type DialogosDePrueba } from './modelo/personaje'
 import type { PuertasDePrueba } from './modelo/puerta'
 
 /**
@@ -19,11 +19,12 @@ export const activacionDePrueba = (acciones: AccionEjecutada[], personajes: stri
 
 /**
  * Clase de una escuadra de prueba con los personajes de FetenQuest de esos ids
- * (`PersonajeDePrueba`, con su ficha VTT vista desde arriba, que abren las puertas
- * de `puertas`); empieza en modo sigiloso y su turno termina según
+ * (`PersonajeDePrueba`, con su ficha VTT vista desde arriba y su cuerpo como
+ * vida, que abren las puertas de `puertas` y usan los diálogos de
+ * `dialogos`); empieza en modo sigiloso y su turno termina según
  * `activacionDePrueba`
  */
-function escuadra(id: string, nombre: string, jugador: string, ids: string[], puertas: PuertasDePrueba): ClaseDeEscuadra {
+function escuadra(id: string, nombre: string, jugador: string, ids: string[], puertas: PuertasDePrueba, dialogos: DialogosDePrueba): ClaseDeEscuadra {
   // las mismas clases de personaje cada vez
   let suyos: Promise<PersonajeDePrueba[]> | undefined
   return {
@@ -34,7 +35,7 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
       (suyos ??= cargarHeroes().then((todos) =>
         todos
           .filter((h) => ids.includes(h.id))
-          .map((h) => new PersonajeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe') }, puertas)),
+          .map((h) => new PersonajeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe'), vida: h.cuerpo }, puertas, dialogos)),
       )),
     modoActivacion: async () => 'sigiloso',
     activar: async (acciones) => {
@@ -47,17 +48,24 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
 }
 
 /** Dos escuadras de prueba, la de Ana con el bárbaro y la de Bruno con el enano, más las escuadras de monstruos elegidas */
-export const escuadrasDePrueba = (puertas: PuertasDePrueba, escuadrasMonstruos: () => DescripcionPersonajeNoJugador[][] = () => []): ProveedorPersonajes => ({
+/** Sin diálogos: los ataques no se resuelven y los avisos no se ven */
+const sinDialogos: DialogosDePrueba = { resolverAtaque: () => Promise.reject(new Error('Este banco de pruebas no resuelve ataques')), avisar: async () => {} }
+
+export const escuadrasDePrueba = (
+  puertas: PuertasDePrueba,
+  escuadrasMonstruos: () => DescripcionPersonajeNoJugador[][] = () => [],
+  dialogos: DialogosDePrueba = sinDialogos,
+): ProveedorPersonajes => ({
   listarEscuadras: async () => [
-    escuadra('escuadra-barbaro', 'Escuadra del bárbaro', 'ana', ['barbaro'], puertas),
-    escuadra('escuadra-enano', 'Escuadra del enano', 'bruno', ['enano'], puertas),
+    escuadra('escuadra-barbaro', 'Escuadra del bárbaro', 'ana', ['barbaro'], puertas, dialogos),
+    escuadra('escuadra-enano', 'Escuadra del enano', 'bruno', ['enano'], puertas, dialogos),
     ...escuadrasMonstruos().map((personajes, i): ClaseDeEscuadra => {
       let suyos: PersonajeDePrueba[] | undefined
       return {
         id: `escuadra-monstruos-${i + 1}`,
         nombre: `Escuadra de monstruos ${i + 1}`,
         jugador: JUGADOR_MONSTRUOS,
-        personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas))),
+        personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas, dialogos))),
         modoActivacion: async () => 'sigiloso',
         activar: async (acciones) => activacionDePrueba(acciones, personajes.map((p) => p.id)),
       }

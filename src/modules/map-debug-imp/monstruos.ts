@@ -4,7 +4,7 @@ import { JUGADOR_MONSTRUOS } from './configuracion'
 
 /**
  * Monstruos de la Oscuridad (`JUGADOR_MONSTRUOS`) al azar (`azar`, entre 0 y 1) de los que
- * tienen imagen, para una estancia nueva: sin posición, así que el gestor los
+ * tienen imagen, con su cuerpo como vida, para una estancia nueva: sin posición, así que el gestor los
  * reparte al azar por ella. Sus ids no repiten los de los personajes del mapa
  */
 export function monstruosDePrueba(
@@ -22,7 +22,7 @@ export function monstruosDePrueba(
     let n = 1
     while (usados.has(`${monstruo.id}-${n}`)) n++
     usados.add(`${monstruo.id}-${n}`)
-    return { id: `${monstruo.id}-${n}`, nombre: monstruo.nombre, imagenVtt: urlRetrato('monstruos', monstruo), jugador: JUGADOR_MONSTRUOS }
+    return { id: `${monstruo.id}-${n}`, nombre: monstruo.nombre, imagenVtt: urlRetrato('monstruos', monstruo), vida: monstruo.cuerpo, jugador: JUGADOR_MONSTRUOS }
   })
 }
 

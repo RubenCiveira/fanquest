@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { activacionDe, numeroDeTurno, turnoDeEscuadra, turnoDePersonaje } from '../activaciones'
 import type { Accion } from '../modelo/accion'
 import type { AccionEjecutada } from '../modelo/accionEjecutada'
+import type { Ataque } from '../modelo/ataque'
+import type { ResultadoAccion } from '../modelo/resultadoAccion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
@@ -47,19 +49,21 @@ const opciones: OpcionesMovimiento = {
 }
 
 /** Comando del bárbaro, con su código */
-const gritar = { id: 'gritar', nombre: 'Gritar', icono: '📣', exec: vi.fn(async () => {}) }
+const gritar = { id: 'gritar', nombre: 'Gritar', icono: '📣', exec: vi.fn(async (): Promise<ResultadoAccion> => ({ quedanAcciones: true })) }
 
 /**
- * Proveedor de prueba: los rojos (el bárbaro, que puede gritar) empiezan
- * agresivos y los azules (el enano, sin acciones) sigilosos
+ * Proveedor de prueba: los rojos (el bárbaro, que puede gritar, con 4 de
+ * vida) empiezan agresivos y los azules (el enano, sin acciones) sigilosos.
+ * Todos atacan con `atacar`, que no hace nada si no se cambia
  */
 function proveedor(descripcion = sala, conElfo = false) {
   const acciones = vi.fn(async (_personaje: Personaje, _mapa: MapaEnJuego): Promise<Accion[]> => [gritar])
   const opcionesMovimiento = vi.fn(async (_personaje: Personaje, _gastado: MovimientoGastado) => opciones)
   const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
-  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', opcionesMovimiento, acciones }
-  const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [] }
-  const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [] }
+  const atacar = vi.fn(async (_ataque: Ataque, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
+  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', vida: 4, opcionesMovimiento, acciones, atacar }
+  const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar }
+  const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar }
   return {
     configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: REPARTO } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
@@ -74,6 +78,7 @@ function proveedor(descripcion = sala, conElfo = false) {
     acciones,
     opcionesMovimiento,
     activar,
+    atacar,
   }
 }
 
@@ -553,6 +558,116 @@ describe('gestor del mapa: mover personajes no jugadores', () => {
     })
     const deslizando = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }]
     expect(await gestor.moverPersonajeNoJugador('orco', deslizando, opciones)).toBe('El recorrido tiene que empezar en Orco')
+  })
+})
+
+describe('gestor del mapa: resultado de las acciones', () => {
+  it('lo que resuelve un comando (si le quedan acciones) queda en el turno del personaje', async () => {
+    const { gestor, barbaro } = await conInicial()
+    await gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')
+    expect(turnoDePersonaje(barbaro(), 1).quedanAcciones).toBe(true)
+  })
+})
+
+describe('gestor del mapa: ataques', () => {
+  /** Estancia amplia con un orco de la Oscuridad (3 de vida) pegado a la izquierda del bárbaro */
+  async function conOrco(conElfo = false) {
+    const inicial = await conInicial(amplia, conElfo)
+    const desde = inicial.barbaro().casilla ?? { x: 0, y: 0 }
+    inicial.gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', vida: 3, casilla: { x: desde.x - 1, y: desde.y } }])
+    const orco = () => inicial.gestor.mapa.personajesNoJugadores?.find((p) => p.id === 'orco')
+    return { ...inicial, orco }
+  }
+
+  it('los personajes empiezan con la vida de su clase', async () => {
+    const { barbaro } = await conInicial()
+    expect(barbaro().vida).toBe(4)
+  })
+
+  it('la clase del atacante resuelve el ataque, con su tipo y su distancia', async () => {
+    const { gestor, p, barbaro, orco } = await conOrco()
+    const [atacante, objetivo] = [barbaro(), orco()]
+    await gestor.atacar('barbaro', 'orco')
+    expect(p.atacar.mock.lastCall?.[0]).toEqual({ atacante, objetivo, tipo: 'cuerpo-a-cuerpo', distancia: 1 })
+  })
+
+  it('el ataque se apunta en el turno del personaje y en el de su escuadra', async () => {
+    const { gestor, barbaro } = await conOrco()
+    await gestor.atacar('barbaro', 'orco')
+    const rojos = gestor.mapa.escuadras?.[0]
+    expect([turnoDePersonaje(barbaro(), 1).acciones, rojos && turnoDeEscuadra(rojos, 1).acciones]).toEqual([['atacar'], [{ accion: 'atacar', personaje: 'barbaro' }]])
+  })
+
+  it('lo que resuelve la clase (si le quedan acciones) queda en el turno del atacante', async () => {
+    const { gestor, barbaro } = await conOrco()
+    await gestor.atacar('barbaro', 'orco')
+    expect(turnoDePersonaje(barbaro(), 1).quedanAcciones).toBe(false)
+  })
+
+  it('si al atacante ya no le quedan acciones, termina su activación; solo, la de su escuadra', async () => {
+    const { gestor } = await conOrco()
+    await gestor.atacar('barbaro', 'orco')
+    expect(activacionDe(gestor.mapa, 'rojos')?.terminada).toBe(true)
+  })
+
+  it('en una escuadra con más personajes, la de la escuadra sigue para los demás', async () => {
+    const { gestor } = await conOrco(true)
+    await gestor.atacar('barbaro', 'orco')
+    expect([activacionDe(gestor.mapa, 'rojos')?.terminada, gestor.motivoParaNoActuar('elfo')]).toEqual([false, undefined])
+  })
+
+  it('el que ya no tiene acciones no puede actuar ni moverse más', async () => {
+    const { gestor } = await conOrco(true)
+    await gestor.atacar('barbaro', 'orco')
+    expect([gestor.motivoParaNoActuar('barbaro'), await gestor.opcionesMovimiento('barbaro')]).toEqual(['Bárbaro ya ha terminado su activación', undefined])
+  })
+
+  it('cuando a ninguno de la escuadra le quedan acciones, termina su activación', async () => {
+    const { gestor } = await conOrco(true)
+    await gestor.atacar('barbaro', 'orco')
+    await gestor.atacar('elfo', 'orco')
+    expect(activacionDe(gestor.mapa, 'rojos')?.terminada).toBe(true)
+  })
+
+  it('con acciones aún, la activación sigue', async () => {
+    const { gestor } = await conInicial()
+    await gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')
+    expect(activacionDe(gestor.mapa, 'rojos')?.terminada).toBe(false)
+  })
+
+  it('con reducirVida y eliminarPersonaje, la clase hiere y elimina al objetivo', async () => {
+    const { gestor, p, orco } = await conOrco()
+    p.atacar.mockImplementationOnce(async ({ objetivo }, mapa) => {
+      mapa.reducirVida(objetivo.id, 3)
+      mapa.eliminarPersonaje(objetivo.id)
+      return { quedanAcciones: false }
+    })
+    await gestor.atacar('barbaro', 'orco')
+    expect(orco()).toBeUndefined()
+  })
+
+  it('reducirVida quita esos puntos', async () => {
+    const { gestor, orco } = await conOrco()
+    gestor.reducirVida('orco', 2)
+    expect(orco()?.vida).toBe(1)
+  })
+
+  it('reducirVida de quien no lleva la cuenta dice por qué', async () => {
+    const { gestor } = await conOrco()
+    expect(gestor.reducirVida('enano', 1)).toBe('Enano no lleva la cuenta de su vida')
+  })
+
+  it('no se ataca a quien no es enemigo', async () => {
+    const { gestor } = await conOrco()
+    gestor.cambiarJugadores({ ...REPARTO, alianzas: REPARTO.alianzas.map((a) => ({ ...a, posturas: {} })) })
+    expect(await gestor.atacar('barbaro', 'orco')).toBe('Orco no es enemigo de Bárbaro')
+  })
+
+  it('si la clase falla o se cancela, el ataque no se apunta', async () => {
+    const { gestor, p, barbaro } = await conOrco()
+    p.atacar.mockRejectedValueOnce(new Error('cancelado'))
+    await expect(gestor.atacar('barbaro', 'orco')).rejects.toThrow('cancelado')
+    expect(turnoDePersonaje(barbaro(), 1).acciones).toEqual([])
   })
 })
 

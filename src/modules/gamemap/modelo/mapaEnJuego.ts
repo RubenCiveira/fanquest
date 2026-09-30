@@ -41,6 +41,10 @@ export interface MapaEnJuego {
   anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[]
   /** Añade muebles nuevos a la estancia, colocándolos al azar donde quepan */
   anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[]
+  /** Quita esos puntos de vida al personaje (de escuadra o no jugador); si no está o no lleva la cuenta, el motivo */
+  reducirVida(personaje: string, puntos: number): string | undefined
+  /** Quita al personaje del mapa (muere, huye…); si no está, el motivo */
+  eliminarPersonaje(personaje: string): string | undefined
   /**
    * Cambia las alianzas, los jugadores o sus posturas en mitad de la partida
    * (un evento vuelve enemigos a unos acólitos…). Si el reparto no vale, no

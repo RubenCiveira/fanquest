@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { Elemento, Jugador, ModoActivacion } from '../gamemap'
+import type { Jugador, ModoActivacion } from '../gamemap'
 
 /** Aviso de a qué jugador le toca, al terminar una activación; se monta abierto */
 export function AvisoTurno({ jugador, modo, onCerrar }: { jugador: Jugador; modo?: ModoActivacion; onCerrar: () => void }) {
@@ -58,32 +58,6 @@ export function AvisoTrampas({ titulo, texto, onCerrar }: { titulo: string; text
         <div className="fila-botones">
           <button type="submit" className="button" autoFocus>
             Entendido
-          </button>
-        </div>
-      </form>
-    </dialog>
-  )
-}
-
-/** Diálogo para escoger qué mueble adyacente se revisa */
-export function DialogoRevisarMueble({ muebles, onElegir, onCancelar }: { muebles: Elemento[]; onElegir: (mueble: string) => void; onCancelar: () => void }) {
-  const ref = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => ref.current?.showModal(), [])
-
-  return (
-    <dialog ref={ref} className="dialog" aria-labelledby="revisar-mueble-titulo" onClose={onCancelar}>
-      <form method="dialog" className="dialog-contenido">
-        <h2 id="revisar-mueble-titulo">Revisar mueble</h2>
-        <p>Elige qué mueble quieres revisar.</p>
-        <div className="fila-botones">
-          {muebles.map((mueble) => (
-            <button key={mueble.id} type="button" className="button" onClick={() => onElegir(mueble.id)}>
-              {mueble.nombre}
-            </button>
-          ))}
-          <button type="submit" className="button secondary">
-            Cancelar
           </button>
         </div>
       </form>

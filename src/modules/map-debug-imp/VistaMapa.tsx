@@ -8,11 +8,13 @@ import {
   costeDe,
   costesDe,
   enElMapa,
+  enemigoEn,
   esEnemigo,
   escuadrasDe,
   estanciaEn,
   estanciasDe,
   evaluarRecorrido,
+  medirAtaque,
   ruta,
   type Accion,
   type Activacion,
@@ -28,6 +30,7 @@ import {
   type OpcionesMovimiento,
   type Puerta,
   type RecorridoEvaluado,
+  type TipoAtaque,
   type TipoTerreno,
   numeroDeTurno,
   personajesNoJugadoresDe,
@@ -78,9 +81,10 @@ function estadoBadge(activacion?: Activacion, ultimoModo?: ModoActivacion) {
  * Ficha redonda de un personaje en la casilla de esquina `x`, `y`: su imagen VTT
  * o, sin ella, sus iniciales. El badge lleva la inicial del modo: con borde
  * mientras se activa, relleno al terminar y, si aún no se ha activado este
- * turno, discontinuo con su último modo (`ultimoModo`)
+ * turno, discontinuo con su último modo (`ultimoModo`). Si lleva la cuenta de
+ * su vida, otro badge abajo con los puntos que le quedan
  */
-function FichaEnMapa({ ficha: { id, nombre, imagenVtt }, x, y, activacion, ultimoModo }: PropsFicha) {
+function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida }, x, y, activacion, ultimoModo }: PropsFicha) {
   const modo = activacion?.modo ?? ultimoModo
   const estado = activacion ? (activacion.terminada ? ' terminada' : '') : ' anterior'
   const radio = LADO / 2 - 2
@@ -105,8 +109,38 @@ function FichaEnMapa({ ficha: { id, nombre, imagenVtt }, x, y, activacion, ultim
           </text>
         </g>
       )}
-      <title>{modo ? `${nombre}: ${estadoBadge(activacion, ultimoModo)}` : nombre}</title>
+      {vida !== undefined && (
+        <g className="vista-vida">
+          <circle cx={x + 5} cy={y + LADO - 5} r={6} />
+          <text x={x + 5} y={y + LADO - 2}>
+            {vida}
+          </text>
+        </g>
+      )}
+      <title>
+        {modo ? `${nombre}: ${estadoBadge(activacion, ultimoModo)}` : nombre}
+        {vida !== undefined && ` (${vida} de vida)`}
+      </title>
     </>
+  )
+}
+
+/** Icono de cada tipo de ataque */
+const ICONO_ATAQUE: Record<TipoAtaque, string> = { 'cuerpo-a-cuerpo': '⚔️', distancia: '🏹' }
+
+/** Mientras se arrastra sobre un enemigo: una línea de la ficha a él y el icono del tipo de ataque (casillas del mapa) */
+function IconoAtaque({ desde, hasta, objetivo, tipo }: { desde: Casilla; hasta: Casilla; objetivo: Personaje; tipo: TipoAtaque }) {
+  const centro = (c: Casilla) => ({ x: (c.x + 0.5) * LADO, y: (c.y + 0.5) * LADO })
+  const [a, b] = [centro(desde), centro(hasta)]
+  return (
+    <g className={`vista-ataque ${tipo}`}>
+      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+      <circle cx={b.x} cy={b.y} r={RADIO_ICONO} />
+      <text x={b.x} y={b.y + 4}>
+        {ICONO_ATAQUE[tipo]}
+      </text>
+      <title>{`Atacar a ${objetivo.nombre} ${tipo === 'cuerpo-a-cuerpo' ? 'cuerpo a cuerpo' : 'a distancia'}`}</title>
+    </g>
   )
 }
 
@@ -246,6 +280,8 @@ type Arrastre = {
   opciones?: OpcionesMovimiento | null
   /** El puntero está en una casilla a la que no llega: soltar ahí no hace nada */
   fuera?: boolean
+  /** El puntero está sobre un enemigo: soltar ahí lo ataca */
+  ataque?: { objetivo: Personaje; tipo: TipoAtaque }
 }
 
 const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
@@ -281,6 +317,8 @@ type Props = {
   opcionesMovimiento?: (personajeId: string) => Promise<OpcionesMovimiento | undefined>
   /** Al soltar una ficha arrastrada: sin esto, las fichas no se arrastran */
   onMover?: (personajeId: string, recorrido: Casilla[]) => void
+  /** Al soltar una ficha arrastrada sobre la de un enemigo suyo: sin esto, no se ataca */
+  onAtacar?: (personajeId: string, objetivoId: string) => void
   /** Cómo se miden los movimientos al arrastrar (sin diagonales, si no se dice) */
   medicion?: MedicionMovimiento
   /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
@@ -504,7 +542,7 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal' } = props
+  const { opcionesMovimiento, onMover, onAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal' } = props
   /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
   const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
   const { estancias } = mapa
@@ -534,13 +572,21 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
 
   function arrastrar(ev: PointerEvent) {
     const c = casillaBajo(ev)
-    if (c) setArrastre((a) => (a && !misma(a.objetivo, c) ? trazar(vistoPor(a.ficha), a, c, medicion) : a))
+    if (!c) return
+    setArrastre((a) => {
+      if (!a || misma(a.objetivo, c)) return a
+      // sobre un enemigo, en vez de la flecha del recorrido, el icono de ataque
+      const enemigo = onAtacar && enemigoEn(mapa, a.ficha.id, c)
+      const medida = enemigo && medirAtaque(mapa, a.ficha, enemigo)
+      return enemigo && medida ? { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } } : { ...trazar(vistoPor(a.ficha), a, c, medicion), ataque: undefined }
+    })
   }
 
   function soltar() {
     if (!arrastre) return
-    const { ficha, recorrido, fuera } = arrastre
+    const { ficha, recorrido, fuera, ataque } = arrastre
     setArrastre(undefined)
+    if (ataque) return onAtacar?.(ficha.id, ataque.objetivo.id)
     if (fuera) return
     if (recorrido.length > 1) onMover?.(ficha.id, recorrido)
     else onElegirElemento?.(ficha.id)
@@ -605,7 +651,8 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
             {...props}
           />
         ))}
-      {arrastre && (
+      {arrastre?.ataque && <IconoAtaque desde={arrastre.recorrido[0]} hasta={arrastre.objetivo} {...arrastre.ataque} />}
+      {arrastre && !arrastre.ataque && (
         <Flecha
           recorrido={arrastre.recorrido}
           evaluado={arrastre.fuera ? { motivo: 'Fuera de alcance' } : evaluado}

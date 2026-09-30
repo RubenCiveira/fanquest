@@ -1,5 +1,6 @@
 export type { Accion } from './modelo/accion'
 export type { AccionEjecutada } from './modelo/accionEjecutada'
+export type { Ataque, TipoAtaque } from './modelo/ataque'
 export type { Aparicion, Zona } from './modelo/aparicion'
 export type { Alianza, Postura } from './modelo/alianza'
 export type { Activacion, ModoActivacion, ModoAgresivoSigiloso } from './modelo/activacion'
@@ -26,10 +27,11 @@ export type { OpcionesMovimiento, OpcionMovimiento, TramoMovimiento } from './mo
 export type { PersonajeNoJugador } from './modelo/personajeNoJugador'
 export type { Puerta } from './modelo/puerta'
 export type { Terreno, TipoTerreno } from './modelo/terreno'
+export type { ResultadoAccion } from './modelo/resultadoAccion'
 export type { ResultadoActivacion } from './modelo/resultadoActivacion'
 export type { Ubicacion } from './modelo/ubicacion'
 export { aAgrupar, recorridoParaAgrupar, type RecorridoParaAgrupar } from './agrupar'
-export { AGRUPAR, accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
+export { AGRUPAR, ATACAR, accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
 export {
   activacionDe,
   activacionDeJugador,
@@ -42,6 +44,8 @@ export {
   escuadraActiva,
   escuadrasDe,
   esperandoA,
+  escuadraSinAcciones,
+  sinAcciones,
   jugadorEnTurno,
   jugadoresDe,
   motivoDeTurno,
@@ -57,6 +61,7 @@ export {
   turnoDeEscuadra,
   turnoDePersonaje,
 } from './activaciones'
+export { conVidaReducida, enemigoEn, medirAtaque, sinPersonaje } from './ataques'
 export { anadirPersonajesNoJugadores, huecoDePersonaje, sitioParaPersonaje } from './apariciones'
 export { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores, postura } from './jugadores'
 export { construirEstancia } from './construccion'

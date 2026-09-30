@@ -24,7 +24,7 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
-  `jugadores.ts`, `agrupar.ts`), cada una con sus tests.
+  `jugadores.ts`, `agrupar.ts`, `ataques.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
@@ -120,5 +120,15 @@ mismo sitio.
   pueden consumir acciones adicionales). El recorrido vale con la primera
   opción que lo permite, por todo el mapa cruzando puertas abiertas; si
   consume una acción adicional, antes se pide confirmación.
+- **Ataque**: al arrastrar una ficha sobre la de un enemigo, el gestor pide a
+  la clase del personaje que ataque (`atacar`), con el tipo (cuerpo a cuerpo o
+  a distancia) y la distancia. La clase decide y aplica el daño sobre la
+  `vida` del objetivo (`reducirVida`) y lo elimina si hace falta
+  (`eliminarPersonaje`).
+- **Resultado de una acción**: los comandos (`exec`) y los ataques resuelven
+  con el estado del personaje tras la acción, `{ quedanAcciones }`, que el
+  gestor guarda en su turno. Sin acciones, su activación termina (no puede
+  actuar ni moverse más en el turno) y, cuando ninguno de su escuadra tiene,
+  la de la escuadra.
 - **Descripción de estancia**: lo que el proyecto devuelve al pedirle una
   estancia nueva: tipo, tamaño, orientación, número de salidas y objetos.

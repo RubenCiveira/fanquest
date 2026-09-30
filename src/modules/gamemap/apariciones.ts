@@ -52,10 +52,10 @@ export function anadirPersonajesNoJugadores(
   const estancia = m.estancias.find((e) => e.id === estanciaId)
   if (!estancia) throw new Error(`No hay ninguna estancia «${estanciaId}» en el mapa`)
   return descripciones.reduce<{ mapa: Mapa; anadidos: PersonajeNoJugador[] }>(
-    ({ mapa, anadidos }, { id, nombre, imagenVtt, jugador, ...aparicion }) => {
+    ({ mapa, anadidos }, { id, nombre, imagenVtt, vida, jugador, ...aparicion }) => {
       if (todosLosPersonajes(mapa).some((p) => p.id === id)) throw new Error(`Ya hay un personaje «${id}» en el mapa`)
       const casilla = sitioParaPersonaje(mapa, estancia, aparicion, azar)
-      const nuevo: PersonajeNoJugador = { id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estanciaId, ...(casilla && { casilla }), turnos: [], jugador }
+      const nuevo: PersonajeNoJugador = { id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estanciaId, ...(casilla && { casilla }), ...(vida !== undefined && { vida }), turnos: [], jugador }
       return { mapa: { ...mapa, personajesNoJugadores: [...(mapa.personajesNoJugadores ?? []), nuevo] }, anadidos: [...anadidos, nuevo] }
     },
     { mapa: m, anadidos: [] },

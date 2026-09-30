@@ -1,6 +1,6 @@
-import type { Accion, Casilla, Estancia, MapaEnJuego, Puerta, Ubicacion } from '../../gamemap'
+import type { Casilla, Estancia, MapaEnJuego, Puerta, Ubicacion } from '../../gamemap'
 import { AbrirPuerta } from './abrirPuerta'
-import type { ObjetoDePrueba } from './objeto'
+import type { AccionDeObjeto, ObjetoDePrueba } from './objeto'
 
 /**
  * Puerta del mapa de prueba, asociada a una puerta de una estancia por su
@@ -26,7 +26,7 @@ export class PuertaDePrueba implements ObjetoDePrueba {
   }
 
   /** Para el personaje que la pisa: abrirla, si es una salida cerrada */
-  acciones(mapa: MapaEnJuego): Accion[] {
+  acciones(mapa: MapaEnJuego): AccionDeObjeto[] {
     return this.tipo === 'salida' && !this.abierta(mapa) ? [new AbrirPuerta(this, mapa)] : []
   }
 }
