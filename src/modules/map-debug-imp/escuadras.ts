@@ -1,5 +1,6 @@
 import { cargarHeroes, urlFichaVtt } from '../../lib/personajes'
-import type { AccionEjecutada, ClaseDeEscuadra, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
+import type { AccionEjecutada, ClaseDeEscuadra, DescripcionPersonajeNoJugador, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
+import { JUGADOR_MONSTRUOS } from './configuracion'
 import { PersonajeDePrueba, MOVER } from './modelo/personaje'
 import type { PuertasDePrueba } from './modelo/puerta'
 
@@ -37,10 +38,21 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
   }
 }
 
-/** Dos escuadras de prueba, la de Ana con el bárbaro y la de Bruno con el enano, cuyos personajes abren las puertas de `puertas` */
-export const escuadrasDePrueba = (puertas: PuertasDePrueba): ProveedorPersonajes => ({
+/** Dos escuadras de prueba, la de Ana con el bárbaro y la de Bruno con el enano, más las escuadras de monstruos elegidas */
+export const escuadrasDePrueba = (puertas: PuertasDePrueba, escuadrasMonstruos: () => DescripcionPersonajeNoJugador[][] = () => []): ProveedorPersonajes => ({
   listarEscuadras: async () => [
     escuadra('escuadra-barbaro', 'Escuadra del bárbaro', 'ana', ['barbaro'], puertas),
     escuadra('escuadra-enano', 'Escuadra del enano', 'bruno', ['enano'], puertas),
+    ...escuadrasMonstruos().map((personajes, i): ClaseDeEscuadra => {
+      let suyos: PersonajeDePrueba[] | undefined
+      return {
+        id: `escuadra-monstruos-${i + 1}`,
+        nombre: `Escuadra de monstruos ${i + 1}`,
+        jugador: JUGADOR_MONSTRUOS,
+        personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas))),
+        modoActivacion: async () => 'sigiloso',
+        activar: async (acciones) => activacionDePrueba(acciones),
+      }
+    }),
   ],
 })

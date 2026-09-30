@@ -58,7 +58,11 @@ export const activacionDe = (m: Mapa, id: string): Activacion | undefined => {
   return escuadra && turnoDeEscuadra(escuadra, numeroDeTurno(m)).activacion
 }
 
-export const activacionDeJugador = (m: Mapa, jugador: string) => m.activacionesJugadores?.find((a) => a.numero === numeroDeTurno(m) && a.jugador === jugador)
+export const activacionesDeJugador = (m: Mapa, jugador: string) => m.activacionesJugadores?.filter((a) => a.numero === numeroDeTurno(m) && a.jugador === jugador) ?? []
+
+export const activacionDeJugador = (m: Mapa, jugador: string) => activacionesDeJugador(m, jugador).find((a) => !a.activacion.terminada) ?? activacionesDeJugador(m, jugador).at(-1)
+
+export const activacionDeNoJugador = (m: Mapa, personaje: string) => m.activacionesJugadores?.find((a) => a.numero === numeroDeTurno(m) && a.personaje === personaje)
 
 /** Escuadras que juegan: las que tienen algún personaje */
 const enJuego = (m: Mapa) => escuadrasDe(m).filter((e) => e.personajes.length)
@@ -90,7 +94,7 @@ export function jugadorEnTurno(m: Mapa, { ordenActivaciones }: Pick<Configuracio
   const rotacion = m.rotacion ?? []
   const pendiente = (j: Jugador) =>
     escuadrasDe(m).some((e) => e.jugador === j.id && e.personajes.length && !activacionDe(m, e.id)) ||
-    (personajesNoJugadoresDe(m).some((p) => p.jugador === j.id) && !activacionDeJugador(m, j.id))
+    personajesNoJugadoresDe(m).some((p) => p.jugador === j.id && !activacionDeNoJugador(m, p.id)?.activacion.terminada)
   const ultimo = jugadores.find((j) => j.id === rotacion.at(-1))
   const desde = ordenActivaciones === 'alternas' && ultimo ? alianzas.findIndex((a) => a.id === ultimo.alianza) + 1 : 0
   for (const alianza of rotar(alianzas, desde)) {
@@ -130,14 +134,15 @@ export function conRotacion(m: Mapa, id: string): Mapa {
 
 /** Apunta que el jugador ha completado su activación de PNJ en este turno */
 export function conActivacionDeJugador(m: Mapa, jugador: string): Mapa {
-  const actual = activacionDeJugador(m, jugador)
+  const actual = activacionesDeJugador(m, jugador).find((a) => !a.activacion.terminada)
+  const personaje = actual?.personaje ?? personajesNoJugadoresDe(m).find((p) => p.jugador === jugador && !activacionDeNoJugador(m, p.id)?.activacion.terminada)?.id
   const activacion = actual?.activacion ?? { modo: 'normal' as const, terminada: false }
   const terminada = { ...activacion, terminada: true }
   return {
     ...m,
     activacionesJugadores: actual
       ? (m.activacionesJugadores ?? []).map((a) => (a === actual ? { ...a, activacion: terminada } : a))
-      : [...(m.activacionesJugadores ?? []), { numero: numeroDeTurno(m), jugador, activacion: terminada, acciones: [] }],
+      : [...(m.activacionesJugadores ?? []), { numero: numeroDeTurno(m), jugador, ...(personaje && { personaje }), activacion: terminada, acciones: [] }],
     rotacion: [...(m.rotacion ?? []), jugador],
   }
 }
@@ -175,7 +180,7 @@ export function terminarActivacion(m: Mapa, id: string): Mapa {
 export function motivoParaNoTerminarTurno(m: Mapa): string | undefined {
   const pendientes = enJuego(m).filter((e) => !activacionDe(m, e.id)?.terminada)
   if (pendientes.length) return `Falta terminar la activación de ${pendientes.map((e) => e.nombre).join(', ')}`
-  const pendiente = jugadoresDe(m).jugadores.find((j) => personajesNoJugadoresDe(m).some((p) => p.jugador === j.id) && !activacionDeJugador(m, j.id)?.activacion.terminada)
+  const pendiente = jugadoresDe(m).jugadores.find((j) => personajesNoJugadoresDe(m).some((p) => p.jugador === j.id && !activacionDeNoJugador(m, p.id)?.activacion.terminada))
   if (pendiente) return `Falta terminar la activación de ${pendiente.nombre}`
 }
 

@@ -14,6 +14,12 @@ describe('escuadras de prueba', () => {
     expect(personajes.map((h) => h.map(({ id, imagenVtt }) => [id, Boolean(imagenVtt)]))).toEqual([[['barbaro', true]], [['enano', true]]])
   })
 
+  it('añade escuadras de monstruos elegidas para la estancia inicial', async () => {
+    const proveedor = escuadrasDePrueba(new PuertasDePrueba(), () => [[{ id: 'orco-1', nombre: 'Orco', jugador: 'oscuridad' }]])
+    const escuadras = await proveedor.listarEscuadras()
+    expect([escuadras[2].id, escuadras[2].jugador, (await escuadras[2].personajes()).map((p) => p.id)]).toEqual(['escuadra-monstruos-1', 'oscuridad', ['orco-1']])
+  })
+
   it('sus personajes son personajes de prueba, siempre los mismos', async () => {
     const [escuadra] = await escuadras()
     const [primero] = await escuadra.personajes()

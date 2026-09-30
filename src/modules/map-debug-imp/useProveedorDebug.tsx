@@ -1,8 +1,21 @@
 import { useMemo, useRef, useState } from 'react'
 import { ConfirmarDialog } from '../../components/ConfirmarDialog'
-import type { Configuracion, DescripcionEstancia, Direccion, Jugador, Mapa, MapaEnJuego, ProveedorMapa } from '../gamemap'
+import {
+  activacionDeJugador,
+  escuadrasDe,
+  personajesNoJugadoresDe,
+  type Configuracion,
+  type DescripcionEstancia,
+  type DescripcionPersonajeNoJugador,
+  type Direccion,
+  type Jugador,
+  type Mapa,
+  type MapaEnJuego,
+  type ModoActivacion,
+  type ProveedorMapa,
+} from '../gamemap'
 import { AvisoFinTurno, AvisoTurno } from './AvisoTurno'
-import { cargarConfiguracion, guardarConfiguracion } from './configuracion'
+import { cargarConfiguracion, guardarConfiguracion, JUGADOR_MONSTRUOS } from './configuracion'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
 import { PuertasDePrueba } from './modelo/puerta'
@@ -26,14 +39,27 @@ export const esCancelacion = (error: unknown) => error instanceof DOMException &
  * cuyas acciones (abrirse) ofrecen los personajes que las pisan. El `dialogo` se pinta en la página; cerrarlo sin
  * crear rechaza la promesa con una cancelación (`esCancelacion`)
  */
-export function useProveedorDebug() {
+export function useProveedorDebug(inicial?: Mapa) {
   const [peticion, setPeticion] = useState<Peticion>()
   const [confirmacion, setConfirmacion] = useState<Confirmacion>()
-  const [turno, setTurno] = useState<Jugador>()
+  const [turno, setTurno] = useState<{ jugador: Jugador; modo?: ModoActivacion }>()
   const [finTurno, setFinTurno] = useState<MapaEnJuego>()
   const [configuracion, setConfiguracion] = useState(cargarConfiguracion)
   // la que lee el gestor: la del proveedor no cambia al volver a pintar
   const vigente = useRef(configuracion)
+  const [escuadrasMonstruos] = useState(() => {
+    let actuales: DescripcionPersonajeNoJugador[][] = inicial
+      ? escuadrasDe(inicial)
+          .filter((e) => e.id.startsWith('escuadra-monstruos-'))
+          .map((e) => e.personajes.map(({ id, nombre, imagenVtt }) => ({ id, nombre, ...(imagenVtt && { imagenVtt }), jugador: JUGADOR_MONSTRUOS })))
+      : []
+    return {
+      listar: () => actuales,
+      guardar: (nuevas: DescripcionPersonajeNoJugador[][]) => {
+        actuales = nuevas
+      },
+    }
+  })
 
   function cambiarConfiguracion(nueva: Configuracion) {
     vigente.current = nueva
@@ -49,9 +75,15 @@ export function useProveedorDebug() {
       },
       confirmar: (mensaje) =>
         new Promise((resolve) => setConfirmacion({ mensaje, responder: (si) => (setConfirmacion(undefined), resolve(si)) })),
-      ...escuadrasDePrueba(puertas),
+      ...escuadrasDePrueba(puertas, escuadrasMonstruos.listar),
       estanciaCreada: (estancia) => puertas.asociar(estancia),
-      turnoDe: (jugador) => setTurno(jugador),
+      turnoDe: (jugador, mapa) =>
+        setTurno({
+          jugador,
+          ...(vigente.current.modosActivacion === 'agresivo-sigiloso' && personajesNoJugadoresDe(mapa.mapa).some((p) => p.jugador === jugador.id)
+            ? { modo: activacionDeJugador(mapa.mapa, jugador.id)?.activacion.terminada === false ? activacionDeJugador(mapa.mapa, jugador.id)?.activacion.modo : 'sigiloso' }
+            : {}),
+        }),
       finDeTurno: (mapa) => setFinTurno(mapa),
       describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>
@@ -63,12 +95,20 @@ export function useProveedorDebug() {
           }),
         ),
     }
-  }, [])
+  }, [escuadrasMonstruos.listar])
 
   const dialogo = (
     <>
-      {peticion && <DialogoEstancia mapa={peticion.mapa} entrada={peticion.entrada} onCrear={peticion.responder} onCancelar={peticion.cancelar} />}
-      {turno && <AvisoTurno key={turno.id} jugador={turno} onCerrar={() => setTurno(undefined)} />}
+      {peticion && (
+        <DialogoEstancia
+          mapa={peticion.mapa}
+          entrada={peticion.entrada}
+          onCrear={peticion.responder}
+          onEscuadrasMonstruos={escuadrasMonstruos.guardar}
+          onCancelar={peticion.cancelar}
+        />
+      )}
+      {turno && <AvisoTurno key={turno.jugador.id} jugador={turno.jugador} modo={turno.modo} onCerrar={() => setTurno(undefined)} />}
       {finTurno && <AvisoFinTurno onTerminar={() => (setFinTurno(undefined), finTurno.terminarTurno())} />}
       {confirmacion && (
         // al confirmar, el diálogo también se cierra: la segunda respuesta ya no cuenta

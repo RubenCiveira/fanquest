@@ -136,6 +136,7 @@ describe('a qué jugador le toca', () => {
       ],
     },
   }
+  const conDosMonstruos: Mapa = { ...conMonstruos, personajesNoJugadores: [...(conMonstruos.personajesNoJugadores ?? []), { id: 'goblin', nombre: 'Goblin', estancia: 'sala', casilla: { x: 2, y: 1 }, turnos: [], jugador: 'oscuridad' }] }
   /** A quién le va tocando mientras cada uno activa y termina su escuadra */
   function sucesion(m: Mapa, config: Configuracion) {
     const orden: string[] = []
@@ -165,6 +166,14 @@ describe('a qué jugador le toca', () => {
 
   it('alianza a alianza: los héroes completan sus activaciones antes que los monstruos', () => {
     expect(sucesion(conMonstruos, normales)).toEqual(['Ana', 'Bruno', 'La Oscuridad'])
+  })
+
+  it('alternas: un jugador sigue pendiente mientras le queden PNJ sin activar', () => {
+    expect(sucesion(conDosMonstruos, { ...normales, ordenActivaciones: 'alternas' })).toEqual(['Ana', 'La Oscuridad', 'Bruno', 'La Oscuridad'])
+  })
+
+  it('alianza a alianza: los PNJ restantes se activan al final', () => {
+    expect(sucesion(conDosMonstruos, normales)).toEqual(['Ana', 'Bruno', 'La Oscuridad', 'La Oscuridad'])
   })
 
   it('en el turno siguiente, las alternas siguen la rotación', () => {

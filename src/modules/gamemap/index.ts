@@ -31,6 +31,9 @@ export type { Ubicacion } from './modelo/ubicacion'
 export { accionesDelGestor, accionesDelModo, apuntarAccion, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
 export {
   activacionDe,
+  activacionDeJugador,
+  activacionDeNoJugador,
+  activacionesDeJugador,
   activar,
   conActivacionDeJugador,
   conPersonajeNoJugador,

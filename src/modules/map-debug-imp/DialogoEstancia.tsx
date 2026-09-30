@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Icono } from '../../components/Icono'
-import { cargarMonstruos } from '../../lib/personajes'
+import { cargarMonstruos, type Monstruo } from '../../lib/personajes'
 import { fuenteLocal } from '../../lib/plantillas'
 import {
   construirEstancia,
@@ -14,7 +14,7 @@ import {
   type TipoEstancia,
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION } from './mapas'
-import { monstruosDePrueba } from './monstruos'
+import { monstruosDePruebaDeTipo } from './monstruos'
 import { terrenosDePrueba } from './terrenos'
 import { VistaMapa } from './VistaMapa'
 
@@ -25,17 +25,20 @@ const TIPOS: TipoEstancia[] = ['sala', 'pasillo', 'exterior']
 
 const lado = (n: number) => Math.min(MAX_LADO, Math.max(1, Math.trunc(n) || 1))
 
+const TAMANO_ESCUADRA_MONSTRUOS = 3
+
 type Props = {
   /** Mapa ya construido que recibe el proveedor; en la primera estancia no hay */
   mapa?: Mapa
   /** Si se abre desde una puerta, el muro por el que se entra: la sala no puede orientarse hacia él */
   entrada?: Direccion
   onCrear: (d: DescripcionEstancia) => void
+  onEscuadrasMonstruos?: (escuadras: DescripcionPersonajeNoJugador[][]) => void
   onCancelar: () => void
 }
 
 /** Formulario para describir a mano una estancia nueva, con vista previa de puertas y objetos */
-export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
+export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, onCancelar }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const [tipo, setTipo] = useState<TipoEstancia>('sala')
   const [tamano, setTamano] = useState({ columnas: 6, filas: 4 })
@@ -44,20 +47,34 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
   const [salidas, setSalidas] = useState(1)
   const [elementos, setElementos] = useState<DescripcionElemento[]>([])
   const [conTerreno, setConTerreno] = useState(true)
-  // elegidos al abrir, para decir cuáles aparecerán
-  const [monstruos, setMonstruos] = useState<DescripcionPersonajeNoJugador[]>([])
+  const inicial = !mapa
+  const [monstruosDisponibles, setMonstruosDisponibles] = useState<Monstruo[]>([])
+  const [solitarios, setSolitarios] = useState(1)
+  const [escuadrasMonstruos, setEscuadrasMonstruos] = useState(0)
   const [conMonstruos, setConMonstruos] = useState(true)
 
   useEffect(() => ref.current?.showModal(), [])
   useEffect(() => {
     let vigente = true
-    cargarMonstruos(fuenteLocal).then((todos) => vigente && setMonstruos(monstruosDePrueba(Object.values(todos), mapa)))
+    cargarMonstruos(fuenteLocal).then((todos) => vigente && setMonstruosDisponibles(Object.values(todos)))
     return () => {
       vigente = false
     }
   }, [mapa])
 
   const maxSalidas = largoMuro(tamano, orientacion)
+  const monstruos = conMonstruos ? monstruosDePruebaDeTipo(monstruosDisponibles, 'esqueleto', mapa, inicial ? solitarios : 1) : []
+  const escuadras = inicial
+    ? Array.from({ length: escuadrasMonstruos }, (_, i) =>
+        monstruosDePruebaDeTipo(
+          monstruosDisponibles,
+          i === 0 ? 'asesino-a-sueldo' : 'orco',
+          mapa,
+          TAMANO_ESCUADRA_MONSTRUOS,
+          [...monstruos.map((m) => m.id), ...(i > 0 ? Array.from({ length: TAMANO_ESCUADRA_MONSTRUOS }, (_, n) => `asesino-a-sueldo-${n + 1}`) : [])],
+        ),
+      )
+    : []
   const descripcion: DescripcionEstancia = {
     tipo,
     tamano,
@@ -65,13 +82,18 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
     salidas: Math.min(salidas, maxSalidas),
     elementos,
     terrenos: conTerreno ? terrenosDePrueba(tamano) : [],
-    personajesNoJugadores: conMonstruos ? monstruos : [],
+    personajesNoJugadores: monstruos,
   }
   const cambiarElemento = (i: number, cambio: Partial<DescripcionElemento>) =>
     setElementos(elementos.map((el, j) => (j === i ? { ...el, ...cambio } : el)))
+  const cambiarEscuadrasMonstruos = (n: number) => {
+    setEscuadrasMonstruos(n)
+    if (n > 0) setTamano((t) => ({ columnas: Math.max(t.columnas, 10), filas: Math.max(t.filas, 8) }))
+  }
 
   function crear(e: FormEvent) {
     e.preventDefault()
+    onEscuadrasMonstruos?.(escuadras)
     onCrear(descripcion)
   }
 
@@ -146,11 +168,27 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onCancelar }: Props) {
           Terreno de prueba: barro difícil, zarzas muy difíciles, un pilar impasable y escombros con imagen (los que quepan)
         </label>
 
-        <label className="map-debug-casilla-marcar">
-          <input type="checkbox" checked={conMonstruos} onChange={(e) => setConMonstruos(e.target.checked)} />
-          Monstruos de prueba, repartidos al azar donde se pueda estar:{' '}
-          {monstruos.length ? monstruos.map((m) => m.nombre).join(' y ') : 'cargando…'}
-        </label>
+        <fieldset className="map-debug-configuracion">
+          <legend>Monstruos de prueba</legend>
+          <label className="map-debug-casilla-marcar">
+            <input type="checkbox" checked={conMonstruos} onChange={(e) => setConMonstruos(e.target.checked)} />
+            Añadir monstruos solitarios, repartidos al azar donde se pueda estar.
+          </label>
+          <label className="campo">
+            Solitarios
+            <input type="number" min={0} max={8} value={conMonstruos ? solitarios : 0} disabled={!conMonstruos} onChange={(e) => setSolitarios(Math.max(0, Math.trunc(e.target.valueAsNumber) || 0))} />
+          </label>
+          {inicial && (
+            <label className="campo">
+              Escuadras de monstruos
+              <input type="number" min={0} max={2} value={escuadrasMonstruos} onChange={(e) => cambiarEscuadrasMonstruos(Math.min(2, Math.max(0, Math.trunc(e.target.valueAsNumber) || 0)))} />
+            </label>
+          )}
+          <p className="nota">
+            {monstruos.length ? `Solitarios: ${monstruos.map((m) => m.nombre).join(' y ')}.` : 'Sin monstruos solitarios.'}{' '}
+            {escuadras.length ? `Escuadras: ${escuadras.map((e) => e.map((m) => m.nombre).join(' y ')).join('; ')}.` : inicial ? 'Sin escuadra de monstruos.' : ''}
+          </p>
+        </fieldset>
 
         <fieldset className="map-debug-elementos">
           <legend>Objetos</legend>

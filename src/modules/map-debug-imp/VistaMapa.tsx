@@ -2,6 +2,7 @@ import { useId, useRef, useState, type PointerEvent } from 'react'
 import { sitiosDeBotones } from './corona'
 import {
   alcance,
+  activacionDeNoJugador,
   casillasDeEnemigos,
   conPersonajes,
   costeDe,
@@ -288,6 +289,8 @@ type Props = {
   motivoParaNoActuar?: (personajeId: string) => string | undefined
   /** Jugador al que le toca: los personajes no jugadores enemigos suyos se marcan como tales */
   jugadorEnTurno?: Jugador
+  /** Modo inicial o actual de un personaje no jugador */
+  modoNoJugador?: (personajeId: string) => ModoActivacion | undefined
 }
 
 /** Personaje colocado en una estancia, con su escuadra */
@@ -304,6 +307,7 @@ type NoJugadorColocado = PersonajeNoJugador & { casilla: Casilla; enemigo: boole
  */
 function CapaEstancia({
   estancia,
+  mapa,
   origen,
   personajes,
   noJugadores,
@@ -318,8 +322,10 @@ function CapaEstancia({
   arrastrando,
   motivoParaNoActuar,
   jugadorEnTurno,
+  modoNoJugador,
 }: Props & {
   estancia: Estancia
+  mapa: Mapa
   origen: Casilla
   personajes: PersonajeColocado[]
   /** Personajes no jugadores que están en ella */
@@ -335,7 +341,12 @@ function CapaEstancia({
   /** Mientras se arrastra una ficha no se muestra la corona */
   arrastrando: boolean
 }) {
-  const esperando = (personaje: Personaje) => !!motivoParaNoActuar?.(personaje.id)
+  const motivoBloqueo = (personaje: Personaje) => motivoParaNoActuar?.(personaje.id)
+  const elegirBloqueado = (personaje: Personaje) => {
+    const motivo = motivoBloqueo(personaje)
+    if (motivo) console.warn(`[map-debug] ${personaje.nombre} (${personaje.id}) no puede moverse ahora: ${motivo}`)
+    onElegirElemento?.(personaje.id)
+  }
   const puedeMoverNoJugador = (personaje: NoJugadorColocado) => personaje.jugador === jugadorEnTurno?.id && jugadorEnTurno.tipo === 'ia'
   const elegido =
     personajes.find(({ personaje }) => personaje.id === elemento)?.personaje.casilla ??
@@ -401,13 +412,14 @@ function CapaEstancia({
       )}
       {personajes.map(({ personaje, escuadra }) => {
         const activacion = turnoDeEscuadra(escuadra, numero).activacion
+        const esperando = !!motivoBloqueo(personaje)
         return (
           <g
             key={personaje.id}
-            className={`vista-elemento personaje${personaje.id === elemento ? ' activo' : ''}${esperando(personaje) ? ' esperando' : ''}`}
-            {...(onArrastrar && !esperando(personaje)
+            className={`vista-elemento personaje${personaje.id === elemento ? ' activo' : ''}${esperando ? ' esperando' : ''}`}
+            {...(onArrastrar && !esperando
               ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, personaje) }
-              : { onClick: () => onElegirElemento?.(personaje.id) })}
+              : { onClick: () => elegirBloqueado(personaje) })}
           >
             <FichaEnMapa
               ficha={personaje}
@@ -419,15 +431,24 @@ function CapaEstancia({
           </g>
         )
       })}
-      {noJugadores.map((p) => (
-        <g
-          key={p.id}
-          className={`vista-elemento personaje no-jugador${p.enemigo ? ' enemigo' : ''}`}
-          {...(onArrastrar && puedeMoverNoJugador(p) ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, p) } : { onClick: () => onElegirElemento?.(p.id) })}
-        >
-          <FichaEnMapa ficha={p} x={p.casilla.x * LADO} y={p.casilla.y * LADO} />
-        </g>
-      ))}
+      {noJugadores.map((p) => {
+        const esperando = !!motivoBloqueo(p)
+        return (
+          <g
+            key={p.id}
+            className={`vista-elemento personaje no-jugador${p.enemigo ? ' enemigo' : ''}${esperando ? ' esperando' : ''}`}
+            {...(onArrastrar && puedeMoverNoJugador(p) && !esperando ? { onPointerDown: (ev: PointerEvent) => onArrastrar(ev, p) } : { onClick: () => elegirBloqueado(p) })}
+          >
+            <FichaEnMapa
+              ficha={p}
+              x={p.casilla.x * LADO}
+              y={p.casilla.y * LADO}
+              activacion={activacionDeNoJugador(mapa, p.id)?.activacion}
+              ultimoModo={modoNoJugador?.(p.id) === 'normal' ? undefined : modoNoJugador?.(p.id)}
+            />
+          </g>
+        )
+      })}
       {estanciasDe(estancia).flatMap(({ estancia: e, origen }) =>
         e.puertas.map((p) => <PuertaEnMuro key={`${e.id}-${p.id}`} puerta={p} origen={origen} />),
       )}
@@ -564,6 +585,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
           <CapaEstancia
             key={e.id}
             estancia={e}
+            mapa={mapa}
             origen={origenDe(e)}
             personajes={colocados.filter(({ personaje }) => personaje.estancia === e.id)}
             noJugadores={noJugadores.filter((p) => p.estancia === e.id)}

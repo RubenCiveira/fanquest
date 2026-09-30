@@ -1,7 +1,8 @@
 import { accionesDelGestor, accionesDelModo, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
 import {
   activacionDe,
-  activacionDeJugador,
+  activacionDeNoJugador,
+  activacionesDeJugador,
   activar,
   conActivacionDeJugador,
   conPersonaje,
@@ -19,7 +20,7 @@ import {
 } from '../activaciones'
 import { anadirPersonajesNoJugadores, huecoDePersonaje } from '../apariciones'
 import { construirEstancia } from '../construccion'
-import { buscarSitio, colocarElemento, motivoParaNoColocar } from '../elementos'
+import { colocarElemento, motivoParaNoColocar } from '../elementos'
 import { estanciasDe } from '../estancias'
 import { motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
@@ -45,6 +46,8 @@ import type { PersonajeNoJugador } from '../modelo/personajeNoJugador'
 import type { Puerta } from '../modelo/puerta'
 import type { Ubicacion } from '../modelo/ubicacion'
 import type { ProveedorMapa } from './ProveedorMapa'
+
+type OcupadoInicial = Objeto & { alianza: string }
 
 /**
  * Gestiona el estado del mapa (estancias, escuadras y personajes con sus turnos):
@@ -118,24 +121,58 @@ export class GestorMapa implements MapaEnJuego {
   }
 
   /**
-   * Estado de partida de cada escuadra del proveedor: sus personajes, cada uno en
-   * el sitio libre de la estancia más cercano al centro (o en su zona de
-   * espera, si no cabe) y, con modo agresivo o sigiloso, el modo en que empieza
+   * Estado de partida de cada escuadra del proveedor: sus personajes, cada uno
+   * en una casilla libre, separando alianzas y dejando aire alrededor cuando es
+   * posible, y, con modo agresivo o sigiloso, el modo en que empieza
    */
   async #escuadrasIniciales(estancia: Estancia): Promise<Escuadra[]> {
-    const ocupados: Objeto[] = []
+    const ocupados: OcupadoInicial[] = []
     const escuadras: Escuadra[] = []
     for (const clase of await this.#listarEscuadras()) {
       const personajes: Personaje[] = []
+      const alianza = this.#alianzaDe(clase.jugador)
       for (const { id, nombre, imagenVtt } of await clase.personajes()) {
-        const casilla = buscarSitio({ ...estancia, elementos: [...estancia.elementos, ...ocupados] }, huecoDePersonaje({ id, nombre }))
-        if (casilla) ocupados.push(huecoDePersonaje({ id, nombre }, casilla))
+        const personaje = huecoDePersonaje({ id, nombre })
+        const casilla = this.#sitioInicial({ ...estancia, elementos: [...estancia.elementos, ...ocupados] }, personaje, alianza, ocupados)
+        if (casilla) ocupados.push({ ...personaje, posicion: casilla, alianza })
         personajes.push({ id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estancia.id, ...(casilla && { casilla }), turnos: [] })
       }
       const modo = this.configuracion.modosActivacion === 'agresivo-sigiloso' ? await clase.modoActivacion() : undefined
       escuadras.push({ id: clase.id, nombre: clase.nombre, jugador: clase.jugador, personajes, ...(modo && { modo }), turnos: [] })
     }
     return escuadras
+  }
+
+  #alianzaDe(jugador: string) {
+    return this.configuracion.jugadores.jugadores.find((j) => j.id === jugador)?.alianza ?? jugador
+  }
+
+  #sitioInicial(estancia: Estancia, personaje: Objeto, alianza: string, ocupados: OcupadoInicial[]): Casilla | undefined {
+    const alianzas = this.configuracion.jugadores.alianzas
+    const indiceAlianza = Math.max(0, alianzas.findIndex((a) => a.id === alianza))
+    const maxX = Math.max(0, estancia.columnas - 2)
+    const maxY = Math.max(0, estancia.filas - 2)
+    const anclas = [
+      { x: Math.min(1, maxX), y: Math.min(1, maxY) },
+      { x: maxX, y: maxY },
+      { x: maxX, y: Math.min(1, maxY) },
+      { x: Math.min(1, maxX), y: maxY },
+    ]
+    const ancla = anclas[indiceAlianza % anclas.length]
+    const distancia = (a: Casilla, b: Casilla) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
+    const distanciaAlAncla = (c: Casilla) => (c.x - ancla.x) ** 2 + (c.y - ancla.y) ** 2
+    const libres = Array.from({ length: estancia.columnas * estancia.filas }, (_, i) => ({ x: i % estancia.columnas, y: Math.floor(i / estancia.columnas) })).filter(
+      (c) => !motivoParaNoColocar(estancia, personaje, c),
+    )
+    return libres.sort((a, b) => {
+      const puntuacion = (c: Casilla) => {
+        const distancias = ocupados.flatMap((o) => (o.posicion ? [distancia(c, o.posicion)] : []))
+        const aire = Math.min(2, Math.min(...distancias, 2))
+        const otrasAlianzas = ocupados.filter((o) => o.alianza !== alianza).flatMap((o) => (o.posicion ? [distancia(c, o.posicion)] : []))
+        return aire * 10_000 + Math.min(...otrasAlianzas, 5) * 100 - distanciaAlAncla(c) * 10 - Math.abs(c.x - ancla.x)
+      }
+      return puntuacion(b) - puntuacion(a)
+    })[0]
   }
 
   /**
@@ -198,7 +235,7 @@ export class GestorMapa implements MapaEnJuego {
     const turno = this.jugadorEnTurno
     if (!turno) return 'Nadie tiene nada que activar'
     if (turno.id !== jugadorId) return `Le toca a ${turno.nombre}`
-    if (!this.#mapa.personajesNoJugadores?.some((p) => p.jugador === jugadorId)) return `${turno.nombre} no tiene personajes no jugadores`
+    if (!this.#mapa.personajesNoJugadores?.some((p) => p.jugador === jugadorId && !activacionDeNoJugador(this.#mapa, p.id)?.activacion.terminada)) return `${turno.nombre} no tiene personajes no jugadores`
     this.#cambiar(conActivacionDeJugador(this.#mapa, jugadorId))
   }
 
@@ -216,7 +253,7 @@ export class GestorMapa implements MapaEnJuego {
     const turno = this.jugadorEnTurno
     if (!turno) return 'Nadie tiene nada que activar'
     if (turno.id !== personaje.jugador) return `Le toca a ${turno.nombre}`
-    const activacion = activacionDeJugador(this.#mapa, personaje.jugador)
+    const activacion = activacionDeNoJugador(this.#mapa, personaje.id) ?? activacionesDeJugador(this.#mapa, personaje.jugador).find((a) => !a.activacion.terminada)
     if (activacion?.activacion.terminada) return `${turno.nombre} ya ha terminado su turno`
     if (activacion?.personaje && activacion.personaje !== personaje.id) {
       const activo = this.#mapa.personajesNoJugadores?.find((p) => p.id === activacion.personaje)
@@ -262,7 +299,7 @@ export class GestorMapa implements MapaEnJuego {
   accionesDisponiblesNoJugador(personajeId: string): Accion[] {
     const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
     if (!personaje || this.motivoParaNoActuarNoJugador(personajeId)) return []
-    return accionesDelModo(this.configuracion, activacionDeJugador(this.#mapa, personaje.jugador)?.activacion.modo ?? this.#modoInicial())
+    return accionesDelModo(this.configuracion, activacionDeNoJugador(this.#mapa, personaje.id)?.activacion.modo ?? this.#modoInicial())
   }
 
   /**
@@ -393,8 +430,13 @@ export class GestorMapa implements MapaEnJuego {
     return this.configuracion.modosActivacion === 'agresivo-sigiloso' ? 'sigiloso' : 'normal'
   }
 
+  modoActivacionNoJugador(personajeId: string): ModoActivacion | undefined {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    return personaje && (activacionDeNoJugador(this.#mapa, personaje.id)?.activacion.modo ?? this.#modoInicial())
+  }
+
   #apuntarAccionNoJugador(m: Mapa, personaje: PersonajeNoJugador, accion: string): Mapa {
-    const actual = activacionDeJugador(m, personaje.jugador)
+    const actual = activacionDeNoJugador(m, personaje.id)
     const modo = actual?.activacion.modo ?? this.#modoInicial()
     const activacion: { modo: ModoActivacion; terminada: boolean } =
       accion === CAMBIAR_MODO && modo !== 'normal'

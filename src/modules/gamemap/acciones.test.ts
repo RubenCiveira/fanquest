@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accionesDelGestor, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
+import { accionesDelGestor, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO, TERMINAR_TURNO_ESCUADRA } from './acciones'
 import { activacionDe, numeroDeTurno, terminarTurno, turnoDeEscuadra, turnoDePersonaje } from './activaciones'
 import { crearEstancia } from './estancias'
 import type { Configuracion } from './modelo/configuracion'
@@ -25,6 +25,11 @@ describe('acciones de las escuadras', () => {
   it('sin modos, el gestor solo ofrece terminar turno', () => {
     const sinModos = { ...mapa, escuadras: mapa.escuadras?.map((e) => ({ ...e, modo: undefined })) }
     expect(accionesDelGestor(sinModos, normales, 'rojos')).toEqual([TERMINAR_TURNO])
+  })
+
+  it('si la escuadra tiene varias miniaturas, ofrece terminar turno de escuadra', () => {
+    const conGrupo = { ...mapa, escuadras: mapa.escuadras?.map((e) => (e.id === 'rojos' ? { ...e, personajes: [...e.personajes, { id: 'elfo', nombre: 'Elfo', estancia: 'sala', turnos: [] }] } : e)) }
+    expect(accionesDelGestor(conGrupo, conModos, 'rojos')).toEqual([{ id: CAMBIAR_MODO, nombre: 'Cambiar a sigiloso', icono: '👣' }, TERMINAR_TURNO_ESCUADRA])
   })
 
   it('la acción de un personaje queda en el turno de su escuadra, como suya', () => {
@@ -96,8 +101,8 @@ describe('quién puede actuar', () => {
     expect(motivoParaNoActuar(partida, conModos, 'azules', 'enano')).toBe('Le toca a Ana')
   })
 
-  it('en una activación solo actúa una miniatura', () => {
-    expect(motivoParaNoActuar(ejecutarAccion(partida, conModos, 'rojos', 'gritar', 'barbaro'), conModos, 'rojos', 'elfo')).toBe('En esta activación ya actúa Bárbaro')
+  it('en una activación pueden actuar varias miniaturas de la escuadra', () => {
+    expect(motivoParaNoActuar(ejecutarAccion(partida, conModos, 'rojos', 'gritar', 'barbaro'), conModos, 'rojos', 'elfo')).toBeUndefined()
   })
 
   it('la que actúa puede seguir actuando', () => {

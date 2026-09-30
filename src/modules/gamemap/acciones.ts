@@ -10,15 +10,17 @@ import {
   modosPermitidos,
   motivoDeTurno,
   numeroDeTurno,
-  turnoDeEscuadra,
 } from './activaciones'
 import type { Accion } from './modelo/accion'
 import type { ModoActivacion } from './modelo/activacion'
 import type { Configuracion } from './modelo/configuracion'
 import type { Mapa } from './modelo/mapa'
 
-/** Acción del gestor que da por terminada la activación de la escuadra en este turno */
+/** Acción del gestor que da por terminada la activación en este turno */
 export const TERMINAR_TURNO: Accion = { id: 'terminar-turno', nombre: 'Terminar turno', icono: '⌛' }
+
+/** Acción del gestor que da por terminada la activación de la escuadra en este turno */
+export const TERMINAR_TURNO_ESCUADRA: Accion = { ...TERMINAR_TURNO, nombre: 'Terminar turno de escuadra' }
 
 /** Id de la acción del gestor que pasa de agresivo a sigiloso o al revés */
 export const CAMBIAR_MODO = 'cambiar-modo'
@@ -35,11 +37,11 @@ export function modoActual(m: Mapa, config: Configuracion, id: string): ModoActi
 
 /**
  * Por qué la escuadra (o ese personaje suyo) no puede hacer acciones ahora, o
- * nada si puede: ya terminó su turno, otra está activándose, es el turno de
- * otro jugador o, en su activación, ya actúa otro de sus personajes (solo
- * actúa una miniatura por activación)
+ * nada si puede: ya terminó su turno, otra está activándose o es el turno de
+ * otro jugador. En la activación de una escuadra pueden actuar todos sus
+ * personajes.
  */
-export function motivoParaNoActuar(m: Mapa, config: Configuracion, id: string, personaje?: string): string | undefined {
+export function motivoParaNoActuar(m: Mapa, config: Configuracion, id: string, _personaje?: string): string | undefined {
   const escuadra = escuadrasDe(m).find((e) => e.id === id)
   if (!escuadra) return `No hay ninguna escuadra «${id}» en el mapa`
   if (activacionDe(m, id)?.terminada) return `${escuadra.nombre} ya ha terminado su turno`
@@ -47,8 +49,6 @@ export function motivoParaNoActuar(m: Mapa, config: Configuracion, id: string, p
   if (activa && activa.id !== id) return esperandoA(activa)
   const turno = motivoDeTurno(m, config, escuadra)
   if (turno) return turno
-  const otro = turnoDeEscuadra(escuadra, numeroDeTurno(m)).acciones.find((a) => a.personaje && a.personaje !== personaje)?.personaje
-  if (personaje && otro) return `En esta activación ya actúa ${escuadra.personajes.find((p) => p.id === otro)?.nombre ?? otro}`
 }
 
 /** Acciones que el gestor añade a las del personaje: cambiar al otro modo (si hay modos) y terminar turno */
@@ -59,7 +59,9 @@ export function accionesDelModo(config: Configuracion, modo: ModoActivacion): Ac
 
 /** Acciones que el gestor añade a las del personaje: cambiar al otro modo (si hay modos) y terminar turno */
 export function accionesDelGestor(m: Mapa, config: Configuracion, id: string): Accion[] {
-  return accionesDelModo(config, modoActual(m, config, id))
+  const escuadra = escuadrasDe(m).find((e) => e.id === id)
+  const terminar = escuadra && escuadra.personajes.length > 1 ? TERMINAR_TURNO_ESCUADRA : TERMINAR_TURNO
+  return accionesDelModo(config, modoActual(m, config, id)).map((a) => (a.id === TERMINAR_TURNO.id ? terminar : a))
 }
 
 /**

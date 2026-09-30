@@ -48,7 +48,7 @@ type Seleccion = { estancia: string; elemento: string }
  * atarlas a este gestor: StrictMode crea dos y React se queda con uno)
  */
 function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
-  const { proveedor, dialogo, configuracion, cambiarConfiguracion } = useProveedorDebug()
+  const { proveedor, dialogo, configuracion, cambiarConfiguracion } = useProveedorDebug(inicial)
   const [gestor] = useState(() => {
     const nuevo = new GestorMapa(proveedor, inicial)
     inicial.estancias.forEach((e) => proveedor.estanciaCreada(e, nuevo))
@@ -101,6 +101,14 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
     }
   }
 
+  async function moverPersonaje(personaje: string, recorrido: Casilla[]) {
+    const motivo = esNoJugador(personaje)
+      ? await gestor.moverPersonajeNoJugador(personaje, recorrido, gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado)))
+      : await gestor.moverPersonaje(personaje, recorrido)
+    if (motivo) console.warn(`[map-debug] ${personaje} no puede moverse ahora: ${motivo}`)
+    setNota(motivo)
+  }
+
   /**
    * Con un elemento elegido que se coloca a mano, la casilla es su sitio
    * nuevo; si no (o es un personaje ya en el mapa, que se arrastra), se informa de
@@ -120,6 +128,8 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   const enTurno = jugadorEnTurno(mapa, configuracion)
   const nombreDeJugador = (jugador: string) => jugadoresDe(mapa).jugadores.find((j) => j.id === jugador)?.nombre ?? jugador
   const esNoJugador = (personaje: string) => personajesNoJugadoresDe(mapa).some((p) => p.id === personaje)
+  const noJugadorEnTurno = personajesNoJugadoresDe(mapa).find((p) => p.jugador === enTurno?.id)
+  const modoNoJugador = noJugadorEnTurno && configuracion.modosActivacion === 'agresivo-sigiloso' ? gestor.modoActivacionNoJugador(noJugadorEnTurno.id) : undefined
 
   function aEspera() {
     if (!seleccion) return
@@ -137,7 +147,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
       <PanelJugadores jugadores={jugadoresDe(mapa)} enTurno={enTurno} onCambiar={(jugadores) => setNota(gestor.cambiarJugadores(jugadores))} />
       <div className="map-debug-turno">
         <strong>Turno {numero}</strong>
-        <span className="nota">{enTurno ? `Le toca a ${enTurno.nombre}.` : 'Nadie tiene nada que activar: termina el turno.'}</span>
+        <span className="nota">{enTurno ? `Le toca a ${enTurno.nombre}${modoNoJugador ? ` en modo ${modoNoJugador}` : ''}.` : 'Nadie tiene nada que activar: termina el turno.'}</span>
         <button type="button" className="button secondary" onClick={() => setNota(gestor.terminarTurno())}>
           Terminar turno
         </button>
@@ -180,10 +190,11 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         }}
         corona={actorElegido ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
         opcionesMovimiento={(personaje) => (esNoJugador(personaje) ? Promise.resolve(gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado))) : gestor.opcionesMovimiento(personaje))}
-        onMover={async (personaje, recorrido) => setNota(esNoJugador(personaje) ? await gestor.moverPersonajeNoJugador(personaje, recorrido, gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado))) : await gestor.moverPersonaje(personaje, recorrido))}
+        onMover={moverPersonaje}
         medicion={configuracion.medicionMovimiento}
         terrenoPersonajes={configuracion.terrenoPersonajes}
         motivoParaNoActuar={(personaje) => (esNoJugador(personaje) ? gestor.motivoParaNoActuarNoJugador(personaje) : gestor.motivoParaNoActuar(personaje))}
+        modoNoJugador={(personaje) => gestor.modoActivacionNoJugador(personaje)}
         jugadorEnTurno={enTurno}
       />
 

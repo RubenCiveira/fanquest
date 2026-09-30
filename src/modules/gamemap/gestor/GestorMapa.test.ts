@@ -52,11 +52,12 @@ const gritar = { id: 'gritar', nombre: 'Gritar', icono: '📣', exec: vi.fn(asyn
  * Proveedor de prueba: los rojos (el bárbaro, que puede gritar) empiezan
  * agresivos y los azules (el enano, sin acciones) sigilosos
  */
-function proveedor(descripcion = sala) {
+function proveedor(descripcion = sala, conElfo = false) {
   const acciones = vi.fn(async (_personaje: Personaje, _mapa: MapaEnJuego): Promise<Accion[]> => [gritar])
   const opcionesMovimiento = vi.fn(async (_personaje: Personaje, _gastado: MovimientoGastado) => opciones)
   const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
   const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', opcionesMovimiento, acciones }
+  const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [] }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [] }
   return {
     configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: REPARTO } as const,
@@ -66,7 +67,7 @@ function proveedor(descripcion = sala) {
     turnoDe: vi.fn((_jugador: Jugador, _mapa: MapaEnJuego) => {}),
     finDeTurno: vi.fn((_mapa: MapaEnJuego) => {}),
     listarEscuadras: vi.fn(async (): Promise<ClaseDeEscuadra[]> => [
-      { id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: async () => [barbaro], modoActivacion: async () => 'agresivo', activar },
+      { id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: async () => (conElfo ? [barbaro, elfo] : [barbaro]), modoActivacion: async () => 'agresivo', activar },
       { id: 'azules', nombre: 'Azules', jugador: 'j1', personajes: async () => [enano], modoActivacion: async () => 'sigiloso', activar },
     ]),
     acciones,
@@ -76,12 +77,13 @@ function proveedor(descripcion = sala) {
 }
 
 /** Gestor con la estancia inicial creada, el proveedor y el estado del bárbaro */
-async function conInicial(descripcion = sala) {
-  const p = proveedor(descripcion)
+async function conInicial(descripcion = sala, conElfo = false) {
+  const p = proveedor(descripcion, conElfo)
   const gestor = new GestorMapa(p)
   await gestor.nuevaEstancia()
   const barbaro = () => gestor.mapa.escuadras?.[0].personajes[0] ?? { id: '', nombre: '', estancia: '', turnos: [] }
-  return { gestor, p, barbaro }
+  const elfo = () => gestor.mapa.escuadras?.[0].personajes[1] ?? { id: '', nombre: '', estancia: '', turnos: [] }
+  return { gestor, p, barbaro, elfo }
 }
 
 /** Recorrido de `pasos` casillas hacia la derecha desde una casilla */
@@ -299,6 +301,16 @@ describe('gestor del mapa: movimiento', () => {
     expect([rojos && turnoDeEscuadra(rojos, 1).acciones, turnoDePersonaje(barbaro(), 1).acciones]).toEqual([[{ accion: 'mover', personaje: 'barbaro' }], []])
   })
 
+  it('deja mover a varios personajes de la escuadra en la misma activación', async () => {
+    const { gestor, barbaro, elfo } = await conInicial(amplia, true)
+    await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 1))
+    await gestor.moverPersonaje('elfo', enLinea(elfo().casilla, 1))
+    expect(turnoDeEscuadra(gestor.mapa.escuadras?.[0] ?? { id: '', nombre: '', jugador: '', personajes: [], turnos: [] }, 1).acciones).toEqual([
+      { accion: 'mover', personaje: 'barbaro' },
+      { accion: 'mover', personaje: 'elfo' },
+    ])
+  })
+
   it('para deslizar, pide confirmación y, confirmado, apunta también deslizar', async () => {
     const { gestor, p, barbaro } = await conInicial(amplia)
     await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 3))
@@ -402,8 +414,8 @@ describe('gestor del mapa: jugadores', () => {
 
   it('al terminar la última activación, avisa al proveedor de que ha terminado el turno', async () => {
     const { gestor, p } = await conInicial()
-    await gestor.ejecutarAccion('rojos', 'terminar-turno')
     await gestor.ejecutarAccion('azules', 'terminar-turno')
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
     expect(p.finDeTurno).toHaveBeenCalledWith(gestor)
   })
 
@@ -411,10 +423,18 @@ describe('gestor del mapa: jugadores', () => {
     const { gestor, barbaro } = await conInicial(amplia)
     const desde = barbaro().casilla ?? { x: 0, y: 0 }
     const hacia = (dx: number) => ({ x: desde.x + dx, y: desde.y })
-    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(-1) }])
+    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(1) }])
     await gestor.ejecutarAccion('rojos', 'terminar-turno')
-    await gestor.moverPersonajeNoJugador('orco', [hacia(-1), hacia(-2)], opciones)
-    expect(gestor.mapa.personajesNoJugadores?.[0].casilla).toEqual(hacia(-2))
+    await gestor.moverPersonajeNoJugador('orco', [hacia(1), hacia(2)], opciones)
+    expect(gestor.mapa.personajesNoJugadores?.[0].casilla).toEqual(hacia(2))
+  })
+
+  it('los PNJ informan su modo inicial de activación', async () => {
+    const { gestor, barbaro } = await conInicial(amplia)
+    const desde = barbaro().casilla ?? { x: 0, y: 0 }
+    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: { x: desde.x - 1, y: desde.y } }])
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    expect(gestor.modoActivacionNoJugador('orco')).toBe('sigiloso')
   })
 
   it('en la activación de PNJ solo actúa un monstruo', async () => {
@@ -422,12 +442,26 @@ describe('gestor del mapa: jugadores', () => {
     const desde = barbaro().casilla ?? { x: 0, y: 0 }
     const hacia = (dx: number) => ({ x: desde.x + dx, y: desde.y })
     gestor.anadirPersonajes('estancia-1', [
-      { id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(-1) },
-      { id: 'goblin', nombre: 'Goblin', jugador: 'oscuridad', casilla: hacia(-2) },
+      { id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(1) },
+      { id: 'goblin', nombre: 'Goblin', jugador: 'oscuridad', casilla: hacia(2) },
     ])
     await gestor.ejecutarAccion('rojos', 'terminar-turno')
-    await gestor.moverPersonajeNoJugador('orco', [hacia(-1), { x: desde.x - 1, y: desde.y + 1 }], opciones)
+    await gestor.moverPersonajeNoJugador('orco', [hacia(1), { x: desde.x + 1, y: desde.y + 1 }], opciones)
     expect(gestor.motivoParaNoActuarNoJugador('goblin')).toBe('En esta activación ya actúa Orco')
+  })
+
+  it('tras terminar la activación de un PNJ, otro PNJ del jugador puede actuar si no hay otros jugadores pendientes', async () => {
+    const gestor = new GestorMapa(proveedor(), {
+      estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
+      personajesNoJugadores: [
+        { id: 'orco', nombre: 'Orco', jugador: 'oscuridad', estancia: 'estancia-1', casilla: { x: 1, y: 1 }, turnos: [] },
+        { id: 'goblin', nombre: 'Goblin', jugador: 'oscuridad', estancia: 'estancia-1', casilla: { x: 2, y: 1 }, turnos: [] },
+      ],
+      jugadores: REPARTO,
+      turno: 1,
+    })
+    gestor.ejecutarAccionNoJugador('orco', 'terminar-turno')
+    expect(gestor.motivoParaNoActuarNoJugador('goblin')).toBeUndefined()
   })
 
   it('al terminar la activación de un jugador con PNJ pasa al siguiente jugador', async () => {
@@ -455,9 +489,9 @@ describe('gestor del mapa: jugadores', () => {
     const { gestor, barbaro } = await conInicial(amplia)
     const desde = barbaro().casilla ?? { x: 0, y: 0 }
     const hacia = (dx: number) => ({ x: desde.x + dx, y: desde.y })
-    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(-1) }])
+    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: hacia(1) }])
     gestor.cambiarJugadores({ ...REPARTO, alianzas: REPARTO.alianzas.map((a) => ({ ...a, posturas: {} })) })
-    expect(await gestor.moverPersonaje('barbaro', [desde, hacia(-1), hacia(-2)])).toBeUndefined()
+    expect(await gestor.moverPersonaje('barbaro', [desde, hacia(1), hacia(2)])).toBeUndefined()
   })
 })
 
@@ -522,8 +556,15 @@ describe('gestor del mapa: puertas', () => {
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
     const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', jugadores: REPARTO } as const }
-    const gestor = new GestorMapa(p)
-    await gestor.nuevaEstancia()
+    const gestor = new GestorMapa(p, {
+      estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
+      escuadras: [
+        { id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 1, y: 1 }, turnos: [] }], turnos: [] },
+        { id: 'azules', nombre: 'Azules', jugador: 'j1', personajes: [{ id: 'enano', nombre: 'Enano', estancia: 'estancia-1', casilla: { x: 2, y: 1 }, turnos: [] }], turnos: [] },
+      ],
+      turno: 1,
+      jugadores: REPARTO,
+    })
     const [barbaro, enano] = gestor.mapa.escuadras?.map((e) => e.personajes[0].casilla) ?? []
     // el enano está justo a la derecha del bárbaro: el recorrido recto lo atraviesa
     expect([enano, await gestor.moverPersonaje('barbaro', enLinea(barbaro, 2))]).toEqual([{ x: (barbaro?.x ?? 0) + 1, y: barbaro?.y }, 'El recorrido pasa por donde no se puede'])
