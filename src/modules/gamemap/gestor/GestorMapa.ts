@@ -1,4 +1,4 @@
-import { accionesDelGestor, accionesDelModo, AGRUPAR, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
+import { accionesDelGestor, accionesDelModo, AGRUPAR, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
 import {
   activacionDe,
   activacionDeNoJugador,
@@ -6,8 +6,6 @@ import {
   activar,
   conActivacionDeJugador,
   conPersonaje,
-  conPersonajeNoJugador,
-  conTurno,
   escuadrasDe,
   jugadorEnTurno,
   todosLosPersonajes,
@@ -24,7 +22,7 @@ import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { estanciasDe } from '../estancias'
 import { motivoParaNoCambiarJugadores } from '../jugadores'
-import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { accionesAdicionales, accionesConsumidas, casillasDeEnemigos, conPersonajes, desplazar, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import type { Accion } from '../modelo/accion'
 import type { ModoActivacion } from '../modelo/activacion'
@@ -432,25 +430,13 @@ export class GestorMapa implements MapaEnJuego {
    */
   async moverPersonaje(personajeId: string, recorrido: Casilla[]): Promise<string | undefined> {
     const opciones = await this.opcionesMovimiento(personajeId)
-    const evaluar = () => {
-      const encontrado = this.#personajeDe(personajeId)
-      if (!encontrado?.personaje.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
-      const { personaje, escuadra } = encontrado
-      if (!opciones) return { motivo: motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personaje.id) ?? `${personaje.nombre} no puede moverse ahora` }
-      return { personaje, escuadra: escuadra.id, ...evaluarRecorrido(conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes), personaje, recorrido, opciones, {
-        medicion: this.configuracion.medicionMovimiento,
-        enemigos: casillasDeEnemigos(this.#mapa, personaje.id),
-      }) }
-    }
-    const evaluado = evaluar()
-    if ('motivo' in evaluado) return evaluado.motivo
-    const adicionales = accionesAdicionales(evaluado)
-    if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return
-    // mientras se confirmaba el mapa ha podido cambiar
-    const confirmado = adicionales.length ? evaluar() : evaluado
-    if ('motivo' in confirmado) return confirmado.motivo
-    this.#cambiar(mover(this.#mapa, this.configuracion, confirmado.escuadra, confirmado.personaje, recorrido, confirmado))
-    await this.#preguntarSiCompleta(confirmado.escuadra)
+    const encontrado = this.#personajeDe(personajeId)
+    if (!encontrado?.personaje.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
+    const { personaje, escuadra } = encontrado
+    if (!opciones) return motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personaje.id) ?? `${personaje.nombre} no puede moverse ahora`
+    const resultado = await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => apuntarAccion(m, this.configuracion, escuadra.id, accion, personajeId))
+    if (resultado !== undefined) return resultado || undefined
+    await this.#preguntarSiCompleta(escuadra.id)
   }
 
   /** Mueve manualmente un PNJ del jugador en turno, aplicando las mismas opciones y restricciones de movimiento */
@@ -460,17 +446,32 @@ export class GestorMapa implements MapaEnJuego {
     const motivo = this.motivoParaNoActuarNoJugador(personajeId)
     if (motivo) return motivo
     if (!opciones) return `${personaje.nombre} no puede moverse ahora`
-    const evaluar = () => ({ personaje, ...evaluarRecorrido(conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes), personaje, recorrido, opciones, {
-      medicion: this.configuracion.medicionMovimiento,
-      enemigos: casillasDeEnemigos(this.#mapa, personaje.id),
-    }) })
+    return (await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => this.#apuntarAccionNoJugador(m, personaje, accion))) || undefined
+  }
+
+  /**
+   * Mueve al personaje (de escuadra o no jugador) por el recorrido con la
+   * primera de sus `opciones` que lo permita y apunta, con `apuntar`, cada
+   * acción que consume. Si consume acciones adicionales (deslizar…), antes pide
+   * confirmación al proveedor y, como mientras tanto el mapa ha podido cambiar,
+   * vuelve a leer al personaje y a evaluar el recorrido. Devuelve el motivo si
+   * no puede moverse, `false` si no se confirma y nada si se ha movido
+   */
+  async #recorrer(personajeId: string, recorrido: Casilla[], opciones: OpcionesMovimiento, apuntar: (m: Mapa, accion: string) => Mapa): Promise<string | false | undefined> {
+    const evaluar = () => {
+      const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
+      if (!personaje?.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
+      const vista = conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes)
+      return { personaje, ...evaluarRecorrido(vista, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: casillasDeEnemigos(this.#mapa, personaje.id) }) }
+    }
     const evaluado = evaluar()
     if ('motivo' in evaluado) return evaluado.motivo
     const adicionales = accionesAdicionales(evaluado)
-    if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return
+    if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return false
     const confirmado = adicionales.length ? evaluar() : evaluado
     if ('motivo' in confirmado) return confirmado.motivo
-    this.#cambiar(this.#moverNoJugador(this.#mapa, confirmado.personaje, recorrido, confirmado))
+    const movido = desplazar(this.#mapa, this.configuracion, confirmado.personaje, recorrido, confirmado)
+    this.#cambiar(accionesConsumidas(confirmado).reduce(apuntar, movido))
   }
 
   /**
@@ -516,20 +517,6 @@ export class GestorMapa implements MapaEnJuego {
       ? (m.activacionesJugadores ?? []).map((a) => (a === actual ? actualizada : a))
       : [...(m.activacionesJugadores ?? []), actualizada]
     return { ...m, activacionesJugadores, ...(activacion.terminada && !actual?.activacion.terminada ? { rotacion: [...(m.rotacion ?? []), personaje.jugador] } : {}) }
-  }
-
-  #moverNoJugador(m: Mapa, personaje: PersonajeNoJugador, recorrido: Casilla[], valido: { opcion: OpcionesMovimiento['base']; tramos: number[] }): Mapa {
-    const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
-    if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
-    const acciones = accionesConsumidas(valido)
-    const hecho = { opcion: valido.opcion.id, casillas: costeDe(conPersonajes(m, personaje.id, this.configuracion.terrenoPersonajes), recorrido, this.configuracion.medicionMovimiento), acciones }
-    const movido = conPersonajeNoJugador(m, personaje.id, (p) => ({
-      ...p,
-      estancia: destino.estancia.id,
-      casilla: destino.casilla,
-      turnos: conTurno(p.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
-    }))
-    return acciones.reduce((a, accion) => this.#apuntarAccionNoJugador(a, personaje, accion), movido)
   }
 
   /** Lo que dice la clase del personaje pulsado de la escuadra (si está colocado) que puede hacer donde está */

@@ -74,6 +74,7 @@ export {
   enElMapa,
   evaluarRecorrido,
   gastadoPor,
+  desplazar,
   mover,
   ruta,
   sePuedePasar,

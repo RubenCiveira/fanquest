@@ -21,15 +21,6 @@ el mock de debug no ofrecen una forma de colocarlos después.
 escuadra. Hay que permitir colocar `personajesNoJugadores` en espera o ajustar
 el comportamiento/documentación para que no queden inaccesibles.
 
-
-## Coger objeto
-De forma similar a revisar mueble, un personaje tendrá una acción de "coger objeto"; pero en este caso la implementación del debugger "quitará el objeto de la estancia" (ya que en teoría pasa al inventario).
-
-## Acción agrupar para escuadras.
-si un personaje pertenece a una escuadra, tendrá una acción adicional "agrupar aqui" que hará que el resto de personajes de su escuadra se muevan hacia ese punto, colocandose en casillas libres alrededor del personaje.
-
-Si algun personaje no tiene movimiento suficiente para llegar, se moverá hasta estar lo más cerca posible.
-
 ## Distancia de coherencia para escuadras.
 En los datos de tipoDeEscuadra tendremos un flag para indicarle al gestor de juego si la escuadra debe mantener coherencia, cual es la distancia de coherencia, y cual es el modo de coherencia (con alguno, con el centro, o con todos).
 

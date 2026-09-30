@@ -538,6 +538,24 @@ describe('gestor del mapa: agrupar y coger', () => {
   })
 })
 
+describe('gestor del mapa: mover personajes no jugadores', () => {
+  it('tras confirmar, vuelve a leer dónde está: si se ha movido mientras tanto, el recorrido ya no vale', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa(p, {
+      estancias: [{ id: 'sala', tipo: 'sala', columnas: 5, filas: 3, puertas: [], elementos: [], estancias: [] }],
+      personajesNoJugadores: [{ id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [], jugador: 'oscuridad' }],
+      jugadores: REPARTO,
+      turno: 1,
+    })
+    p.confirmar.mockImplementationOnce(async () => {
+      await gestor.moverPersonajeNoJugador('orco', [{ x: 0, y: 0 }, { x: 0, y: 1 }], opciones)
+      return true
+    })
+    const deslizando = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }]
+    expect(await gestor.moverPersonajeNoJugador('orco', deslizando, opciones)).toBe('El recorrido tiene que empezar en Orco')
+  })
+})
+
 describe('gestor del mapa: jugadores', () => {
   it('la estancia inicial guarda el reparto de jugadores de la configuración', async () => {
     const { gestor } = await conInicial()

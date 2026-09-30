@@ -1,5 +1,5 @@
 import { apuntarAccion } from './acciones'
-import { conPersonaje, conTurno, numeroDeTurno, todosLosPersonajes, turnoDePersonaje } from './activaciones'
+import { conPersonaje, conPersonajeNoJugador, conTurno, numeroDeTurno, todosLosPersonajes, turnoDePersonaje } from './activaciones'
 import { esEnemigo, jugadorDe } from './jugadores'
 import { estanciaEn } from './estancias'
 import { factorDeTerreno, terrenoEn } from './terrenos'
@@ -287,21 +287,33 @@ export const accionesAdicionales = ({ opcion, tramos }: Valido): Accion[] =>
 export const accionesConsumidas = (valido: Valido): string[] => [valido.opcion.accion.id, ...accionesAdicionales(valido).map((a) => a.id)]
 
 /**
- * Lleva al personaje de la escuadra al final del recorrido ya evaluado (en
- * casillas del mapa: si es otra estancia, pasa a ella), apunta el movimiento en
- * su turno (lo que cuesta según la medición y los demás personajes de `config`) y las acciones que
- * consume en el de su escuadra, que empiezan su activación si no había empezado
+ * Lleva al personaje (de una escuadra o no jugador) al final del recorrido ya
+ * evaluado (en casillas del mapa: si es otra estancia, pasa a ella) y apunta
+ * el movimiento en su turno: lo que cuesta según la medición y los demás
+ * personajes de `config`, y las acciones que consume. Esas acciones no las
+ * apunta en ninguna activación: eso depende de quién es (`mover`)
  */
-export function mover(m: Mapa, config: Configuracion, escuadra: string, personaje: Personaje, recorrido: Casilla[], valido: Valido): Mapa {
+export function desplazar(m: Mapa, config: Configuracion, personaje: Personaje, recorrido: Casilla[], valido: Valido): Mapa {
   const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
   if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
-  const acciones = accionesConsumidas(valido)
-  const hecho = { opcion: valido.opcion.id, casillas: costeDe(conPersonajes(m, personaje.id, config.terrenoPersonajes), recorrido, config.medicionMovimiento), acciones }
-  const movido = conPersonaje(m, personaje.id, (h) => ({
-    ...h,
+  const hecho = {
+    opcion: valido.opcion.id,
+    casillas: costeDe(conPersonajes(m, personaje.id, config.terrenoPersonajes), recorrido, config.medicionMovimiento),
+    acciones: accionesConsumidas(valido),
+  }
+  const movido = <P extends Personaje>(p: P): P => ({
+    ...p,
     estancia: destino.estancia.id,
     casilla: destino.casilla,
-    turnos: conTurno(h.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
-  }))
-  return acciones.reduce((a, accion) => apuntarAccion(a, config, escuadra, accion, personaje.id), movido)
+    turnos: conTurno(p.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
+  })
+  return conPersonajeNoJugador(conPersonaje(m, personaje.id, movido), personaje.id, movido)
 }
+
+/**
+ * Lleva al personaje de la escuadra al final del recorrido ya evaluado
+ * (`desplazar`) y apunta las acciones que consume en el turno de su escuadra,
+ * que empiezan su activación si no había empezado
+ */
+export const mover = (m: Mapa, config: Configuracion, escuadra: string, personaje: Personaje, recorrido: Casilla[], valido: Valido): Mapa =>
+  accionesConsumidas(valido).reduce((a, accion) => apuntarAccion(a, config, escuadra, accion, personaje.id), desplazar(m, config, personaje, recorrido, valido))
