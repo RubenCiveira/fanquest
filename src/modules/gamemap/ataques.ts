@@ -1,6 +1,6 @@
 import { conPersonaje, conPersonajeNoJugador, todosLosPersonajes } from './activaciones'
 import { esEnemigo, jugadorDe } from './jugadores'
-import { casillaDelMapa, conPersonajes, costeDe, enElMapa, ruta, sePuedePasar } from './movimiento'
+import { casillaDelMapa, conPersonajes, costeDe, enContacto, enElMapa, ruta, sePuedePasar } from './movimiento'
 import { coberturaEn } from './terrenos'
 import type { Ataque, Trayectoria } from './modelo/ataque'
 import type { Casilla } from './modelo/casilla'
@@ -99,27 +99,29 @@ function distanciaSegun(medicion: Configuracion['medicionMovimiento'], a: Casill
 }
 
 /**
- * Cómo es el ataque: cuerpo a cuerpo si el objetivo está pegado, también en
- * diagonal, y se podría pasar de una casilla a la otra (sin muro ni esquina
- * en medio); si no, a distancia. Con la distancia según la medición del
- * movimiento, lo que costaría llegar moviéndose (como el atacante ve el mapa,
- * con el objetivo apartado) y la trayectoria. Nada si alguno no está colocado
+ * Cómo es el ataque: cuerpo a cuerpo si el objetivo está en contacto (pegado
+ * en recto o, con `cuerpoACuerpo: 'diagonal'`, también en diagonal) y se
+ * podría pasar de una casilla a la otra (sin muro ni esquina en medio); si
+ * no, a distancia. Con la distancia según la medición del movimiento (en
+ * contacto, 1), lo que costaría llegar moviéndose (como el atacante ve el
+ * mapa, con el objetivo apartado) y la trayectoria. Nada si alguno no está
+ * colocado
  */
 export function medirAtaque(
   m: Mapa,
-  { medicionMovimiento, terrenoPersonajes }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes'>,
+  { medicionMovimiento, terrenoPersonajes, cuerpoACuerpo }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'cuerpoACuerpo'>,
   atacante: Personaje,
   objetivo: Personaje,
 ): Omit<Ataque, 'atacante' | 'objetivo'> | undefined {
   const [desde, hasta] = [enElMapa(m, atacante), enElMapa(m, objetivo)]
   const linea = trayectoria(m, atacante, objetivo)
   if (!desde || !hasta || !linea) return
-  const pegado = Math.max(Math.abs(desde.x - hasta.x), Math.abs(desde.y - hasta.y)) === 1 && sePuedePasar(m, desde, hasta, 'diagonal')
+  const pegado = enContacto(desde, hasta, cuerpoACuerpo) && sePuedePasar(m, desde, hasta, 'diagonal')
   const vista = conPersonajes(sinPersonaje(m, objetivo.id), atacante.id, terrenoPersonajes)
   const camino = ruta(vista, desde, hasta, medicionMovimiento)
   return {
     tipo: pegado ? 'cuerpo-a-cuerpo' : 'distancia',
-    distancia: distanciaSegun(medicionMovimiento, desde, hasta),
+    distancia: pegado ? 1 : distanciaSegun(medicionMovimiento, desde, hasta),
     ...(camino && { recorrido: costeDe(vista, camino, medicionMovimiento) }),
     trayectoria: linea,
   }

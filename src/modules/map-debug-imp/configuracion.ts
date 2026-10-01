@@ -21,13 +21,14 @@ export const JUGADORES_DE_PRUEBA: Jugadores = {
   ],
 }
 
-/** Reglas del ejemplo si no se han cambiado: activaciones alternas, modo agresivo o sigiloso, movimiento sin diagonales y por encima de los demás personajes, y zona de control de una casilla */
+/** Reglas del ejemplo si no se han cambiado: activaciones alternas, modo agresivo o sigiloso, movimiento sin diagonales y por encima de los demás personajes, zona de control de una casilla y cuerpo a cuerpo solo en recto */
 export const CONFIGURACION_INICIAL: Configuracion = {
   ordenActivaciones: 'alternas',
   modosActivacion: 'agresivo-sigiloso',
   medicionMovimiento: 'ortogonal',
   terrenoPersonajes: 'normal',
   distanciaControl: 1,
+  cuerpoACuerpo: 'ortogonal',
   jugadores: JUGADORES_DE_PRUEBA,
 }
 
@@ -47,6 +48,7 @@ export const OPCIONES_CONFIGURACION: { [K in Ajuste]: { etiqueta: string; valore
     valores: { normal: 'Normal (se pasa por encima)', dificil: 'Difícil', 'muy-dificil': 'Muy difícil', impasable: 'Impasable (bloquea el paso)' },
   },
   distanciaControl: { etiqueta: 'Zona de control', valores: { 0: 'Sin zona de control', 1: '1 casilla alrededor', 2: '2 casillas alrededor' } },
+  cuerpoACuerpo: { etiqueta: 'Cuerpo a cuerpo', valores: { ortogonal: 'Solo en recto (en diagonal hay que posicionarse)', diagonal: 'También en diagonal' } },
 }
 
 const CLAVE = 'fetenquest.map-debug.configuracion.v3'

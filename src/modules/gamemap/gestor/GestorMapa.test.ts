@@ -67,7 +67,7 @@ function proveedor(descripcion = sala, conElfo = false) {
   const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   return {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: REPARTO } as const,
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: REPARTO } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
     describirEstancia: vi.fn(async (_mapa?: Mapa, _entrada?: Direccion) => descripcion),
     estanciaCreada: vi.fn((_estancia: Estancia, _mapa: MapaEnJuego) => {}),
@@ -160,7 +160,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: REPARTO } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: REPARTO } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -771,7 +771,7 @@ describe('gestor del mapa: personajes en juego', () => {
   function conZona() {
     const p = proveedor()
     const gestor = new GestorMapa(
-      { ...p, configuracion: { ...p.configuracion, distanciaControl: 1 } },
+      { ...p, configuracion: { ...p.configuracion, distanciaControl: 1, cuerpoACuerpo: 'diagonal' } },
       {
         estancias: [{ id: 'sala', tipo: 'sala', columnas: 5, filas: 3, puertas: [], elementos: [], estancias: [] }],
         escuadras: [
@@ -1002,7 +1002,7 @@ describe('gestor del mapa: puertas', () => {
   })
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, jugadores: REPARTO } as const }
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: REPARTO } as const }
     const gestor = new GestorMapa(p, {
       estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
       escuadras: [

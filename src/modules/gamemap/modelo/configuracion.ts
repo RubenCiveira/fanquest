@@ -33,6 +33,13 @@ export type Configuracion = {
    * de un enemigo salvo una carga. Con 0, no hay zona de control
    */
   distanciaControl: number
+  /**
+   * Qué casillas están en contacto para el cuerpo a cuerpo: `ortogonal`, solo
+   * las de al lado en recto (quien está en diagonal tiene que posicionarse
+   * para atacar); `diagonal`, también las de las esquinas. Vale también para
+   * terminar junto a un enemigo (cargar, posicionarse)
+   */
+  cuerpoACuerpo: 'ortogonal' | 'diagonal'
   /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
   jugadores: Jugadores
 }

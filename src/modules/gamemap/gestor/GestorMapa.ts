@@ -580,7 +580,7 @@ export class GestorMapa implements MapaEnJuego {
       const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
       if (!personaje?.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
       const vista = conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes)
-      return { personaje, ...evaluarRecorrido(vista, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: casillasDeEnemigos(this.#mapa, personaje.id), distanciaControl: this.configuracion.distanciaControl }) }
+      return { personaje, ...evaluarRecorrido(vista, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: casillasDeEnemigos(this.#mapa, personaje.id), distanciaControl: this.configuracion.distanciaControl, cuerpoACuerpo: this.configuracion.cuerpoACuerpo }) }
     }
     const evaluado = evaluar()
     if ('motivo' in evaluado) return evaluado.motivo

@@ -224,6 +224,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         medicion={configuracion.medicionMovimiento}
         terrenoPersonajes={configuracion.terrenoPersonajes}
         distanciaControl={configuracion.distanciaControl}
+        cuerpoACuerpo={configuracion.cuerpoACuerpo}
         motivoParaNoActuar={(personaje) => (esNoJugador(personaje) ? gestor.motivoParaNoActuarNoJugador(personaje) : gestor.motivoParaNoActuar(personaje))}
         modoNoJugador={(personaje) => gestor.modoActivacionNoJugador(personaje)}
         jugadorEnTurno={enTurno}

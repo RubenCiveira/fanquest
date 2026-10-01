@@ -16,7 +16,7 @@ const quedan = (n: number): OpcionesMovimiento => ({
   base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: n }] },
   variaciones: [{ id: 'deslizar', nombre: 'Deslizar', tipo: 'normal', accion: mover, tramos: [{ distancia: n }, { distancia: 3, accion: { id: 'deslizar', nombre: 'Deslizar', icono: '💨' } }] }],
 })
-const config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'> = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0 }
+const config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl' | 'cuerpoACuerpo'> = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal' }
 /** Sala de columnas × filas con la escuadra de esos personajes, esos objetos y, si se dice, un orco hostil */
 const sala = (personajes: Personaje[], { objetos = [], orco, columnas = 6, filas = 3 }: { objetos?: Objeto[]; orco?: Casilla; columnas?: number; filas?: number } = {}): Mapa => ({
   estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas, filas }), elementos: objetos }],

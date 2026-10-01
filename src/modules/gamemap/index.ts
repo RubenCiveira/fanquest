@@ -79,6 +79,7 @@ export {
   conZonaDeControl,
   costeDe,
   costesDe,
+  enContacto,
   enElMapa,
   enZonaDeControl,
   evaluarRecorrido,
@@ -90,6 +91,7 @@ export {
   sePuedePasar,
   transitable,
   type MedicionMovimiento,
+  type ReglasDeMovimiento,
   type RecorridoEvaluado,
 } from './movimiento'
 export { casillaDelMuro, largoMuro, orientar } from './orientacion'

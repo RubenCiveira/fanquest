@@ -85,6 +85,7 @@ configuracion: {
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea',
   terrenoPersonajes: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
   distanciaControl: number,
+  cuerpoACuerpo: 'ortogonal' | 'diagonal',
   jugadores: {
     alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
     jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
@@ -137,7 +138,13 @@ configuracion: {
   atravesarla para contactar con el enemigo; destrabarse (`tipo:
   'destrabarse'`) tiene que empezar en ella y terminar fuera de toda zona
   enemiga; y posicionarse (`tipo: 'posicionarse'`) tiene que empezar en ella
-  y terminar pegado a uno de los enemigos que lo traban. Con 0 no hay zona de control. La
+  y terminar pegado a uno de los enemigos que lo traban.
+- `cuerpoACuerpo`: qué casillas están en contacto. Con `ortogonal`, solo las
+  de al lado en recto: un enemigo en diagonal no se puede atacar cuerpo a
+  cuerpo (es a distancia) y hay que posicionarse para atacarle. Con
+  `diagonal`, también las de las esquinas. Vale para el tipo de ataque y
+  para terminar junto a un enemigo (cargar, posicionarse). El banco de
+  pruebas empieza con `ortogonal`. Con 0 no hay zona de control. La
   flecha del arrastre y «Agrupar aquí» buscan rutas que la rodeen; si el
   recorrido entra en ella, se rechaza diciéndolo.
 
@@ -419,8 +426,8 @@ es enemigo, y llama a `atacar` de su clase:
 type Ataque = {
   atacante: PersonajeEnJuego
   objetivo: PersonajeEnJuego
-  tipo: 'cuerpo-a-cuerpo' | 'distancia' // pegados, también en diagonal, sin muro ni esquina en medio; si no, a distancia
-  distancia: number                    // casillas según `medicionMovimiento`, en línea recta y sin obstáculos
+  tipo: 'cuerpo-a-cuerpo' | 'distancia' // en contacto (`cuerpoACuerpo`), sin muro ni esquina en medio; si no, a distancia
+  distancia: number                    // casillas según `medicionMovimiento`, en línea recta y sin obstáculos; en contacto, 1
   recorrido?: number                   // lo que costaría llegar moviéndose (rodeando, con el terreno); sin él, no se puede llegar
   trayectoria: {
     casillas: Casilla[]                // las que cruza la línea de centro a centro, sin las de los dos
@@ -580,6 +587,7 @@ const proveedor: ProveedorMapa = {
     medicionMovimiento: 'ortogonal',
     terrenoPersonajes: 'normal',
     distanciaControl: 1,
+    cuerpoACuerpo: 'ortogonal',
     jugadores: { alianzas: [{ id: 'heroes', nombre: 'Héroes' }], jugadores: [{ id: 'ana', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' }] },
   },
   confirmar: async (mensaje) => window.confirm(mensaje),

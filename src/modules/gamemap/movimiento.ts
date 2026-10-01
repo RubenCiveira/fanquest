@@ -50,6 +50,13 @@ const junto = (a: Casilla, b: Casilla) => Math.abs(a.x - b.x) + Math.abs(a.y - b
 
 const enDiagonal = (a: Casilla, b: Casilla) => Math.abs(a.x - b.x) === 1 && Math.abs(a.y - b.y) === 1
 
+/**
+ * Si dos casillas están en contacto para el cuerpo a cuerpo: pegadas en recto
+ * o, con `cuerpoACuerpo: 'diagonal'`, también en diagonal
+ */
+export const enContacto = (a: Casilla, b: Casilla, cuerpoACuerpo: Configuracion['cuerpoACuerpo']) =>
+  cuerpoACuerpo === 'diagonal' ? distancia(a, b) === 1 : junto(a, b)
+
 /** Distancia contando las diagonales como un paso: 1 es estar junto, también en diagonal */
 const distancia = (a: Casilla, b: Casilla) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
 
@@ -264,6 +271,9 @@ function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefi
   return tramos.every((t) => t >= 0) ? tramos : undefined
 }
 
+/** Las reglas de la configuración que cuentan para planear un movimiento */
+export type ReglasDeMovimiento = Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl' | 'cuerpoACuerpo'>
+
 /** Motivo de `evaluarRecorrido` cuando el recorrido entra en la zona de control de un enemigo sin cargar */
 const EN_ZONA_DE_CONTROL = 'El recorrido entra en la zona de control de un enemigo'
 
@@ -275,7 +285,9 @@ const SIN_SALIR_DE_LA_ZONA = 'Para destrabarse tiene que terminar fuera de la zo
  * mapa, de la suya a la de destino, paso a paso según la `medicion` y
  * cruzando solo puertas abiertas) y en qué tramo cae cada paso. No puede
  * terminar encima de un objeto ni de otro personaje. `enemigos`: sus casillas del
- * mapa, para su zona de control (a `distanciaControl` o menos de alguno):
+ * mapa, para su zona de control (a `distanciaControl` o menos de alguno) y
+ * para terminar en contacto con ellos (`cuerpoACuerpo`: en recto o también
+ * en diagonal):
  * quien empieza en ella está trabado. Un movimiento normal no puede empezar
  * en ella ni entrar; una carga tiene que empezar fuera y puede cruzarla;
  * destrabarse tiene que empezar en ella y terminar fuera; posicionarse tiene
@@ -286,7 +298,12 @@ export function evaluarRecorrido(
   personaje: Personaje,
   recorrido: Casilla[],
   { base, variaciones }: OpcionesMovimiento,
-  { medicion = 'ortogonal', enemigos = [], distanciaControl = 0 }: { medicion?: MedicionMovimiento; enemigos?: Casilla[]; distanciaControl?: number } = {},
+  {
+    medicion = 'ortogonal',
+    enemigos = [],
+    distanciaControl = 0,
+    cuerpoACuerpo = 'diagonal',
+  }: { medicion?: MedicionMovimiento; enemigos?: Casilla[]; distanciaControl?: number; cuerpoACuerpo?: Configuracion['cuerpoACuerpo'] } = {},
 ): RecorridoEvaluado {
   const [salida, ...pasos] = recorrido
   const destino = pasos.at(-1)
@@ -308,16 +325,16 @@ export function evaluarRecorrido(
     normal: !trabado && !entraEnZona,
     carga: !trabado,
     destrabarse: trabado && !terminaEnZona,
-    posicionarse: trabado && loTraban.some((en) => distancia(destino, en) === 1),
+    posicionarse: trabado && loTraban.some((en) => enContacto(destino, en, cuerpoACuerpo)),
   }
-  const permite = (o: OpcionMovimiento) => segunZona[o.tipo] && (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
+  const terminaJunto = enemigos.some((en) => enContacto(destino, en, cuerpoACuerpo))
+  const permite = (o: OpcionMovimiento) => segunZona[o.tipo] && (!o.terminarJuntoAEnemigo || terminaJunto)
   const costes = costesDe(m, recorrido, medicion)
   for (const opcion of opciones) {
     const tramos = tramosDe(opcion, costes)
     if (tramos && permite(opcion)) return { opcion, tramos }
   }
   const llega = (tipo: OpcionMovimiento['tipo']) => opciones.some((o) => o.tipo === tipo && tramosDe(o, costes))
-  const terminaJunto = enemigos.some((en) => distancia(destino, en) === 1)
   if (trabado && terminaJunto && llega('posicionarse')) return { motivo: 'Para posicionarse tiene que pegarse a un enemigo que lo traba' }
   if (trabado && terminaJunto && llega('carga')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: no puede cargar, solo posicionarse junto a quien lo traba` }
   if (trabado && terminaEnZona && llega('destrabarse')) return { motivo: SIN_SALIR_DE_LA_ZONA }
@@ -341,7 +358,7 @@ export function evaluarRecorrido(
  */
 export function planearMovimiento(
   m: Mapa,
-  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>,
+  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl, cuerpoACuerpo }: ReglasDeMovimiento,
   personaje: Personaje,
   destino: Casilla,
   opciones: OpcionesMovimiento,
@@ -350,7 +367,7 @@ export function planearMovimiento(
   if (!desde) return { motivo: `${personaje.nombre} no está colocado en el mapa` }
   const vista = conPersonajes(m, personaje.id, terrenoPersonajes)
   const enemigos = casillasDeEnemigos(m, personaje.id)
-  const reglas = { medicion, enemigos, distanciaControl }
+  const reglas = { medicion, enemigos, distanciaControl, cuerpoACuerpo }
   const directo = ruta(vista, desde, destino, medicion)
   const rodeando = ruta(conZonaDeControl(vista, enemigos, distanciaControl), desde, destino, medicion)
   for (const opcion of [opciones.base, ...opciones.variaciones]) {

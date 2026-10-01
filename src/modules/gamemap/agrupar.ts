@@ -1,7 +1,6 @@
 import { escuadrasDe, todosLosPersonajes } from './activaciones'
-import { conPersonajes, enElMapa, planearMovimiento, sePuedePasar, transitable, type MedicionMovimiento } from './movimiento'
+import { conPersonajes, enElMapa, planearMovimiento, sePuedePasar, transitable, type MedicionMovimiento, type ReglasDeMovimiento } from './movimiento'
 import type { Casilla } from './modelo/casilla'
-import type { Configuracion } from './modelo/configuracion'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionMovimiento, OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import type { Personaje } from './modelo/personaje'
@@ -45,7 +44,7 @@ export type RecorridoParaAgrupar = { recorrido: Casilla[]; opcion: OpcionMovimie
  */
 export function recorridoParaAgrupar(
   m: Mapa,
-  config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>,
+  config: ReglasDeMovimiento,
   lider: Personaje,
   miembro: Personaje,
   opciones: OpcionesMovimiento,

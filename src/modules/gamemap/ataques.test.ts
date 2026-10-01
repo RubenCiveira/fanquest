@@ -26,8 +26,8 @@ const sala = (orco: Casilla, haciaHeroes: Postura = 'hostil', objetos: Objeto[] 
   },
 })
 const orcoDe = (m: Mapa) => m.personajesNoJugadores?.[0] ?? barbaro
-const sinDiagonales = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0 } as const
-const medir = (m: Mapa, config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes'> = sinDiagonales) => medirAtaque(m, config, barbaro, orcoDe(m))
+const sinDiagonales = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal' } as const
+const medir = (m: Mapa, config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'cuerpoACuerpo'> = sinDiagonales) => medirAtaque(m, config, barbaro, orcoDe(m))
 const casilla = (id: string, x: number, y: number): Objeto => ({ id, tipo: 'objeto', nombre: id, columnas: 1, filas: 1, posicion: { x, y } })
 
 describe('enemigo bajo el puntero', () => {
@@ -49,8 +49,16 @@ describe('tipo de ataque', () => {
     expect(medir(sala({ x: 2, y: 1 }))).toMatchObject({ tipo: 'cuerpo-a-cuerpo', distancia: 1 })
   })
 
-  it('pegado en diagonal, también cuerpo a cuerpo', () => {
-    expect(medir(sala({ x: 2, y: 2 }))?.tipo).toBe('cuerpo-a-cuerpo')
+  it('pegado en diagonal, también cuerpo a cuerpo si se permite, a 1', () => {
+    expect(medir(sala({ x: 2, y: 2 }))).toMatchObject({ tipo: 'cuerpo-a-cuerpo', distancia: 1 })
+  })
+
+  it('pegado en diagonal, sin cuerpo a cuerpo en diagonal, es a distancia', () => {
+    expect(medir(sala({ x: 2, y: 2 }), { ...sinDiagonales, cuerpoACuerpo: 'ortogonal' })).toMatchObject({ tipo: 'distancia', distancia: 2 })
+  })
+
+  it('pegado en recto, siempre cuerpo a cuerpo', () => {
+    expect(medir(sala({ x: 2, y: 1 }), { ...sinDiagonales, cuerpoACuerpo: 'ortogonal' })?.tipo).toBe('cuerpo-a-cuerpo')
   })
 
   it('en diagonal con la esquina tapada por dos objetos, a distancia', () => {

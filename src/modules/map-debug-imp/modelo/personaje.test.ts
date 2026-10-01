@@ -358,6 +358,10 @@ describe('atacar trabado', () => {
     expect(barbaro().motivoParaNoAtacar(ataqueA(orco))).toBeUndefined()
   })
 
+  it('trabado, si no llega a quien lo traba, tiene que posicionarse en contacto', () => {
+    expect(barbaro().motivoParaNoAtacar({ ...ataqueA(orco), tipo: 'distancia', distancia: 2 })).toBe('Bárbaro tiene que posicionarse en contacto con Orco para atacarle')
+  })
+
   it('trabado, no puede atacar a otro', () => {
     expect(barbaro().motivoParaNoAtacar(ataqueA(goblin))).toBe('Bárbaro está trabado: solo puede atacar a Orco')
   })
