@@ -9,6 +9,7 @@ import {
   type MapaEnJuego,
   type MovimientoGastado,
   type OpcionesMovimiento,
+  type OpcionMovimiento,
   type Personaje,
   type ResultadoAccion,
 } from '../../gamemap'
@@ -32,6 +33,24 @@ export type DialogosDePrueba = { resolverAtaque: ResolverAtaque; avisar: (aviso:
  * 5; los demás, solo a 1
  */
 export const ALCANCE_DE_PRUEBA: Record<string, number> = { barbaro: 1, enano: 5 }
+
+/** Personajes de prueba que pueden volar: el bárbaro */
+export const VUELAN = ['barbaro']
+
+/**
+ * Volar: 4 casillas sin que le afecte el terreno (el impasable lo cruza como
+ * si fuera normal) y por encima de los muros interiores (no de sus puertas
+ * cerradas ni del muro de la estancia); gasta su propia acción
+ */
+export const VOLAR: OpcionMovimiento = {
+  id: 'volar',
+  nombre: 'Volar',
+  tipo: 'normal',
+  accion: { id: 'volar', nombre: 'Volar', icono: '🪽' },
+  tramos: [{ distancia: 4 }],
+  terreno: { dificil: 1, 'muy-dificil': 1, impasable: 1 },
+  cruzaMuros: true,
+}
 
 /** Un personaje de prueba hace una acción por turno (moverse no cuenta): tras ella, ya no le quedan */
 const TRAS_SU_ACCION: ResultadoAccion = { quedanAcciones: false }
@@ -124,8 +143,12 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     if (trayectoria.coberturas.bloqueante) return `Hay terreno bloqueante entre ${this.nombre} y ${objetivo.nombre}`
   }
 
+  /** `movimientoDePrueba` y, si vuela (`VUELAN`) y aún no se ha movido, `VOLAR` detrás de cargar */
   async opcionesMovimiento(_personaje: Personaje, gastado: MovimientoGastado) {
-    return movimientoDePrueba(gastado)
+    const opciones = movimientoDePrueba(gastado)
+    if (!opciones || !VUELAN.includes(this.id) || gastado.casillas) return opciones
+    const [cargar, ...resto] = opciones.variaciones
+    return { ...opciones, variaciones: [cargar, VOLAR, ...resto] }
   }
 
   async acciones(personaje: Personaje, mapa: MapaEnJuego): Promise<Comando[]> {

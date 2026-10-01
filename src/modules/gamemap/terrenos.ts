@@ -1,6 +1,6 @@
 import type { Casilla } from './modelo/casilla'
 import type { Estancia } from './modelo/estancia'
-import type { Terreno, TipoCobertura, TipoTerreno } from './modelo/terreno'
+import type { CosteDelTerreno, Terreno, TipoCobertura, TipoTerreno } from './modelo/terreno'
 
 /** Lo que cuesta entrar en una casilla de cada terreno (en veces lo que cuesta una normal) */
 export const COSTE_TERRENO: Record<Exclude<TipoTerreno, 'impasable'>, number> = { dificil: 2, 'muy-dificil': 3 }
@@ -23,10 +23,16 @@ export const coberturaEn = (e: Estancia, c: Casilla): TipoCobertura =>
     .filter((t) => cubre(t, c))
     .reduce<TipoCobertura>((mayor, { cobertura = 'ninguna' }) => (ORDEN_COBERTURA.indexOf(cobertura) > ORDEN_COBERTURA.indexOf(mayor) ? cobertura : mayor), 'ninguna')
 
-/** Veces que cuesta entrar en esa casilla de la estancia lo que una normal; infinito si es impasable */
-export function factorDeTerreno(e: Estancia, c: Casilla): number {
-  const tipo = terrenoEn(e, c)?.tipo
-  return tipo ? factorDe(tipo) : 1
+/**
+ * Veces que cuesta entrar en esa casilla de la estancia lo que una normal
+ * (infinito si es impasable); con varios terrenos, el peor. `coste`: lo que
+ * le cuesta a una forma de moverse cada tipo de terreno del mapa (no el que
+ * pone el gestor para trazar, `porReglas`); sin él, el normal
+ */
+export function factorDeTerreno(e: Estancia, c: Casilla, coste: CosteDelTerreno = {}): number {
+  return (e.terrenos ?? [])
+    .filter((t) => cubre(t, c))
+    .reduce((peor, t) => Math.max(peor, (!t.porReglas && coste[t.tipo]) || factorDe(t.tipo)), 1)
 }
 
 /** Por qué el terreno no puede ir en la estancia (se sale o no tiene tamaño), o nada si puede */

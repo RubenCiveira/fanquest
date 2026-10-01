@@ -28,7 +28,7 @@ export type { OpcionesMovimiento, OpcionMovimiento, TramoMovimiento } from './mo
 export type { PersonajeEnJuego } from './modelo/personajeEnJuego'
 export type { PersonajeNoJugador } from './modelo/personajeNoJugador'
 export type { Puerta } from './modelo/puerta'
-export type { Terreno, TipoCobertura, TipoTerreno } from './modelo/terreno'
+export type { CosteDelTerreno, Terreno, TipoCobertura, TipoTerreno } from './modelo/terreno'
 export type { ResultadoAccion } from './modelo/resultadoAccion'
 export type { ResultadoActivacion } from './modelo/resultadoActivacion'
 export type { Ubicacion } from './modelo/ubicacion'
@@ -94,6 +94,7 @@ export {
   sePuedePasar,
   seComunican,
   transitable,
+  type FormaDeMoverse,
   type MedicionMovimiento,
   type ReglasDeMovimiento,
   type RecorridoEvaluado,

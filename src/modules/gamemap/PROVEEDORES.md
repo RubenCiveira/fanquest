@@ -532,6 +532,8 @@ type OpcionMovimiento = {
   accion: Accion                  // la que consume moverse así
   tramos: TramoMovimiento[]       // el primero es el movimiento; los siguientes lo alargan
   terminarJuntoAEnemigo?: boolean // carga
+  terreno?: { dificil?: number; 'muy-dificil'?: number; impasable?: number } // lo que le cuesta cada terreno; con impasable, lo cruza
+  cruzaMuros?: boolean            // cruza por encima los muros interiores (no sus puertas cerradas ni el muro de la estancia)
 }
 
 type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la adicional que consume
@@ -564,6 +566,21 @@ type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la ad
   del banco de pruebas traza con él la flecha del arrastre y «Agrupar aquí»
   busca con él cómo acercar a cada uno; `moverPersonaje` valida el recorrido
   que se le pasa.
+- `terreno`: lo que le cuesta a esa forma de moverse entrar en cada tipo de
+  terreno, en veces una casilla normal (1, como si no hubiera terreno); lo
+  que no diga cuesta lo normal (difícil 2, muy difícil 3, impasable no se
+  pisa) y, con un número para `impasable`, lo cruza (y puede terminar en
+  él). El motor lo usa al buscar la ruta de esa opción, al ver si puede
+  pasar y al calcular lo que cuesta y lo que se apunta. No cambia lo que
+  pone el gestor para trazar (personajes, zona de control): ni volando se
+  pasa por encima de un enemigo ni se entra en su zona de control.
+- `cruzaMuros`: esa forma de moverse cruza los tramos de muro interior como
+  si fueran pasos (volando por encima…). Nunca las puertas interiores
+  cerradas ni el muro de la estancia, que solo se cruza por una puerta
+  abierta. La zona de control, la cobertura y el cuerpo a cuerpo siguen
+  viendo el muro. En el banco de pruebas, el bárbaro puede «Volar» 4
+  casillas sin que le afecte el terreno y por encima de los muros
+  interiores, si aún no se ha movido en el turno.
 - La zona de control (`Configuracion.distanciaControl`) y `terminarJuntoAEnemigo`
   miran las casillas de los enemigos del personaje que se mueve (los de
   alianzas hostiles hacia la suya): solo una carga entra en la zona de control

@@ -134,7 +134,8 @@ mismo sitio.
   «Cambiar a …» y «Terminar turno».
 - **Movimiento**: al arrastrar una ficha, el gestor pregunta a la clase del
   personaje sus `OpcionesMovimiento` (movimiento base y variaciones, en tramos que
-  pueden consumir acciones adicionales). El recorrido vale con la primera
+  pueden consumir acciones adicionales; cada una puede decir lo que le
+  cuesta cada terreno y si cruza los muros interiores, como volar). El recorrido vale con la primera
   opción que lo permite, por todo el mapa cruzando puertas abiertas; si
   consume una acción adicional, antes se pide confirmación. El motor planea
   el camino hasta una casilla (`planearMovimiento`): moviéndose, rodeando la

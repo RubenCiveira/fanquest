@@ -3,7 +3,7 @@ import { conPersonaje, conPersonajeNoJugador, conTurno, numeroDeTurno, todosLosP
 import { esEnemigo, jugadorDe } from './jugadores'
 import { estanciaEn } from './estancias'
 import { cruce } from './muros'
-import { factorDeTerreno, terrenoEn } from './terrenos'
+import { factorDeTerreno } from './terrenos'
 import type { Accion } from './modelo/accion'
 import type { Casilla } from './modelo/casilla'
 import type { Configuracion } from './modelo/configuracion'
@@ -38,6 +38,9 @@ const DIAGONALES: Casilla[] = [
 
 /** Cómo se miden los movimientos (`Configuracion.medicionMovimiento`) */
 export type MedicionMovimiento = Configuracion['medicionMovimiento']
+
+/** Cómo se mueve una forma de moverse por el mapa: lo que le cuesta cada terreno y si cruza muros interiores (`OpcionMovimiento`) */
+export type FormaDeMoverse = Pick<OpcionMovimiento, 'terreno' | 'cruzaMuros'>
 
 /** Pasos posibles desde una casilla: sin diagonales o con ellas */
 const pasosDe = (medicion: MedicionMovimiento) => (medicion === 'ortogonal' ? PASOS : [...PASOS, ...DIAGONALES])
@@ -91,12 +94,13 @@ export function enElMapa(m: Mapa, personaje: Personaje): Casilla | undefined {
 
 /**
  * Si un personaje puede estar en la casilla del mapa: es de una estancia (no de
- * una interior), no es terreno impasable y no la ocupa un objeto. Por encima
- * de otros personajes sí pasa
+ * una interior), no es terreno impasable (salvo que su forma de moverse, con
+ * su `terreno`, le ponga un coste) y no la ocupa un objeto. Por encima de
+ * otros personajes sí pasa
  */
-export function transitable(m: Mapa, c: Casilla): boolean {
+export function transitable(m: Mapa, c: Casilla, { terreno = {} }: FormaDeMoverse = {}): boolean {
   const en = casillaDelMapa(m, c)
-  return !!en && terrenoEn(en.estancia, en.casilla)?.tipo !== 'impasable' && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
+  return !!en && Number.isFinite(factorDeTerreno(en.estancia, en.casilla, terreno)) && !en.estancia.elementos.some((el) => cubre(el, en.casilla))
 }
 
 /** Personajes del mapa enemigos del personaje: los de alianzas hostiles hacia la suya */
@@ -128,7 +132,7 @@ export function conPersonajes(m: Mapa, personaje: string, terrenoPersonajes: Con
   return {
     ...m,
     estancias: m.estancias.map((e) => {
-      const suyos = otros.flatMap(({ p, tipo }) => (p.estancia === e.id && p.casilla ? [{ tipo, posicion: p.casilla, columnas: 1, filas: 1 }] : []))
+      const suyos = otros.flatMap(({ p, tipo }) => (p.estancia === e.id && p.casilla ? [{ tipo, posicion: p.casilla, columnas: 1, filas: 1, porReglas: true }] : []))
       return suyos.length ? { ...e, terrenos: [...(e.terrenos ?? []), ...suyos] } : e
     }),
   }
@@ -182,33 +186,41 @@ export function conZonaDeControl(m: Mapa, enemigos: Casilla[], distanciaControl:
   return {
     ...m,
     estancias: m.estancias.map((e) => {
-      const suyas = zona.flatMap(({ estancia, casilla }) => (estancia.id === e.id ? [{ tipo: 'impasable' as const, posicion: casilla, columnas: 1, filas: 1 }] : []))
+      const suyas = zona.flatMap(({ estancia, casilla }) => (estancia.id === e.id ? [{ tipo: 'impasable' as const, posicion: casilla, columnas: 1, filas: 1, porReglas: true }] : []))
       return suyas.length ? { ...e, terrenos: [...(e.terrenos ?? []), ...suyas] } : e
     }),
   }
 }
 
-/** Veces que cuesta entrar en la casilla del mapa lo que una normal: dos en terreno difícil y tres en muy difícil */
-function factorEn(m: Mapa, c: Casilla) {
+/** Veces que cuesta entrar en la casilla del mapa lo que una normal: dos en terreno difícil y tres en muy difícil, o lo que diga el `terreno` de la forma de moverse */
+function factorEn(m: Mapa, c: Casilla, { terreno = {} }: FormaDeMoverse = {}) {
   const en = casillaDelMapa(m, c)
-  return en ? factorDeTerreno(en.estancia, en.casilla) : 1
+  return en ? factorDeTerreno(en.estancia, en.casilla, terreno) : 1
 }
 
 /**
  * Si dos casillas del mapa de al lado se comunican, sin mirar lo que hay en
  * ellas (terreno, objetos): dentro de una estancia, sin un muro interior en
- * medio (salvo por un paso o una puerta abierta); entre dos, por una puerta
- * abierta en esa arista. En diagonal, solo dentro de una estancia y sin
- * cortar esquinas: comunicadas por las dos casillas de los lados
+ * medio (salvo por un paso o una puerta abierta; con `cruzaMuros`, por
+ * encima de sus tramos de muro, pero no de una puerta cerrada); entre dos,
+ * por una puerta abierta en esa arista. En diagonal, solo dentro de una
+ * estancia y sin cortar esquinas: comunicadas por las dos casillas de los
+ * lados
  */
-export function seComunican(m: Mapa, a: Casilla, b: Casilla): boolean {
+export function seComunican(m: Mapa, a: Casilla, b: Casilla, cruzaMuros = false): boolean {
   const [salida, llegada] = [casillaDelMapa(m, a), casillaDelMapa(m, b)]
   if (!salida || !llegada) return false
   if (enDiagonal(a, b)) {
-    return salida.estancia.id === llegada.estancia.id && [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => seComunican(m, a, lado) && seComunican(m, lado, b))
+    return (
+      salida.estancia.id === llegada.estancia.id &&
+      [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => seComunican(m, a, lado, cruzaMuros) && seComunican(m, lado, b, cruzaMuros))
+    )
   }
   if (!junto(a, b)) return false
-  if (salida.estancia.id === llegada.estancia.id) return cruce(salida.estancia, salida.casilla, llegada.casilla) === 'libre'
+  if (salida.estancia.id === llegada.estancia.id) {
+    const como = cruce(salida.estancia, salida.casilla, llegada.casilla)
+    return como === 'libre' || (cruzaMuros && como === 'muro')
+  }
   const abierta = ({ estancia, casilla }: { estancia: Estancia; casilla: Casilla }, lado: Direccion) =>
     estancia.puertas.some((p) => p.abierta && p.lado === lado && igual(p.casilla)(casilla))
   return abierta(salida, ladoHacia(a, b)) || abierta(llegada, ladoHacia(b, a))
@@ -217,12 +229,14 @@ export function seComunican(m: Mapa, a: Casilla, b: Casilla): boolean {
 /**
  * Si un personaje puede pasar de una casilla del mapa a la de al lado: se
  * comunican (`seComunican`: sin muros en medio, entre estancias por puertas
- * abiertas) y se puede estar en la de llegada. En diagonal (si la medición lo
- * permite), también en las dos casillas de los lados: no se cortan esquinas
+ * abiertas; si la `forma` de moverse cruza muros, también por encima de los
+ * interiores) y se puede estar en la de llegada (`transitable`, con el
+ * terreno de su forma de moverse). En diagonal (si la medición lo permite),
+ * también en las dos casillas de los lados: no se cortan esquinas
  */
-export function sePuedePasar(m: Mapa, a: Casilla, b: Casilla, medicion: MedicionMovimiento = 'ortogonal'): boolean {
-  if (!seComunican(m, a, b) || !transitable(m, b)) return false
-  return !enDiagonal(a, b) || (medicion !== 'ortogonal' && [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => transitable(m, lado)))
+export function sePuedePasar(m: Mapa, a: Casilla, b: Casilla, medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): boolean {
+  if (!seComunican(m, a, b, forma.cruzaMuros) || !transitable(m, b, forma)) return false
+  return !enDiagonal(a, b) || (medicion !== 'ortogonal' && [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => transitable(m, lado, forma)))
 }
 
 /** Lo que cuesta cada paso en diagonal al buscar la ruta: con diagonales que cuentan como uno, algo más, para preferir los rectos a igual coste */
@@ -240,15 +254,17 @@ function falta(a: Casilla, b: Casilla, medicion: MedicionMovimiento) {
  * Ruta más corta (A*) de una casilla del mapa a otra, con los pasos que
  * permite la medición: sin atravesar objetos ni estancias interiores, sin
  * cortar esquinas en diagonal y cruzando de una estancia a otra solo por
- * puertas abiertas. Con las dos casillas, en orden; nada si no se puede llegar
+ * puertas abiertas. `forma`: cómo se mueve (lo que le cuesta cada terreno y
+ * si cruza muros interiores; sin ella, lo normal). Con las dos casillas, en
+ * orden; nada si no se puede llegar
  */
-export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: MedicionMovimiento = 'ortogonal'): Casilla[] | undefined {
+export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): Casilla[] | undefined {
   const clave = ({ x, y }: Casilla) => `${x},${y}`
-  const coste = new Map([[clave(desde), 0]])
+  const acumulado = new Map([[clave(desde), 0]])
   const previa = new Map<string, Casilla>()
   const cerradas = new Set<string>()
   const abiertas = [desde]
-  const prioridad = (c: Casilla) => (coste.get(clave(c)) ?? 0) + falta(c, hasta, medicion)
+  const prioridad = (c: Casilla) => (acumulado.get(clave(c)) ?? 0) + falta(c, hasta, medicion)
   while (abiertas.length) {
     abiertas.sort((a, b) => prioridad(a) - prioridad(b))
     const actual = abiertas.shift()
@@ -261,11 +277,11 @@ export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: Medicion
     cerradas.add(clave(actual))
     for (const paso of pasosDe(medicion)) {
       const c = { x: actual.x + paso.x, y: actual.y + paso.y }
-      if (cerradas.has(clave(c)) || !sePuedePasar(m, actual, c, medicion)) continue
-      const nuevo = (coste.get(clave(actual)) ?? 0) + (enDiagonal(actual, c) ? PESO_DIAGONAL[medicion] : 1) * factorEn(m, c)
-      if (nuevo < (coste.get(clave(c)) ?? Number.POSITIVE_INFINITY)) {
-        if (!coste.has(clave(c))) abiertas.push(c)
-        coste.set(clave(c), nuevo)
+      if (cerradas.has(clave(c)) || !sePuedePasar(m, actual, c, medicion, forma)) continue
+      const nuevo = (acumulado.get(clave(actual)) ?? 0) + (enDiagonal(actual, c) ? PESO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma)
+      if (nuevo < (acumulado.get(clave(c)) ?? Number.POSITIVE_INFINITY)) {
+        if (!acumulado.has(clave(c))) abiertas.push(c)
+        acumulado.set(clave(c), nuevo)
         previa.set(clave(c), actual)
       }
     }
@@ -285,20 +301,21 @@ export const alcance = ({ base, variaciones }: OpcionesMovimiento) =>
 /**
  * Lo que se lleva movido al final de cada paso del recorrido (en casillas del
  * mapa), según la medición: un paso recto cuenta uno y uno en diagonal, uno o
- * √2, por dos si entra en terreno difícil o por tres si es muy difícil
- * (redondeando hacia arriba lo acumulado)
+ * √2, por dos si entra en terreno difícil o por tres si es muy difícil, o lo
+ * que diga el `terreno` de la forma de moverse (redondeando hacia arriba lo
+ * acumulado)
  */
-export function costesDe(m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal'): number[] {
+export function costesDe(m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): number[] {
   let largo = 0
   return recorrido.slice(1).map((c, i) => {
-    largo += (enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c)
+    largo += (enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma)
     // sin arrastrar el error de coma flotante: 2 × √2 no llega a 3
     return Math.ceil(largo - 1e-9)
   })
 }
 
 /** Lo que cuesta el recorrido entero según la medición y el terreno */
-export const costeDe = (m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal') => costesDe(m, recorrido, medicion).at(-1) ?? 0
+export const costeDe = (m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}) => costesDe(m, recorrido, medicion, forma).at(-1) ?? 0
 
 /** Tramo de la opción en que cae cada paso, según lo movido al final de cada uno; nada si no le llegan */
 function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefined {
@@ -347,7 +364,9 @@ export function evaluarRecorrido(
   const donde = enElMapa(m, personaje)
   if (!salida || !donde || !igual(salida)(donde)) return { motivo: `El recorrido tiene que empezar en ${personaje.nombre}` }
   if (!destino) return { motivo: `${personaje.nombre} no se ha movido` }
-  if (pasos.some((c, i) => !sePuedePasar(m, recorrido[i], c, medicion))) return { motivo: 'El recorrido pasa por donde no se puede' }
+  // cada forma de moverse, con lo que le cuesta el terreno: por dónde pasa y cuánto le cuesta
+  const pasa = (o: OpcionMovimiento) => pasos.every((c, i) => sePuedePasar(m, recorrido[i], c, medicion, o))
+  if (![base, ...variaciones].some(pasa)) return { motivo: 'El recorrido pasa por donde no se puede' }
   const otro = todosLosPersonajes(m).find((h) => {
     const suya = h.id !== personaje.id && enElMapa(m, h)
     return !!suya && igual(destino)(suya)
@@ -366,12 +385,12 @@ export function evaluarRecorrido(
   }
   const terminaJunto = enemigos.some((en) => enContacto(destino, en, cuerpoACuerpo))
   const permite = (o: OpcionMovimiento) => segunZona[o.tipo] && (!o.terminarJuntoAEnemigo || terminaJunto)
-  const costes = costesDe(m, recorrido, medicion)
+  const tramosPara = (o: OpcionMovimiento) => (pasa(o) ? tramosDe(o, costesDe(m, recorrido, medicion, o)) : undefined)
   for (const opcion of opciones) {
-    const tramos = tramosDe(opcion, costes)
+    const tramos = tramosPara(opcion)
     if (tramos && permite(opcion)) return { opcion, tramos }
   }
-  const llega = (tipo: OpcionMovimiento['tipo']) => opciones.some((o) => o.tipo === tipo && tramosDe(o, costes))
+  const llega = (tipo: OpcionMovimiento['tipo']) => opciones.some((o) => o.tipo === tipo && tramosPara(o))
   if (trabado && terminaJunto && llega('posicionarse')) return { motivo: 'Para posicionarse tiene que pegarse a un enemigo que lo traba' }
   if (trabado && terminaJunto && llega('carga')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: no puede cargar, solo posicionarse junto a quien lo traba` }
   if (trabado && terminaEnZona && llega('destrabarse')) return { motivo: SIN_SALIR_DE_LA_ZONA }
@@ -386,9 +405,9 @@ export function evaluarRecorrido(
 /**
  * Cómo puede llegar el personaje desde su casilla a la de `destino` (del
  * mapa) con alguna de sus `opciones`, cada una por su mejor camino según las
- * reglas de `config`: las normales, rodeando la zona de control de sus
- * enemigos; las demás (cargar, destrabarse, posicionarse), por el más corto,
- * aunque la crucen. Vale la primera
+ * reglas de `config` y lo que le cuesta el terreno (`OpcionMovimiento.terreno`):
+ * las normales, rodeando la zona de control de sus enemigos; las demás
+ * (cargar, destrabarse, posicionarse), por el más corto, aunque la crucen. Vale la primera
  * que llega (la base y después las variaciones), con su recorrido. Si
  * ninguna, el motivo (que entra en la zona de control, si es lo que lo
  * impide) y el recorrido más corto que se ha intentado, para dibujarlo
@@ -405,10 +424,13 @@ export function planearMovimiento(
   const vista = conPersonajes(m, personaje.id, terrenoPersonajes)
   const enemigos = casillasDeEnemigos(m, personaje.id)
   const reglas = { medicion, enemigos, distanciaControl, cuerpoACuerpo }
+  const conZona = conZonaDeControl(vista, enemigos, distanciaControl)
+  // cada opción por su camino: con lo que le cuesta el terreno, si cruza muros interiores y, si es normal, rodeando la zona de control
+  const caminoPara = (opcion: OpcionMovimiento) => ruta(opcion.tipo === 'normal' ? conZona : vista, desde, destino, medicion, opcion)
   const directo = ruta(vista, desde, destino, medicion)
-  const rodeando = ruta(conZonaDeControl(vista, enemigos, distanciaControl), desde, destino, medicion)
+  const rodeando = ruta(conZona, desde, destino, medicion)
   for (const opcion of [opciones.base, ...opciones.variaciones]) {
-    const recorrido = opcion.tipo === 'normal' ? rodeando : directo
+    const recorrido = caminoPara(opcion)
     const evaluado = recorrido && evaluarRecorrido(vista, personaje, recorrido, { base: opcion, variaciones: [] }, reglas)
     if (recorrido && evaluado && 'opcion' in evaluado) return { recorrido, ...evaluado }
   }
@@ -443,7 +465,7 @@ export function desplazar(m: Mapa, config: Configuracion, personaje: Personaje, 
   if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
   const hecho = {
     opcion: valido.opcion.id,
-    casillas: costeDe(conPersonajes(m, personaje.id, config.terrenoPersonajes), recorrido, config.medicionMovimiento),
+    casillas: costeDe(conPersonajes(m, personaje.id, config.terrenoPersonajes), recorrido, config.medicionMovimiento, valido.opcion),
     acciones: accionesConsumidas(valido),
   }
   const movido = <P extends Personaje>(p: P): P => ({

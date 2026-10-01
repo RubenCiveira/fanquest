@@ -32,8 +32,18 @@ describe('escuadras de prueba', () => {
   })
 
   it('el personaje pregunta por su movimiento con lo que ya ha gastado', async () => {
+    const [enano] = await (await escuadras())[1].personajes()
+    expect(await enano.opcionesMovimiento(enJuego, { casillas: 0, acciones: [] })).toEqual(MOVIMIENTO_DE_PRUEBA)
+  })
+
+  it('el bárbaro, sin haberse movido, también puede volar', async () => {
     const [barbaro] = await (await escuadras())[0].personajes()
-    expect(await barbaro.opcionesMovimiento(enJuego, { casillas: 0, acciones: [] })).toEqual(MOVIMIENTO_DE_PRUEBA)
+    expect((await barbaro.opcionesMovimiento(enJuego, { casillas: 0, acciones: [] }))?.variaciones.map((v) => v.id)).toContain('volar')
+  })
+
+  it('tras moverse, ya no vuela', async () => {
+    const [barbaro] = await (await escuadras())[0].personajes()
+    expect((await barbaro.opcionesMovimiento(enJuego, { casillas: 2, acciones: ['mover'] }))?.variaciones.map((v) => v.id)).not.toContain('volar')
   })
 
   it('moverse sin más no completa la activación', () => {

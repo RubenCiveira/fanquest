@@ -102,7 +102,7 @@ describe('casillas con personajes', () => {
   })
 
   it('el propio personaje no cuenta: solo los demás', () => {
-    expect(conPersonajes(conEnano, 'barbaro', 'dificil').estancias[0].terrenos).toEqual([{ tipo: 'dificil', posicion: { x: 2, y: 0 }, columnas: 1, filas: 1 }])
+    expect(conPersonajes(conEnano, 'barbaro', 'dificil').estancias[0].terrenos).toEqual([{ tipo: 'dificil', posicion: { x: 2, y: 0 }, columnas: 1, filas: 1, porReglas: true }])
   })
 
   it('con personajes difíciles, pasar por encima del enano cuesta dos', () => {

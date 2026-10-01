@@ -13,4 +13,14 @@ export type TipoCobertura = 'ninguna' | 'ligera' | 'pesada' | 'bloqueante'
  * superior izquierda, en casillas de su estancia). Con `imagen` (su URL), esa
  * imagen cubre todas sus casillas; sin ella, se marca según su tipo
  */
-export type Terreno = Medida & { tipo: TipoTerreno; cobertura?: TipoCobertura; posicion: Casilla; imagen?: string }
+export type Terreno = Medida & {
+  tipo: TipoTerreno
+  cobertura?: TipoCobertura
+  posicion: Casilla
+  imagen?: string
+  /** Lo pone el gestor solo para trazar rutas (los personajes, la zona de control), no es del mapa: las opciones de movimiento no cambian lo que cuesta */
+  porReglas?: boolean
+}
+
+/** Veces lo que una casilla normal que le cuesta a una forma de moverse entrar en cada tipo de terreno; con un número, también el impasable se cruza */
+export type CosteDelTerreno = Partial<Record<TipoTerreno, number>>

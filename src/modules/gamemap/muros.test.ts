@@ -7,7 +7,7 @@ import type { Estancia } from './modelo/estancia'
 import type { Mapa } from './modelo/mapa'
 import type { Muro } from './modelo/muro'
 import type { Personaje } from './modelo/personaje'
-import { casillasDeControl, costeDe, enZonaDeControl, ruta, sePuedePasar } from './movimiento'
+import { casillasDeControl, costeDe, enZonaDeControl, planearMovimiento, ruta, sePuedePasar } from './movimiento'
 import { cruce, motivoParaNoAnadirMuro, tramosDe } from './muros'
 import { marcarAbierta, puertaEn } from './puertas'
 import { estaTrabado } from './zonaDeControl'
@@ -194,6 +194,44 @@ describe('zona de control y muros interiores', () => {
       },
     }
     expect(estaTrabado(conOrco, 1, conOrco.escuadras?.[0].personajes[0] ?? personaje('x', { x: 0, y: 0 }))).toBe(false)
+  })
+})
+
+describe('formas de moverse que cruzan muros interiores', () => {
+  const porEncima = { cruzaMuros: true }
+  /** La sala sin el paso: el muro solo se cruza por la puerta (cerrada) */
+  const sinPaso = (): Mapa => ({ estancias: [{ ...sala(), muros: [{ ...muro, pasos: [] }] }] })
+
+  it('cruzan el muro por encima, en recto', () => {
+    expect(ruta(sinPaso(), { x: 1, y: 1 }, { x: 2, y: 1 }, 'ortogonal', porEncima)).toEqual([
+      { x: 1, y: 1 },
+      { x: 2, y: 1 },
+    ])
+  })
+
+  it('no cruzan una puerta interior cerrada', () => {
+    expect(sePuedePasar(sinPaso(), { x: 1, y: 2 }, { x: 2, y: 2 }, 'ortogonal', porEncima)).toBe(false)
+  })
+
+  it('no cruzan el muro de la estancia', () => {
+    const dos: Mapa = { estancias: [crearEstancia({ id: 'a', tipo: 'sala', columnas: 2, filas: 1 }), { ...crearEstancia({ id: 'b', tipo: 'sala', columnas: 2, filas: 1 }), posicion: { x: 2, y: 0 } }] }
+    expect(sePuedePasar(dos, { x: 1, y: 0 }, { x: 2, y: 0 }, 'ortogonal', porEncima)).toBe(false)
+  })
+
+  it('la zona de control sigue sin atravesar el muro', () => {
+    expect(enZonaDeControl(sinPaso(), [{ x: 2, y: 1 }], 1)({ x: 1, y: 1 })).toBe(false)
+  })
+
+  it('el planificador vuela por encima del muro si no hay otro camino', () => {
+    const barbaro = personaje('barbaro', { x: 1, y: 1 })
+    const m = { ...sinPaso(), escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'ana', personajes: [barbaro], turnos: [] }] }
+    const accion = { id: 'mover', nombre: 'Mover', icono: '🥾' }
+    const opciones = {
+      base: { id: 'mover', nombre: 'Mover', tipo: 'normal' as const, accion, tramos: [{ distancia: 6 }] },
+      variaciones: [{ id: 'volar', nombre: 'Volar', tipo: 'normal' as const, accion, tramos: [{ distancia: 4 }], cruzaMuros: true }],
+    }
+    const plan = planearMovimiento(m, { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'ortogonal' }, barbaro, { x: 2, y: 1 }, opciones)
+    expect('opcion' in plan && plan.opcion.id).toBe('volar')
   })
 })
 

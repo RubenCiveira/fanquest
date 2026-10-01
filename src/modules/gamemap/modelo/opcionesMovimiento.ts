@@ -1,4 +1,5 @@
 import type { Accion } from './accion'
+import type { CosteDelTerreno } from './terreno'
 
 /** Parte de un movimiento: hasta `distancia` casillas más; si consume una acción adicional (deslizar…), cuál */
 export type TramoMovimiento = { distancia: number; accion?: Accion }
@@ -23,8 +24,22 @@ export type OpcionMovimiento = {
   tipo: 'normal' | 'carga' | 'destrabarse' | 'posicionarse'
   accion: Accion
   tramos: TramoMovimiento[]
-  /** Tiene que terminar junto a un enemigo (también en diagonal) */
+  /** Tiene que terminar junto a un enemigo (en contacto, según `Configuracion.cuerpoACuerpo`) */
   terminarJuntoAEnemigo?: boolean
+  /**
+   * Lo que le cuesta a esta forma de moverse entrar en cada tipo de terreno
+   * (veces una casilla normal: 1, como si no estuviera); con un número para
+   * `impasable`, lo cruza. Lo que no diga, lo normal: difícil 2, muy difícil 3
+   * e impasable no se pisa. No cambia lo que pone el gestor (personajes, zona
+   * de control)
+   */
+  terreno?: CosteDelTerreno
+  /**
+   * Si cruza por encima de los muros interiores de una estancia (volando…),
+   * como si fueran pasos. Nunca las puertas interiores cerradas ni el muro de
+   * la estancia, que solo se cruza por una puerta abierta
+   */
+  cruzaMuros?: boolean
 }
 
 /**

@@ -7,7 +7,7 @@ import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import { turnoDePersonaje } from './activaciones'
-import { accionesConsumidas, casillasDeEnemigos, conPersonajes, conZonaDeControl, planearMovimiento, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
+import { accionesConsumidas, casillasDeEnemigos, conPersonajes, conZonaDeControl, planearMovimiento, sePuedePasar, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
 import { orientar } from './orientacion'
 import type { Jugadores } from './modelo/jugadores'
 
@@ -438,6 +438,67 @@ describe('planear un movimiento', () => {
       personajesNoJugadores: [...(conGoblin.personajesNoJugadores ?? []), { id: 'goblin', nombre: 'Goblin', estancia: 'sala', casilla: { x: 8, y: 3 }, turnos: [], jugador: 'oscuridad' }],
     }
     expect(opcionDe(planearMovimiento(m, reglas(), pegado, { x: 7, y: 3 }, conPosicionarse))).toBe('Para posicionarse tiene que pegarse a un enemigo que lo traba')
+  })
+})
+
+describe('lo que le cuesta el terreno a cada forma de moverse', () => {
+  /** Sala de 12 × 4 con el bárbaro en 0,0 y una pared impasable en la columna 2, de arriba abajo, y barro difícil en 1,0 */
+  const conPared = (): Mapa => {
+    const m = sala()
+    return {
+      ...m,
+      estancias: [
+        {
+          ...m.estancias[0],
+          terrenos: [
+            { tipo: 'impasable', posicion: { x: 2, y: 0 }, columnas: 1, filas: 4 },
+            { tipo: 'dificil', posicion: { x: 1, y: 0 }, columnas: 1, filas: 1 },
+          ],
+        },
+      ],
+    }
+  }
+  const volar = { id: 'volar', nombre: 'Volar', tipo: 'normal' as const, accion: mover, tramos: [{ distancia: 4 }], terreno: { dificil: 1, 'muy-dificil': 1, impasable: 1 } }
+  const fila: Casilla[] = [0, 1, 2, 3].map((x) => ({ x, y: 0 }))
+  const reglas = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 1, cuerpoACuerpo: 'diagonal' } as const
+
+  it('sin decir nada, el impasable no se cruza', () => {
+    expect(evaluarRecorrido(conPared(), barbaro, fila, opciones)).toEqual({ motivo: 'El recorrido pasa por donde no se puede' })
+  })
+
+  it('una forma de moverse con coste para el impasable lo cruza', () => {
+    expect(evaluarRecorrido(conPared(), barbaro, fila, { ...opciones, variaciones: [volar] })).toMatchObject({ opcion: { id: 'volar' } })
+  })
+
+  it('el terreno le cuesta lo que diga: volando, el barro y la pared cuestan 1', () => {
+    expect([costeDe(conPared(), fila, 'ortogonal', volar), costeDe(conPared(), [{ x: 0, y: 0 }, { x: 1, y: 0 }])]).toEqual([3, 2])
+  })
+
+  it('el planificador lleva volando a donde solo se llega cruzando lo impasable', () => {
+    const plan = planearMovimiento(conPared(), reglas, barbaro, { x: 3, y: 0 }, { ...opciones, variaciones: [volar] })
+    expect('opcion' in plan && [plan.opcion.id, plan.recorrido.length]).toEqual(['volar', 4])
+  })
+
+  it('lo que pone el gestor para trazar no lo cambia: volando no se pasa por encima de un enemigo', () => {
+    const m = { ...sala(), personajesNoJugadores: [{ id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 1, y: 0 }, turnos: [], jugador: 'oscuridad' }] }
+    const vista = conPersonajes(
+      {
+        ...m,
+        jugadores: {
+          alianzas: [
+            { id: 'heroes', nombre: 'Héroes' },
+            { id: 'monstruos', nombre: 'Monstruos', posturas: { heroes: 'hostil' } },
+          ],
+          jugadores: [
+            { id: 'j1', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' },
+            { id: 'oscuridad', nombre: 'La Oscuridad', tipo: 'ia', alianza: 'monstruos' },
+          ],
+        },
+      },
+      'barbaro',
+      'normal',
+    )
+    expect(sePuedePasar(vista, { x: 0, y: 0 }, { x: 1, y: 0 }, 'ortogonal', volar)).toBe(false)
   })
 })
 

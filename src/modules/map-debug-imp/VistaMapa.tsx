@@ -698,7 +698,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
           recorrido={arrastre.recorrido}
           evaluado={arrastre.fuera ? { motivo: 'Fuera de alcance' } : evaluado}
           marcador={marcador}
-          coste={costeDe(vistoPor(arrastre.ficha), arrastre.recorrido, medicion)}
+          coste={costeDe(vistoPor(arrastre.ficha), arrastre.recorrido, medicion, evaluado && 'opcion' in evaluado ? evaluado.opcion : undefined)}
         />
       )}
     </svg>
