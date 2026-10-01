@@ -69,3 +69,20 @@ describe('puertas de prueba', () => {
     expect([puertas.objetosEn(donde).length, puertas.objetosEn({ ...donde, casilla: { x: 0, y: 0 } })]).toEqual([1, []])
   })
 })
+
+describe('puertas interiores de prueba', () => {
+  const interior: Puerta = { id: 'p', tipo: 'interior', casilla: { x: 1, y: 1 }, lado: 'derecha' }
+
+  it('se asocian a las casillas de sus dos lados', () => {
+    const puertas = new PuertasDePrueba()
+    puertas.asociar({ ...crearEstancia({ id: 'estancia-1', tipo: 'sala', columnas: 4, filas: 3 }), puertas: [interior] })
+    expect([puertas.en({ estancia: 'estancia-1', casilla: { x: 1, y: 1 } }), puertas.en({ estancia: 'estancia-1', casilla: { x: 2, y: 1 } })].every(Boolean)).toBe(true)
+  })
+
+  it('cerrada, ofrece abrirla; abierta, nada', () => {
+    expect([new PuertaDePrueba(donde, 'interior').acciones(mapaCon(interior)).map((a) => a.id), new PuertaDePrueba(donde, 'interior').acciones(mapaCon({ ...interior, abierta: true }))]).toEqual([
+      ['abrir-puerta'],
+      [],
+    ])
+  })
+})

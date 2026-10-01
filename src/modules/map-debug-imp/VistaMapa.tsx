@@ -26,6 +26,7 @@ import {
   type Jugador,
   type Personaje,
   type Mapa,
+  tramosDe,
   type MedicionMovimiento,
   type ReglasDeMovimiento,
   type ModoActivacion,
@@ -449,6 +450,14 @@ function CapaEstancia({
       {estanciasDe(estancia).map(({ estancia: e, origen }) => (
         <g key={e.id} className="vista-muros">
           <rect x={origen.x * LADO} y={origen.y * LADO} width={e.columnas * LADO} height={e.filas * LADO} />
+          {(e.muros ?? []).flatMap((muro) =>
+            tramosDe(muro).map(({ casilla, lado }, i) => {
+              // el borde derecho o de abajo de la casilla
+              const [x, y] = [(origen.x + casilla.x + 1) * LADO, (origen.y + casilla.y + 1) * LADO]
+              const [x1, y1] = lado === 'derecha' ? [x, y - LADO] : [x - LADO, y]
+              return <line key={`${muro.id}-${i}`} className={muro.pasos?.includes(i) ? 'paso' : undefined} x1={x1} y1={y1} x2={x} y2={y} />
+            }),
+          )}
           <text x={origen.x * LADO + 4} y={origen.y * LADO + 12}>
             {e.id}
           </text>

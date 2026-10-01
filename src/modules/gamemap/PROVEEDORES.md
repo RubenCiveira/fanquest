@@ -130,8 +130,11 @@ configuracion: {
   cierra el paso a los demás. Nunca se termina encima de otro personaje. Si
   además hay terreno en esa casilla, cuenta el peor de los dos. La casilla de
   un enemigo es siempre impasable.
-- `distanciaControl`: casillas alrededor de un personaje que controla (en
-  recto o en diagonal; 1, las de su lado). Quien está en la zona de control
+- `distanciaControl`: casillas alrededor de un personaje que controla: a
+  las que llega en esos pasos o menos, en recto o en diagonal (1, las de su
+  lado), sin atravesar muros (ni los interiores, salvo por sus pasos y
+  puertas abiertas, ni los de la estancia, salvo por una puerta abierta). El
+  terreno, los objetos y los personajes no la cortan. Quien está en la zona de control
   de un enemigo está trabado en cuerpo a cuerpo. Un movimiento normal no
   puede empezar en ella (trabado, no se mueve así) ni entrar; una carga
   (`tipo: 'carga'`) tiene que empezar fuera (trabado no se carga) y puede
@@ -195,6 +198,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
   muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
   terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
+  muros?: [{ desde: { x, y }, hasta: { x, y }, pasos?: number[], puertas?: number[], cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante' }],
   personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, vida?: number, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
 ```
@@ -220,6 +224,26 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   difícil de cruzar y dar cobertura ligera. Si una casilla tiene varios
   terrenos, cuenta la mayor. El banco de pruebas la pone según el tipo:
   difícil, ligera; muy difícil, pesada; impasable, bloqueante.
+- Los `muros` son muros dentro de la estancia: no la dividen en estancias ni
+  ocupan casillas, van por los bordes entre ellas, en línea recta de la
+  esquina `desde` a la `hasta` (coordenadas de esquina: la superior izquierda
+  de la casilla x,y es x,y; tiene que ir por dentro, no por el muro
+  exterior). Cada tramo (desde 0, de arriba abajo o de izquierda a derecha)
+  puede ser:
+  - muro: no se cruza;
+  - paso (`pasos`): se cruza limpiamente;
+  - puerta (`puertas`): una `Puerta` de tipo `interior`, cerrada al
+    construirla. Cerrada no se cruza; abierta, limpiamente.
+
+  Las rutas lo rodean por sus pasos y puertas abiertas; si aísla una zona
+  sin ninguno, no se puede salir de ella. En diagonal no se corta su
+  esquina. A los disparos que lo cruzan, el muro les da cobertura
+  bloqueante; una puerta cerrada, también; una abierta, ligera; y un paso,
+  la `cobertura` del muro (sin ella, ligera). No hay cuerpo a cuerpo a través de un muro ni de
+  una puerta cerrada, sí por un paso o una puerta abierta. La zona de
+  control tampoco lo atraviesa. La vista lo
+  dibuja como los muros de la estancia (los pasos, en discontinuo). El banco
+  de pruebas tiene un «Muro de prueba» vertical por el medio de la sala.
 - Los `personajesNoJugadores`, cada uno de un `jugador` (enemigos si su
   alianza es hostil), aparecen en la
   estancia: en su `casilla`, o en una al azar de su `zona` o, sin ninguna de
@@ -364,7 +388,11 @@ sin esperar a `activar`; en una escuadra de un solo personaje, en cuanto él
 se queda sin acciones.
 
 `abrirPuerta` llama a `describirEstancia` con el muro de entrada, añade la
-estancia pegada a la puerta y la marca `abierta` con su `destino`. Falla si no
+estancia pegada a la puerta y la marca `abierta` con su `destino`. Una
+puerta `interior` (de un muro de dentro de la estancia) no da a otra
+estancia: solo se abre, y se encuentra (`puertaEn`) y se abre desde la
+casilla de cualquiera de sus dos lados. El banco de pruebas ofrece «Abrir
+puerta» a quien esté a un lado de una cerrada. Falla si no
 hay puerta, si ya está abierta o si el proveedor rechaza: entonces la puerta
 sigue cerrada.
 
@@ -433,7 +461,7 @@ type Ataque = {
     casillas: Casilla[]                // las que cruza la línea de centro a centro, sin las de los dos
     aliados: number                    // personajes en ellas que no son enemigos del atacante
     enemigos: number
-    coberturas: { ninguna: number; ligera: number; pesada: number; bloqueante: number } // casillas que dan cada cobertura
+    coberturas: { ninguna: number; ligera: number; pesada: number; bloqueante: number } // casillas y muros interiores que dan cada cobertura
     objetos: number                    // casillas con objetos o muebles
     muros: number                      // muros que cruza: entre estancias sin puerta abierta, o fuera de ellas
   }

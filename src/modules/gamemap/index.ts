@@ -9,7 +9,7 @@ export type { ClaseDeEscuadra } from './modelo/claseDeEscuadra'
 export type { ClaseDePersonaje } from './modelo/claseDePersonaje'
 export { esComando, type Comando } from './modelo/comando'
 export type { Configuracion } from './modelo/configuracion'
-export type { DescripcionElemento, DescripcionEstancia, DescripcionMueble } from './modelo/descripcionEstancia'
+export type { DescripcionElemento, DescripcionEstancia, DescripcionMueble, DescripcionMuro } from './modelo/descripcionEstancia'
 export type { DescripcionPersonaje, DescripcionPersonajeNoJugador } from './modelo/descripcionPersonaje'
 export { OPUESTA, type Direccion } from './modelo/direccion'
 export type { Elemento, Mueble, Objeto } from './modelo/elemento'
@@ -19,6 +19,7 @@ export type { Personaje, TurnoDePersonaje } from './modelo/personaje'
 export type { Jugador, TipoJugador } from './modelo/jugador'
 export type { Jugadores } from './modelo/jugadores'
 export type { Mapa } from './modelo/mapa'
+export type { Arista, Muro } from './modelo/muro'
 export type { MapaEnJuego } from './modelo/mapaEnJuego'
 export type { Medida } from './modelo/medida'
 export type { MovimientoGastado } from './modelo/movimientoGastado'
@@ -66,6 +67,7 @@ export { conVidaReducida, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje,
 export { anadirPersonajesNoJugadores, huecoDePersonaje, sitioParaPersonaje } from './apariciones'
 export { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores, postura } from './jugadores'
 export { apoyosDe, estaTrabado, trabadoPor } from './zonaDeControl'
+export { aristaEntre, alOtroLado, coberturaDeArista, cruce, motivoParaNoAnadirMuro, muroEnArista, puertaEnArista, tramosDe } from './muros'
 export { construirEstancia } from './construccion'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
 export { anidar, crearEstancia, estanciaEn, estanciasDe, motivoParaNoAnidar } from './estancias'
@@ -74,6 +76,7 @@ export {
   accionesConsumidas,
   alcance,
   casillaDelMapa,
+  casillasDeControl,
   casillasDeEnemigos,
   conPersonajes,
   conZonaDeControl,
@@ -89,6 +92,7 @@ export {
   planearMovimiento,
   ruta,
   sePuedePasar,
+  seComunican,
   transitable,
   type MedicionMovimiento,
   type ReglasDeMovimiento,

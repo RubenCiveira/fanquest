@@ -5,21 +5,31 @@ import type { Mapa } from './modelo/mapa'
 import type { Medida } from './modelo/medida'
 import type { Puerta } from './modelo/puerta'
 import type { Ubicacion } from './modelo/ubicacion'
+import { alOtroLado } from './muros'
 import { casillaDelMuro, largoMuro } from './orientacion'
 
 const igual = (a: Casilla, b: Casilla) => a.x === b.x && a.y === b.y
 
-/** Puerta de esa casilla de una estancia del mapa (no interior), si la hay */
+/**
+ * Puerta de esa casilla de una estancia del mapa (no interior), si la hay: la
+ * de su muro exterior en esa casilla o una de sus muros interiores a uno de
+ * sus lados (se llega por cualquiera de los dos)
+ */
 export const puertaEn = (m: Mapa, { estancia, casilla }: Ubicacion): Puerta | undefined =>
-  m.estancias.find((e) => e.id === estancia)?.puertas.find((p) => igual(p.casilla, casilla))
+  m.estancias
+    .find((e) => e.id === estancia)
+    ?.puertas.find((p) => igual(p.casilla, casilla) || (p.tipo === 'interior' && igual(alOtroLado(p), casilla)))
 
-/** Marca abierta la puerta de esa casilla, hacia la estancia `destino` */
-export const marcarAbierta = (m: Mapa, { estancia, casilla }: Ubicacion, destino: string): Mapa => ({
-  ...m,
-  estancias: m.estancias.map((e) =>
-    e.id === estancia ? { ...e, puertas: e.puertas.map((p) => (igual(p.casilla, casilla) ? { ...p, abierta: true, destino } : p)) } : e,
-  ),
-})
+/** Marca abierta la puerta de esa casilla (`puertaEn`), hacia la estancia `destino` */
+export function marcarAbierta(m: Mapa, ubicacion: Ubicacion, destino: string): Mapa {
+  const puerta = puertaEn(m, ubicacion)
+  return {
+    ...m,
+    estancias: m.estancias.map((e) =>
+      e.id === ubicacion.estancia ? { ...e, puertas: e.puertas.map((p) => (p.id === puerta?.id ? { ...p, abierta: true, destino } : p)) } : e,
+    ),
+  }
+}
 
 const PASO: Record<Direccion, Casilla> = { arriba: { x: 0, y: -1 }, abajo: { x: 0, y: 1 }, izquierda: { x: -1, y: 0 }, derecha: { x: 1, y: 0 } }
 

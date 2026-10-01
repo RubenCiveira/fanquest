@@ -16,6 +16,7 @@ import {
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION } from './mapas'
 import { monstruosDePruebaDeTipo } from './monstruos'
+import { murosDePrueba } from './muros'
 import { terrenosDePrueba } from './terrenos'
 import { VistaMapa } from './VistaMapa'
 
@@ -49,6 +50,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
   const [elementos, setElementos] = useState<DescripcionElemento[]>([])
   const [muebles, setMuebles] = useState<DescripcionMueble[]>([])
   const [conTerreno, setConTerreno] = useState(true)
+  const [conMuro, setConMuro] = useState(false)
   const inicial = !mapa
   const [monstruosDisponibles, setMonstruosDisponibles] = useState<Monstruo[]>([])
   const [solitarios, setSolitarios] = useState(1)
@@ -85,6 +87,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
     elementos,
     muebles,
     terrenos: conTerreno ? terrenosDePrueba(tamano) : [],
+    muros: conMuro ? murosDePrueba(tamano) : [],
     personajesNoJugadores: monstruos,
   }
   const cambiarElemento = (i: number, cambio: Partial<DescripcionElemento>) =>
@@ -171,6 +174,11 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
         <label className="map-debug-casilla-marcar">
           <input type="checkbox" checked={conTerreno} onChange={(e) => setConTerreno(e.target.checked)} />
           Terreno de prueba: barro difícil, zarzas muy difíciles, un pilar impasable y escombros con imagen (los que quepan)
+        </label>
+
+        <label className="map-debug-casilla-marcar">
+          <input type="checkbox" checked={conMuro} onChange={(e) => setConMuro(e.target.checked)} />
+          Muro de prueba: vertical por el medio, con un paso arriba y una puerta cerrada a media altura (solo se cruza por el paso o la puerta abierta; a los disparos los bloquea, salvo por el paso o la puerta abierta, que dan cobertura ligera)
         </label>
 
         <fieldset className="map-debug-configuracion">

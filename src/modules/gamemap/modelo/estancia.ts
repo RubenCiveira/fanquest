@@ -2,6 +2,7 @@ import type { Casilla } from './casilla'
 import type { Direccion } from './direccion'
 import type { Elemento } from './elemento'
 import type { Medida } from './medida'
+import type { Muro } from './muro'
 import type { Puerta } from './puerta'
 import type { Terreno } from './terreno'
 
@@ -28,5 +29,7 @@ export type Estancia = Medida & {
   flags?: string[]
   /** Zonas de terreno difícil o impasable (sin ellas, todo es terreno normal) */
   terrenos?: Terreno[]
+  /** Muros dentro de la estancia, por los bordes entre casillas (sus puertas, en `puertas`) */
+  muros?: Muro[]
   estancias: Estancia[]
 }

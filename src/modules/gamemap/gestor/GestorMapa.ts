@@ -428,6 +428,12 @@ export class GestorMapa implements MapaEnJuego {
     const { x, y } = ubicacion.casilla
     if (!puerta) throw new Error(`No hay ninguna puerta en la casilla ${x},${y} de «${ubicacion.estancia}»`)
     if (puerta.abierta) throw new Error(`La puerta «${puerta.id}» de «${ubicacion.estancia}» ya está abierta`)
+    const misma = puerta.tipo === 'interior' ? this.#estancia(ubicacion.estancia) : undefined
+    if (misma) {
+      // la de un muro interior no da a otra estancia: solo se abre
+      this.#cambiar(marcarAbierta(this.#mapa, ubicacion, misma.id))
+      return misma
+    }
     const nueva = await this.#nuevaEstancia(ubicacion)
     this.#cambiar(marcarAbierta(this.#mapa, ubicacion, nueva.id))
     return nueva

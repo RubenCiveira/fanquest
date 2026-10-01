@@ -4,13 +4,13 @@ import { enElMapa, enemigosDe, enZonaDeControl } from './movimiento'
 import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
 
-/** Enemigos colocados en cuya zona de control (a `distanciaControl` o menos) está el personaje: los que lo traban en cuerpo a cuerpo. Ninguno si no está colocado */
+/** Enemigos colocados en cuya zona de control (a `distanciaControl` pasos o menos, sin atravesar muros) está el personaje: los que lo traban en cuerpo a cuerpo. Ninguno si no está colocado */
 export function trabadoPor(m: Mapa, distanciaControl: number, personaje: Personaje): Personaje[] {
   const suya = enElMapa(m, personaje)
   if (!suya) return []
   return enemigosDe(m, personaje.id).filter((en) => {
     const donde = enElMapa(m, en)
-    return !!donde && enZonaDeControl([donde], distanciaControl)(suya)
+    return !!donde && enZonaDeControl(m, [donde], distanciaControl)(suya)
   })
 }
 
@@ -19,7 +19,8 @@ export const estaTrabado = (m: Mapa, distanciaControl: number, personaje: Person
 
 /**
  * Personajes colocados en la zona de control del personaje (a
- * `distanciaControl` o menos, en recto o en diagonal) que lo consideran
+ * `distanciaControl` pasos o menos, en recto o en diagonal y sin atravesar
+ * muros) que lo consideran
  * aliado: su alianza es aliada de la suya, o es la misma
  */
 export function apoyosDe(m: Mapa, distanciaControl: number, personaje: Personaje): Personaje[] {
@@ -29,6 +30,6 @@ export function apoyosDe(m: Mapa, distanciaControl: number, personaje: Personaje
   return todosLosPersonajes(m).filter((p) => {
     const otra = jugadorDe(m, p.id)?.alianza
     const donde = enElMapa(m, p)
-    return p.id !== personaje.id && !!otra && !!donde && postura(m, otra, alianza) === 'aliada' && enZonaDeControl([donde], distanciaControl)(suya)
+    return p.id !== personaje.id && !!otra && !!donde && postura(m, otra, alianza) === 'aliada' && enZonaDeControl(m, [donde], distanciaControl)(suya)
   })
 }

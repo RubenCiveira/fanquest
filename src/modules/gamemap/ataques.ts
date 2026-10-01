@@ -1,6 +1,7 @@
 import { conPersonaje, conPersonajeNoJugador, todosLosPersonajes } from './activaciones'
 import { esEnemigo, jugadorDe } from './jugadores'
 import { casillaDelMapa, conPersonajes, costeDe, enContacto, enElMapa, ruta, sePuedePasar } from './movimiento'
+import { aristaEntre, coberturaDeArista } from './muros'
 import { coberturaEn } from './terrenos'
 import type { Ataque, Trayectoria } from './modelo/ataque'
 import type { Casilla } from './modelo/casilla'
@@ -8,6 +9,7 @@ import type { Configuracion } from './modelo/configuracion'
 import type { Elemento } from './modelo/elemento'
 import type { Estancia } from './modelo/estancia'
 import type { Mapa } from './modelo/mapa'
+import type { TipoCobertura } from './modelo/terreno'
 import type { Personaje } from './modelo/personaje'
 
 const misma = (a: Casilla | undefined, b: Casilla) => !!a && a.x === b.x && a.y === b.y
@@ -62,6 +64,33 @@ function cruzaMuro(m: Mapa, a: Casilla, b: Casilla): boolean {
   return !abierta(desde, lado(a, b)) && !abierta(hasta, lado(b, a))
 }
 
+const ORDEN_COBERTURA: TipoCobertura[] = ['ninguna', 'ligera', 'pesada', 'bloqueante']
+
+/**
+ * Cobertura del muro interior que cruza la línea entre dos casillas seguidas
+ * del mapa, en la misma estancia; nada si no cruza ninguno. Por una esquina
+ * (en diagonal), solo si el muro la atraviesa de verdad: los dos caminos en
+ * recto por las casillas de los lados cruzan muro, y cuenta la menor
+ */
+function coberturaDeMuro(m: Mapa, a: Casilla, b: Casilla): TipoCobertura | undefined {
+  const [desde, hasta] = [casillaDelMapa(m, a), casillaDelMapa(m, b)]
+  if (!desde || !hasta || desde.estancia.id !== hasta.estancia.id) return
+  const e = desde.estancia
+  const borde = (x: Casilla, y: Casilla) => {
+    const arista = aristaEntre(x, y)
+    return arista && coberturaDeArista(e, arista)
+  }
+  const [da, db] = [desde.casilla, hasta.casilla]
+  if (da.x === db.x || da.y === db.y) return borde(da, db)
+  const porLosLados = [{ x: db.x, y: da.y }, { x: da.x, y: db.y }].map((lado) => {
+    const coberturas = [borde(da, lado), borde(lado, db)].flatMap((c) => c ?? [])
+    return coberturas.length ? coberturas.reduce((mayor, c) => (ORDEN_COBERTURA.indexOf(c) > ORDEN_COBERTURA.indexOf(mayor) ? c : mayor)) : undefined
+  })
+  const [uno, otro] = porLosLados
+  if (!uno || !otro) return
+  return ORDEN_COBERTURA.indexOf(uno) < ORDEN_COBERTURA.indexOf(otro) ? uno : otro
+}
+
 /** Lo que cruza la línea del ataque del atacante al objetivo (ver `Trayectoria`); nada si alguno no está colocado */
 export function trayectoria(m: Mapa, atacante: Personaje, objetivo: Personaje): Trayectoria | undefined {
   const [desde, hasta] = [enElMapa(m, atacante), enElMapa(m, objetivo)]
@@ -79,6 +108,7 @@ export function trayectoria(m: Mapa, atacante: Personaje, objetivo: Personaje): 
     coberturas[coberturaEn(suya.estancia, suya.casilla)]++
     if (suya.estancia.elementos.some((el) => el.posicion && cubre(el, suya.casilla))) objetos++
   }
+  for (const c of linea.slice(1).flatMap((b, i) => coberturaDeMuro(m, linea[i], b) ?? [])) coberturas[c]++
   return {
     casillas,
     aliados: personajes.filter((p) => !esEnemigo(m, p.id, alianza)).length,

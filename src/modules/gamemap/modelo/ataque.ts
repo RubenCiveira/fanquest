@@ -11,7 +11,9 @@ export type TipoAtaque = 'cuerpo-a-cuerpo' | 'distancia'
  * si pasa justo por una esquina, sigue en diagonal) y, en ellas, cuántos
  * personajes aliados (los que no son enemigos del atacante) y enemigos hay,
  * cuántas casillas dan cada tipo de cobertura (la mayor de sus terrenos, si
- * hay varios; sin terreno, ninguna), cuántas tienen
+ * hay varios; sin terreno, ninguna) y cuántos muros interiores la dan (los
+ * que cruza la línea, con la del muro o bloqueante por una puerta cerrada),
+ * cuántas tienen
  * objetos y cuántos muros cruza (de una estancia a otra sin una puerta
  * abierta en medio, o fuera de las estancias)
  */

@@ -1,4 +1,4 @@
-import type { Casilla, Estancia, MapaEnJuego, Puerta, Ubicacion } from '../../gamemap'
+import { alOtroLado, type Casilla, type Estancia, type MapaEnJuego, type Puerta, type Ubicacion } from '../../gamemap'
 import { AbrirPuerta } from './abrirPuerta'
 import type { AccionDeObjeto, ObjetoDePrueba } from './objeto'
 
@@ -25,9 +25,9 @@ export class PuertaDePrueba implements ObjetoDePrueba {
     await mapa.abrirPuerta(this.#donde)
   }
 
-  /** Para el personaje que la pisa: abrirla, si es una salida cerrada */
+  /** Para el personaje que la pisa (o está a un lado, si es de un muro interior): abrirla, si es una salida o una puerta interior cerrada */
   acciones(mapa: MapaEnJuego): AccionDeObjeto[] {
-    return this.tipo === 'salida' && !this.abierta(mapa) ? [new AbrirPuerta(this, mapa)] : []
+    return this.tipo !== 'entrada' && !this.abierta(mapa) ? [new AbrirPuerta(this, mapa)] : []
   }
 }
 
@@ -37,10 +37,16 @@ const clave = (estancia: string, { x, y }: Casilla) => `${estancia}:${x},${y}`
 export class PuertasDePrueba {
   #puertas = new Map<string, PuertaDePrueba>()
 
-  /** Asocia una puerta de prueba a cada puerta de la estancia (volver a asociarla no cambia nada) */
+  /**
+   * Asocia una puerta de prueba a cada puerta de la estancia (volver a
+   * asociarla no cambia nada): las de un muro interior, a las casillas de sus
+   * dos lados, que es desde donde se abren
+   */
   asociar(estancia: Estancia) {
-    for (const { casilla, tipo } of estancia.puertas) {
-      this.#puertas.set(clave(estancia.id, casilla), new PuertaDePrueba({ estancia: estancia.id, casilla }, tipo))
+    for (const puerta of estancia.puertas) {
+      for (const casilla of puerta.tipo === 'interior' ? [puerta.casilla, alOtroLado(puerta)] : [puerta.casilla]) {
+        this.#puertas.set(clave(estancia.id, casilla), new PuertaDePrueba({ estancia: estancia.id, casilla }, puerta.tipo))
+      }
     }
   }
 

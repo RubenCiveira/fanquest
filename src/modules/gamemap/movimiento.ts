@@ -2,6 +2,7 @@ import { apuntarAccion } from './acciones'
 import { conPersonaje, conPersonajeNoJugador, conTurno, numeroDeTurno, todosLosPersonajes, turnoDePersonaje } from './activaciones'
 import { esEnemigo, jugadorDe } from './jugadores'
 import { estanciaEn } from './estancias'
+import { cruce } from './muros'
 import { factorDeTerreno, terrenoEn } from './terrenos'
 import type { Accion } from './modelo/accion'
 import type { Casilla } from './modelo/casilla'
@@ -134,10 +135,37 @@ export function conPersonajes(m: Mapa, personaje: string, terrenoPersonajes: Con
 }
 
 /** Si una casilla del mapa está en la zona de control de alguno de los enemigos (sus casillas): a `distanciaControl` o menos, en recto o en diagonal */
-export const enZonaDeControl =
-  (enemigos: Casilla[], distanciaControl: number) =>
-  (c: Casilla): boolean =>
-    distanciaControl > 0 && enemigos.some((en) => distancia(c, en) <= distanciaControl)
+/**
+ * Casillas del mapa en la zona de control de un personaje en `origen`: a las
+ * que se llega desde la suya en `distanciaControl` pasos o menos, en recto o
+ * en diagonal, sin atravesar muros (`seComunican`); con la suya. El terreno,
+ * los objetos y los personajes no la cortan
+ */
+export function casillasDeControl(m: Mapa, origen: Casilla, distanciaControl: number): Casilla[] {
+  const clave = ({ x, y }: Casilla) => `${x},${y}`
+  const vistas = new Set([clave(origen)])
+  let borde = [origen]
+  const zona = [origen]
+  for (let paso = 0; paso < distanciaControl; paso++) {
+    borde = borde.flatMap((c) =>
+      [...PASOS, ...DIAGONALES].flatMap((d) => {
+        const vecina = { x: c.x + d.x, y: c.y + d.y }
+        if (vistas.has(clave(vecina)) || !seComunican(m, c, vecina)) return []
+        vistas.add(clave(vecina))
+        return [vecina]
+      }),
+    )
+    zona.push(...borde)
+  }
+  return zona
+}
+
+/** Si una casilla del mapa está en la zona de control (`casillasDeControl`) de alguno de los enemigos (sus casillas) */
+export function enZonaDeControl(m: Mapa, enemigos: Casilla[], distanciaControl: number): (c: Casilla) => boolean {
+  if (distanciaControl <= 0) return () => false
+  const zona = new Set(enemigos.flatMap((en) => casillasDeControl(m, en, distanciaControl)).map(({ x, y }) => `${x},${y}`))
+  return ({ x, y }) => zona.has(`${x},${y}`)
+}
 
 /**
  * El mapa con la zona de control de los enemigos (sus casillas) como terreno
@@ -145,12 +173,11 @@ export const enZonaDeControl =
  */
 export function conZonaDeControl(m: Mapa, enemigos: Casilla[], distanciaControl: number): Mapa {
   if (distanciaControl <= 0 || !enemigos.length) return m
-  const lado = 2 * distanciaControl + 1
   const zona = enemigos.flatMap((en) =>
-    Array.from({ length: lado * lado }, (_, i) => {
-      const suya = casillaDelMapa(m, { x: en.x - distanciaControl + (i % lado), y: en.y - distanciaControl + Math.floor(i / lado) })
+    casillasDeControl(m, en, distanciaControl).flatMap((c) => {
+      const suya = casillaDelMapa(m, c)
       return suya ? [suya] : []
-    }).flat(),
+    }),
   )
   return {
     ...m,
@@ -168,24 +195,34 @@ function factorEn(m: Mapa, c: Casilla) {
 }
 
 /**
- * Si un personaje puede pasar de una casilla del mapa a la de al lado: dentro de
- * la misma estancia o, entre dos, cruzando una puerta abierta en esa arista.
- * En diagonal (si la medición lo permite), solo dentro de una estancia y sin
- * cortar esquinas: tiene que poder pasarse por las dos casillas en ortogonal
+ * Si dos casillas del mapa de al lado se comunican, sin mirar lo que hay en
+ * ellas (terreno, objetos): dentro de una estancia, sin un muro interior en
+ * medio (salvo por un paso o una puerta abierta); entre dos, por una puerta
+ * abierta en esa arista. En diagonal, solo dentro de una estancia y sin
+ * cortar esquinas: comunicadas por las dos casillas de los lados
  */
-export function sePuedePasar(m: Mapa, a: Casilla, b: Casilla, medicion: MedicionMovimiento = 'ortogonal'): boolean {
+export function seComunican(m: Mapa, a: Casilla, b: Casilla): boolean {
+  const [salida, llegada] = [casillaDelMapa(m, a), casillaDelMapa(m, b)]
+  if (!salida || !llegada) return false
   if (enDiagonal(a, b)) {
-    const [salida, llegada] = [casillaDelMapa(m, a), casillaDelMapa(m, b)]
-    if (medicion === 'ortogonal' || !salida || !llegada || salida.estancia.id !== llegada.estancia.id || !transitable(m, b)) return false
-    return [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((esquina) => sePuedePasar(m, a, esquina) && sePuedePasar(m, esquina, b))
+    return salida.estancia.id === llegada.estancia.id && [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => seComunican(m, a, lado) && seComunican(m, lado, b))
   }
-  const salida = casillaDelMapa(m, a)
-  const llegada = casillaDelMapa(m, b)
-  if (!junto(a, b) || !salida || !llegada || !transitable(m, b)) return false
-  if (salida.estancia.id === llegada.estancia.id) return true
+  if (!junto(a, b)) return false
+  if (salida.estancia.id === llegada.estancia.id) return cruce(salida.estancia, salida.casilla, llegada.casilla) === 'libre'
   const abierta = ({ estancia, casilla }: { estancia: Estancia; casilla: Casilla }, lado: Direccion) =>
     estancia.puertas.some((p) => p.abierta && p.lado === lado && igual(p.casilla)(casilla))
   return abierta(salida, ladoHacia(a, b)) || abierta(llegada, ladoHacia(b, a))
+}
+
+/**
+ * Si un personaje puede pasar de una casilla del mapa a la de al lado: se
+ * comunican (`seComunican`: sin muros en medio, entre estancias por puertas
+ * abiertas) y se puede estar en la de llegada. En diagonal (si la medición lo
+ * permite), también en las dos casillas de los lados: no se cortan esquinas
+ */
+export function sePuedePasar(m: Mapa, a: Casilla, b: Casilla, medicion: MedicionMovimiento = 'ortogonal'): boolean {
+  if (!seComunican(m, a, b) || !transitable(m, b)) return false
+  return !enDiagonal(a, b) || (medicion !== 'ortogonal' && [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => transitable(m, lado)))
 }
 
 /** Lo que cuesta cada paso en diagonal al buscar la ruta: con diagonales que cuentan como uno, algo más, para preferir los rectos a igual coste */
@@ -318,9 +355,9 @@ export function evaluarRecorrido(
   if (otro) return { motivo: `No se puede terminar encima de ${otro.nombre}` }
 
   const opciones = [base, ...variaciones]
-  const enZona = enZonaDeControl(enemigos, distanciaControl)
+  const enZona = enZonaDeControl(m, enemigos, distanciaControl)
   const [trabado, entraEnZona, terminaEnZona] = [enZona(salida), pasos.some(enZona), enZona(destino)]
-  const loTraban = enemigos.filter((en) => enZonaDeControl([en], distanciaControl)(salida))
+  const loTraban = enemigos.filter((en) => enZonaDeControl(m, [en], distanciaControl)(salida))
   const segunZona: Record<OpcionMovimiento['tipo'], boolean> = {
     normal: !trabado && !entraEnZona,
     carga: !trabado,
@@ -380,7 +417,7 @@ export function planearMovimiento(
     return 'motivo' in evaluado ? evaluado.motivo : 'Ninguna forma de moverse permite ese recorrido'
   }
   // trabado (solo puede salir o posicionarse, por el camino corto), o si por el camino corto lo que lo impide es la zona de control, es lo que importa
-  const trabado = enZonaDeControl(enemigos, distanciaControl)(desde)
+  const trabado = enZonaDeControl(vista, enemigos, distanciaControl)(desde)
   if (directo && (!rodeando || trabado || motivoDe(directo) === EN_ZONA_DE_CONTROL)) return { motivo: motivoDe(directo), recorrido: directo }
   return rodeando ? { motivo: motivoDe(rodeando), recorrido: rodeando } : { motivo: 'No se puede llegar ahí' }
 }

@@ -34,8 +34,9 @@ export interface MapaEnJuego {
   marcarFlagMueble(mueble: string, flag: string): string | undefined
   /**
    * Abre la puerta de esa casilla: pide al proveedor la estancia a la que da
-   * y la marca abierta hacia ella. Falla si no hay puerta, ya está abierta o
-   * el proveedor no da la estancia (la puerta sigue cerrada)
+   * y la marca abierta hacia ella; si es de un muro interior, solo la abre (y
+   * devuelve su estancia). Falla si no hay puerta, ya está abierta o el
+   * proveedor no da la estancia (la puerta sigue cerrada)
    */
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia>
   /**

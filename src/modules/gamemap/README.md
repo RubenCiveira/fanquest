@@ -24,7 +24,7 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
-  `jugadores.ts`, `agrupar.ts`, `ataques.ts`, `zonaDeControl.ts`), cada una con sus tests.
+  `jugadores.ts`, `agrupar.ts`, `ataques.ts`, `zonaDeControl.ts`, `muros.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
@@ -59,7 +59,14 @@ mismo sitio.
   se abre desde una puerta, por el muro que encaja con ella.
 - **Puerta**: va en una arista del muro exterior, no dentro de una casilla:
   la casilla del borde y el `lado` por el que se sale de ella. Al abrirla, la
-  estancia de detrás se pega a ella y las dos quedan abiertas.
+  estancia de detrás se pega a ella y las dos quedan abiertas. Las de un muro
+  interior solo se abren.
+- **Muro interior**: separador dentro de una estancia, por los bordes entre
+  casillas (no ocupa ninguna), en línea recta. No se cruza salvo por sus
+  pasos y sus puertas abiertas: si aísla una zona sin ninguno, no se puede
+  salir de ella. La zona de control tampoco lo atraviesa. A los disparos les
+  da cobertura bloqueante (ligera por una puerta abierta y la suya por un
+  paso).
 - **Terreno**: zona de una estancia difícil (entrar en cada casilla cuesta
   dos), muy difícil (tres) o impasable, con o sin imagen que la cubra. La
   ruta de un personaje lo tiene en cuenta y lo rodea si sale más barato.

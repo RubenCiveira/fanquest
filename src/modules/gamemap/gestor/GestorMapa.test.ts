@@ -942,6 +942,17 @@ describe('gestor del mapa: jugadores', () => {
   })
 })
 
+describe('gestor del mapa: puertas interiores', () => {
+  /** La sala de prueba con un muro vertical por el medio y una puerta en su tramo central (casilla 1,1, lado derecho) */
+  const conMuro = { ...sala, muros: [{ desde: { x: 2, y: 0 }, hasta: { x: 2, y: 3 }, puertas: [1] }] }
+
+  it('abrir una puerta de un muro interior solo la abre: no pide otra estancia', async () => {
+    const { gestor, p } = await conInicial(conMuro)
+    const misma = await gestor.abrirPuerta({ estancia: 'estancia-1', casilla: { x: 2, y: 1 } })
+    expect([misma.id, p.describirEstancia.mock.calls.length, gestor.puertaEn({ estancia: 'estancia-1', casilla: { x: 1, y: 1 } })?.abierta]).toEqual(['estancia-1', 1, true])
+  })
+})
+
 describe('gestor del mapa: puertas', () => {
   /** La salida de la sala de prueba (4 × 3, hacia abajo): en medio del muro de abajo */
   const salida = { estancia: 'estancia-1', casilla: { x: 2, y: 2 } }
