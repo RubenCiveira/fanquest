@@ -21,6 +21,8 @@ const mapaCon = (puerta?: Puerta): MapaEnJuego => ({
   anadirMuebles: vi.fn(),
   cambiarJugadores: vi.fn(),
   terminarTurno: vi.fn(),
+  personaje: () => undefined,
+  personajesEn: () => [],
 })
 const salida: Puerta = { id: 'salida-1', tipo: 'salida', casilla: donde.casilla, lado: 'abajo' }
 

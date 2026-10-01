@@ -10,6 +10,7 @@ import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
 import type { Direccion } from '../modelo/direccion'
 import type { Estancia } from '../modelo/estancia'
 import type { Personaje } from '../modelo/personaje'
+import type { PersonajeEnJuego } from '../modelo/personajeEnJuego'
 import type { Jugador } from '../modelo/jugador'
 import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
@@ -57,15 +58,15 @@ const gritar = { id: 'gritar', nombre: 'Gritar', icono: '📣', exec: vi.fn(asyn
  * Todos atacan con `atacar`, que no hace nada si no se cambia
  */
 function proveedor(descripcion = sala, conElfo = false) {
-  const acciones = vi.fn(async (_personaje: Personaje, _mapa: MapaEnJuego): Promise<Accion[]> => [gritar])
-  const opcionesMovimiento = vi.fn(async (_personaje: Personaje, _gastado: MovimientoGastado) => opciones)
+  const acciones = vi.fn(async (_personaje: PersonajeEnJuego, _mapa: MapaEnJuego): Promise<Accion[]> => [gritar])
+  const opcionesMovimiento = vi.fn(async (_personaje: PersonajeEnJuego, _gastado: MovimientoGastado) => opciones)
   const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
   const atacar = vi.fn(async (_ataque: Ataque, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
   const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', vida: 4, opcionesMovimiento, acciones, atacar }
   const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar }
   return {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: REPARTO } as const,
+    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: REPARTO } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
     describirEstancia: vi.fn(async (_mapa?: Mapa, _entrada?: Direccion) => descripcion),
     estanciaCreada: vi.fn((_estancia: Estancia, _mapa: MapaEnJuego) => {}),
@@ -157,7 +158,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: REPARTO } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: REPARTO } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -218,7 +219,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
   it('las acciones se piden a la clase del personaje, con su estado y el mapa', async () => {
     const { gestor, p, barbaro } = await conInicial()
     await gestor.accionesDisponibles('rojos', 'barbaro')
-    expect(p.acciones.mock.lastCall).toEqual([barbaro(), gestor])
+    expect(p.acciones.mock.lastCall).toMatchObject([barbaro(), gestor])
   })
 
   it('sin un personaje pulsado solo están las del gestor', async () => {
@@ -301,7 +302,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
 describe('gestor del mapa: movimiento', () => {
   it('pregunta a la clase del personaje cómo puede moverse, con su estado y sin nada gastado', async () => {
     const { gestor, p, barbaro } = await conInicial(amplia)
-    expect([await gestor.opcionesMovimiento('barbaro'), p.opcionesMovimiento.mock.lastCall]).toEqual([opciones, [barbaro(), { casillas: 0, acciones: [] }]])
+    expect([await gestor.opcionesMovimiento('barbaro'), p.opcionesMovimiento.mock.lastCall]).toMatchObject([opciones, [barbaro(), { casillas: 0, acciones: [] }]])
   })
 
   it('dentro del movimiento base, mueve sin preguntar y lo apunta en el turno del personaje', async () => {
@@ -720,6 +721,70 @@ describe('gestor del mapa: ataques de personajes no jugadores', () => {
   })
 })
 
+describe('gestor del mapa: personajes en juego', () => {
+  /** El bárbaro y el enano de los rojos en 1,1 y 2,1, con zona de control de una casilla */
+  function conZona() {
+    const p = proveedor()
+    const gestor = new GestorMapa(
+      { ...p, configuracion: { ...p.configuracion, distanciaControl: 1 } },
+      {
+        estancias: [{ id: 'sala', tipo: 'sala', columnas: 5, filas: 3, puertas: [], elementos: [], estancias: [] }],
+        escuadras: [
+          {
+            id: 'rojos',
+            nombre: 'Rojos',
+            jugador: 'j1',
+            personajes: [
+              { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] },
+              { id: 'enano', nombre: 'Enano', estancia: 'sala', casilla: { x: 2, y: 1 }, turnos: [] },
+            ],
+            turnos: [],
+          },
+        ],
+        jugadores: REPARTO,
+        turno: 1,
+      },
+    )
+    const conOrco = () => gestor.anadirPersonajes('sala', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: { x: 0, y: 1 } }])
+    return { gestor, p, conOrco }
+  }
+
+  it('la clase recibe al personaje trabado si está en la zona de control de un enemigo', async () => {
+    const { gestor, p, conOrco } = conZona()
+    conOrco()
+    await gestor.accionesDisponibles('rojos', 'barbaro')
+    expect(p.acciones.mock.lastCall?.[0].estaTrabado()).toBe(true)
+  })
+
+  it('con sus apoyos: los aliados en su zona de control', () => {
+    const { gestor } = conZona()
+    expect(gestor.personaje('barbaro')?.conApoyos().map((a) => a.id)).toEqual(['enano'])
+  })
+
+  it('sus apoyos también son personajes en juego', () => {
+    const { gestor, conOrco } = conZona()
+    conOrco()
+    expect(gestor.personaje('barbaro')?.conApoyos()[0].estaTrabado()).toBe(false)
+  })
+
+  it('se calcula al preguntarlo, con el mapa de ese momento', () => {
+    const { gestor, conOrco } = conZona()
+    const barbaro = gestor.personaje('barbaro')
+    conOrco()
+    expect(barbaro?.estaTrabado()).toBe(true)
+  })
+
+  it('el mapa en juego da los personajes de una estancia', () => {
+    const { gestor, conOrco } = conZona()
+    conOrco()
+    expect(gestor.personajesEn('sala').map((p) => [p.id, p.estaTrabado()])).toEqual([
+      ['barbaro', true],
+      ['enano', false],
+      ['orco', false],
+    ])
+  })
+})
+
 describe('gestor del mapa: jugadores', () => {
   it('la estancia inicial guarda el reparto de jugadores de la configuración', async () => {
     const { gestor } = await conInicial()
@@ -886,7 +951,7 @@ describe('gestor del mapa: puertas', () => {
   })
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', jugadores: REPARTO } as const }
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, jugadores: REPARTO } as const }
     const gestor = new GestorMapa(p, {
       estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
       escuadras: [

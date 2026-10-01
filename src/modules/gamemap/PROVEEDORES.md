@@ -83,6 +83,7 @@ configuracion: {
   modosActivacion: 'normal' | 'agresivo-sigiloso',
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea',
   terrenoPersonajes: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
+  distanciaControl: number,
   jugadores: {
     alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
     jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
@@ -127,6 +128,12 @@ configuracion: {
   cierra el paso a los demás. Nunca se termina encima de otro personaje. Si
   además hay terreno en esa casilla, cuenta el peor de los dos. La casilla de
   un enemigo es siempre impasable.
+- `distanciaControl`: casillas alrededor de un personaje que controla (en
+  recto o en diagonal; 1, las de su lado). Ningún movimiento puede entrar en
+  la zona de control de un enemigo, salvo una carga (`tipo: 'carga'`), que
+  puede atravesarla para contactar con él. Con 0 no hay zona de control. La
+  flecha del arrastre y «Agrupar aquí» buscan rutas que la rodeen; si el
+  recorrido entra en ella, se rechaza diciéndolo.
 
 El gestor lee `configuracion` cada vez que la necesita: si el proveedor la
 expone con un getter, un cambio vale al momento (el banco de pruebas tiene un
@@ -240,8 +247,8 @@ interface ClaseDePersonaje {
   nombre: string
   imagenVtt?: string // URL de la ficha VTT vista desde arriba
   vida?: number      // puntos de vida con los que empieza
-  opcionesMovimiento(personaje: Personaje, gastado: MovimientoGastado): Promise<OpcionesMovimiento | undefined>
-  acciones(personaje: Personaje, mapa: MapaEnJuego): Promise<Accion[]>
+  opcionesMovimiento(personaje: PersonajeEnJuego, gastado: MovimientoGastado): Promise<OpcionesMovimiento | undefined>
+  acciones(personaje: PersonajeEnJuego, mapa: MapaEnJuego): Promise<Accion[]>
   atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion>
 }
 ```
@@ -305,6 +312,8 @@ interface Comando extends Accion {
 
 interface MapaEnJuego {
   readonly mapa: Mapa                                  // el mapa tal como está
+  personaje(id: string): PersonajeEnJuego | undefined  // cualquier personaje del mapa, en juego
+  personajesEn(estancia: string): PersonajeEnJuego[]   // los de esa estancia, en juego
   puertaEn(ubicacion: Ubicacion): Puerta | undefined   // la puerta de esa casilla
   tieneFlag(estancia: string, flag: string): boolean   // marcas de estado de una estancia (`sin_trampas`…)
   marcarFlag(estancia: string, flag: string): string | undefined
@@ -363,6 +372,29 @@ En el banco de pruebas (`map-debug-imp/modelo/`):
   estado del mapa si aún le queda su acción: si no, lo avisa en un diálogo y
   se cancela; si sí, la hace y resuelve `{ quedanAcciones: false }`.
 
+## Personajes en juego: trabados y apoyos
+
+Las clases no reciben el estado tal cual (`Personaje`, que se guarda como
+JSON) sino un `PersonajeEnJuego`: el estado más lo que el gestor sabe de él en
+el mapa, calculado al preguntarlo (con el mapa de ese momento):
+
+```ts
+type PersonajeEnJuego = Personaje & {
+  estaTrabado(): boolean           // en la zona de control (`distanciaControl`) de algún enemigo: trabado en cuerpo a cuerpo
+  conApoyos(): PersonajeEnJuego[]  // los que están en su zona de control y lo consideran aliado (alianza aliada o la misma)
+}
+```
+
+Lo reciben `acciones` y `opcionesMovimiento` (el personaje), `atacar` (el
+atacante y el objetivo) y la función de `atacarNoJugador`. Para cualquier
+otro personaje, `MapaEnJuego` da `personaje(id)` y `personajesEn(estancia)`,
+también en juego. Los apoyos son personajes en juego: se puede seguir
+preguntando (¿está trabado el que me apoya?). Con `distanciaControl: 0`
+nadie está trabado ni tiene apoyos.
+
+El banco de pruebas lo pinta en la consola en cada ataque: si el atacante y
+el objetivo están trabados y quiénes los apoyan.
+
 ## Ataques: ClaseDePersonaje.atacar
 
 Durante la activación de un personaje, al arrastrar su ficha sobre la de un
@@ -373,8 +405,8 @@ es enemigo, y llama a `atacar` de su clase:
 
 ```ts
 type Ataque = {
-  atacante: Personaje
-  objetivo: Personaje
+  atacante: PersonajeEnJuego
+  objetivo: PersonajeEnJuego
   tipo: 'cuerpo-a-cuerpo' | 'distancia' // pegados, también en diagonal, sin muro ni esquina en medio; si no, a distancia
   distancia: number                    // casillas según `medicionMovimiento`, en línea recta y sin obstáculos
   recorrido?: number                   // lo que costaría llegar moviéndose (rodeando, con el terreno); sin él, no se puede llegar
@@ -438,10 +470,9 @@ type OpcionesMovimiento = { base: OpcionMovimiento; variaciones: OpcionMovimient
 type OpcionMovimiento = {
   id: string
   nombre: string                  // se muestra junto a la flecha
-  tipo: 'normal' | 'carga'        // la carga se dibuja en otro color
+  tipo: 'normal' | 'carga'        // la carga se dibuja en otro color y es la única que entra en la zona de control de un enemigo
   accion: Accion                  // la que consume moverse así
   tramos: TramoMovimiento[]       // el primero es el movimiento; los siguientes lo alargan
-  alejarseDeEnemigos?: number     // no pasar ni terminar a esa distancia o menos (1: junto)
   terminarJuntoAEnemigo?: boolean // carga
 }
 
@@ -462,9 +493,11 @@ type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la ad
 - Al mover, el gestor apunta el movimiento en el turno del personaje y las
   acciones que consume (la de la opción y la de cada tramo adicional usado)
   en el de su escuadra; si no había empezado, empieza su activación.
-- `alejarseDeEnemigos` y `terminarJuntoAEnemigo` miran las casillas de los
-  enemigos del personaje que se mueve (los de alianzas hostiles hacia la suya): una opción de carga solo vale si termina junto a uno.
-  Por encima de un enemigo no se pasa.
+- La zona de control (`Configuracion.distanciaControl`) y `terminarJuntoAEnemigo`
+  miran las casillas de los enemigos del personaje que se mueve (los de
+  alianzas hostiles hacia la suya): solo una carga entra en la zona de control
+  y, con `terminarJuntoAEnemigo`, solo vale si termina junto a uno. Por
+  encima de un enemigo no se pasa.
 
 ## Ejemplo completo
 
@@ -510,6 +543,7 @@ const proveedor: ProveedorMapa = {
     modosActivacion: 'agresivo-sigiloso',
     medicionMovimiento: 'ortogonal',
     terrenoPersonajes: 'normal',
+    distanciaControl: 1,
     jugadores: { alianzas: [{ id: 'heroes', nombre: 'Héroes' }], jugadores: [{ id: 'ana', nombre: 'Ana', tipo: 'humano', alianza: 'heroes' }] },
   },
   confirmar: async (mensaje) => window.confirm(mensaje),

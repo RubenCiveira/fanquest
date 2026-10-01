@@ -5,6 +5,7 @@ import type { Elemento } from './elemento'
 import type { Jugadores } from './jugadores'
 import type { Mapa } from './mapa'
 import type { Personaje } from './personaje'
+import type { PersonajeEnJuego } from './personajeEnJuego'
 import type { PersonajeNoJugador } from './personajeNoJugador'
 import type { Puerta } from './puerta'
 import type { Ubicacion } from './ubicacion'
@@ -13,6 +14,10 @@ import type { Ubicacion } from './ubicacion'
 export interface MapaEnJuego {
   /** El mapa tal como está ahora */
   readonly mapa: Mapa
+  /** El personaje con ese id (de escuadra o no jugador), en juego: para saber si está trabado, sus apoyos… */
+  personaje(id: string): PersonajeEnJuego | undefined
+  /** Los personajes de esa estancia (colocados o en su zona de espera), en juego */
+  personajesEn(estancia: string): PersonajeEnJuego[]
   /** Puerta de esa casilla, si la hay */
   puertaEn(ubicacion: Ubicacion): Puerta | undefined
   /** Si esa estancia tiene marcada esa bandera de estado */

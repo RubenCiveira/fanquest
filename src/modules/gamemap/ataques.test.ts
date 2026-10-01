@@ -26,7 +26,7 @@ const sala = (orco: Casilla, haciaHeroes: Postura = 'hostil', objetos: Objeto[] 
   },
 })
 const orcoDe = (m: Mapa) => m.personajesNoJugadores?.[0] ?? barbaro
-const sinDiagonales = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } as const
+const sinDiagonales = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0 } as const
 const medir = (m: Mapa, config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes'> = sinDiagonales) => medirAtaque(m, config, barbaro, orcoDe(m))
 const casilla = (id: string, x: number, y: number): Objeto => ({ id, tipo: 'objeto', nombre: id, columnas: 1, filas: 1, posicion: { x, y } })
 

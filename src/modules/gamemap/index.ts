@@ -24,6 +24,7 @@ export type { Medida } from './modelo/medida'
 export type { MovimientoGastado } from './modelo/movimientoGastado'
 export type { MovimientoHecho } from './modelo/movimientoHecho'
 export type { OpcionesMovimiento, OpcionMovimiento, TramoMovimiento } from './modelo/opcionesMovimiento'
+export type { PersonajeEnJuego } from './modelo/personajeEnJuego'
 export type { PersonajeNoJugador } from './modelo/personajeNoJugador'
 export type { Puerta } from './modelo/puerta'
 export type { Terreno, TipoCobertura, TipoTerreno } from './modelo/terreno'
@@ -64,6 +65,7 @@ export {
 export { conVidaReducida, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
 export { anadirPersonajesNoJugadores, huecoDePersonaje, sitioParaPersonaje } from './apariciones'
 export { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores, postura } from './jugadores'
+export { apoyosDe, estaTrabado } from './zonaDeControl'
 export { construirEstancia } from './construccion'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
 export { anidar, crearEstancia, estanciaEn, estanciasDe, motivoParaNoAnidar } from './estancias'
@@ -74,9 +76,11 @@ export {
   casillaDelMapa,
   casillasDeEnemigos,
   conPersonajes,
+  conZonaDeControl,
   costeDe,
   costesDe,
   enElMapa,
+  enZonaDeControl,
   evaluarRecorrido,
   gastadoPor,
   desplazar,

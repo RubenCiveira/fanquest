@@ -7,7 +7,7 @@ import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import { turnoDePersonaje } from './activaciones'
-import { accionesConsumidas, casillasDeEnemigos, conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
+import { accionesConsumidas, casillasDeEnemigos, conPersonajes, conZonaDeControl, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
 import { orientar } from './orientacion'
 import type { Jugadores } from './modelo/jugadores'
 
@@ -24,7 +24,7 @@ const sala = (objetos: Objeto[] = [], otros: Personaje[] = []): Mapa => ({
 
 const mover = { id: 'mover', nombre: 'Mover', icono: '🥾' }
 const opciones: OpcionesMovimiento = {
-  base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 6 }], alejarseDeEnemigos: 1 },
+  base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: 6 }] },
   variaciones: [
     { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar', icono: '🐂' }, tramos: [{ distancia: 8 }], terminarJuntoAEnemigo: true },
     {
@@ -33,7 +33,6 @@ const opciones: OpcionesMovimiento = {
       tipo: 'normal',
       accion: mover,
       tramos: [{ distancia: 6 }, { distancia: 3, accion: { id: 'deslizar', nombre: 'Deslizar', icono: '💨' } }],
-      alejarseDeEnemigos: 1,
     },
   ],
 }
@@ -91,10 +90,32 @@ describe('opciones de movimiento', () => {
     expect(evaluarRecorrido(sala(), barbaro, recto(8), opciones, { enemigos: [{ x: 6, y: 2 }] })).toMatchObject({ opcion: { id: 'cargar' } })
   })
 
-  it('no puede pasar junto a un enemigo sin cargar', () => {
-    expect(evaluarRecorrido(sala(), barbaro, recto(4), opciones, { enemigos: [{ x: 1, y: 1 }] })).toEqual({
-      motivo: 'Ninguna forma de moverse permite ese recorrido',
+  it('no puede pasar por la zona de control de un enemigo sin cargar', () => {
+    expect(evaluarRecorrido(sala(), barbaro, recto(4), opciones, { enemigos: [{ x: 1, y: 1 }], distanciaControl: 1 })).toEqual({
+      motivo: 'El recorrido entra en la zona de control de un enemigo',
     })
+  })
+
+  it('sin zona de control, pasa junto a los enemigos', () => {
+    expect(evaluarRecorrido(sala(), barbaro, recto(4), opciones, { enemigos: [{ x: 1, y: 1 }], distanciaControl: 0 })).toMatchObject({ opcion: { id: 'mover' } })
+  })
+
+  it('una zona de control mayor llega más lejos', () => {
+    const lejos = [{ x: 2, y: 1 }]
+    expect([
+      evaluarRecorrido(sala(), barbaro, recto(4), opciones, { enemigos: lejos, distanciaControl: 1 }),
+      evaluarRecorrido(sala(), barbaro, recto(4), opciones, { enemigos: lejos, distanciaControl: 2 }),
+    ]).toEqual([expect.objectContaining({ opcion: expect.objectContaining({ id: 'mover' }) }), { motivo: 'El recorrido entra en la zona de control de un enemigo' }])
+  })
+
+  it('una carga sí atraviesa la zona de control hasta el enemigo', () => {
+    // baja por la columna 0 pasando junto al enemigo en 1,1 y acaba junto a él en 0,2
+    expect(evaluarRecorrido(sala(), barbaro, recto(2), opciones, { enemigos: [{ x: 1, y: 1 }], distanciaControl: 1 })).toMatchObject({ opcion: { id: 'cargar' } })
+  })
+
+  it('la ruta que rodea la zona de control no entra en ella', () => {
+    const m = conZonaDeControl(sala(), [{ x: 3, y: 0 }], 1)
+    expect(ruta(m, { x: 0, y: 0 }, { x: 6, y: 0 })?.some((c) => Math.abs(c.x - 3) <= 1 && c.y <= 1)).toBe(false)
   })
 
   it('no puede atravesar un objeto', () => {
@@ -166,7 +187,7 @@ describe('cruzar puertas', () => {
     expect(ruta(salaConSalida(true), { x: 1, y: 1 }, { x: 0, y: 4 })?.slice(0, 3)).toEqual(porLaPuerta.slice(0, 3))
   })
 
-  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', jugadores: SIN_JUGADORES } as const
+  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: SIN_JUGADORES } as const
   const moverPorLaPuerta = () => moverPersonaje(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
 
   it('al mover a la otra estancia, el personaje pasa a ella con su casilla en ella', () => {
@@ -238,7 +259,7 @@ describe('medición de los movimientos', () => {
   })
 
   it('el movimiento apunta lo que cuesta según la medición', () => {
-    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', jugadores: SIN_JUGADORES } as const
+    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: SIN_JUGADORES } as const
     const m = moverPersonaje(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
     expect(gastadoPor(m, m.escuadras?.[0].personajes[0] ?? barbaro).casillas).toBe(5)
   })
@@ -290,6 +311,6 @@ describe('enemigos', () => {
 
   it('para acabar junto a un enemigo sin alejarse, hay que cargar', () => {
     const m = orco({ x: 1, y: 3 })
-    expect(evaluarRecorrido(m, barbaro, recto(3), opciones, { enemigos: casillasDeEnemigos(m, 'barbaro') })).toMatchObject({ opcion: { id: 'cargar' } })
+    expect(evaluarRecorrido(m, barbaro, recto(3), opciones, { enemigos: casillasDeEnemigos(m, 'barbaro'), distanciaControl: 1 })).toMatchObject({ opcion: { id: 'cargar' } })
   })
 })

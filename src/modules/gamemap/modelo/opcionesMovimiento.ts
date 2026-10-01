@@ -11,12 +11,14 @@ export type TramoMovimiento = { distancia: number; accion?: Accion }
 export type OpcionMovimiento = {
   id: string
   nombre: string
-  /** `carga` se dibuja distinto: es un movimiento para contactar con el enemigo */
+  /**
+   * `carga` es un movimiento para contactar con el enemigo: se dibuja distinto
+   * y es el único que puede entrar en la zona de control de un enemigo
+   * (`Configuracion.distanciaControl`)
+   */
   tipo: 'normal' | 'carga'
   accion: Accion
   tramos: TramoMovimiento[]
-  /** No puede pasar ni terminar a esta distancia de un enemigo o menos (1: junto a él, también en diagonal) */
-  alejarseDeEnemigos?: number
   /** Tiene que terminar junto a un enemigo (también en diagonal) */
   terminarJuntoAEnemigo?: boolean
 }

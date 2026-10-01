@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { aAgrupar, recorridoParaAgrupar } from './agrupar'
 import { crearEstancia } from './estancias'
 import type { Casilla } from './modelo/casilla'
+import type { Configuracion } from './modelo/configuracion'
 import type { Objeto } from './modelo/elemento'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
@@ -15,7 +16,7 @@ const quedan = (n: number): OpcionesMovimiento => ({
   base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: mover, tramos: [{ distancia: n }] },
   variaciones: [{ id: 'deslizar', nombre: 'Deslizar', tipo: 'normal', accion: mover, tramos: [{ distancia: n }, { distancia: 3, accion: { id: 'deslizar', nombre: 'Deslizar', icono: '💨' } }] }],
 })
-const config = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } as const
+const config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'> = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0 }
 /** Sala de columnas × filas con la escuadra de esos personajes, esos objetos y, si se dice, un orco hostil */
 const sala = (personajes: Personaje[], { objetos = [], orco, columnas = 6, filas = 3 }: { objetos?: Objeto[]; orco?: Casilla; columnas?: number; filas?: number } = {}): Mapa => ({
   estancias: [{ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas, filas }), elementos: objetos }],
@@ -35,7 +36,7 @@ const sala = (personajes: Personaje[], { objetos = [], orco, columnas = 6, filas
   }),
 })
 /** A dónde llega el elfo al agruparse con el bárbaro */
-const destino = (m: Mapa, elfo: Personaje, opciones = quedan(6)) => recorridoParaAgrupar(m, config, barbaro, elfo, opciones)?.recorrido.at(-1)
+const destino = (m: Mapa, elfo: Personaje, opciones = quedan(6), reglas = config) => recorridoParaAgrupar(m, reglas, barbaro, elfo, opciones)?.recorrido.at(-1)
 
 describe('agruparse con el movimiento restante', () => {
   it('con movimiento de sobra, llega a la casilla libre más cercana al que agrupa', () => {
@@ -77,6 +78,13 @@ describe('agruparse con el movimiento restante', () => {
   it('no pasa a través de un enemigo ni se pone en su casilla', () => {
     const elfo = personaje('elfo', { x: 5, y: 2 })
     expect(destino(sala([barbaro, elfo], { orco: { x: 1, y: 0 } }), elfo)).toEqual({ x: 0, y: 1 })
+  })
+
+  it('no entra en la zona de control de un enemigo: se acerca hasta su borde', () => {
+    // el orco en 3,1 controla de 2,0 a 4,2, toda la anchura de la sala: el elfo de 5,2 no la cruza y sube a 5,0, lo más cerca del bárbaro que puede
+    const elfo = personaje('elfo', { x: 5, y: 2 })
+    const conControl = { ...config, distanciaControl: 1 }
+    expect(destino(sala([barbaro, elfo], { orco: { x: 3, y: 1 } }), elfo, quedan(6), conControl)).toEqual({ x: 5, y: 0 })
   })
 
   it('solo agrupa a los demás de su escuadra que están colocados', () => {

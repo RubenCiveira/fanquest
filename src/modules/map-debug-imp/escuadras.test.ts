@@ -4,7 +4,7 @@ import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA } from './modelo/personaje'
 import { PuertasDePrueba } from './modelo/puerta'
 
 /** Estado de un personaje recién colocado */
-const enJuego = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', turnos: [] }
+const enJuego = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', turnos: [], estaTrabado: () => false, conApoyos: () => [] }
 
 describe('escuadras de prueba', () => {
   const escuadras = () => escuadrasDePrueba(new PuertasDePrueba()).listarEscuadras()

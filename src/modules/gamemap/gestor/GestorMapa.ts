@@ -26,6 +26,7 @@ import { estanciasDe } from '../estancias'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillasDeEnemigos, conPersonajes, desplazar, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
+import { apoyosDe, estaTrabado } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
 import type { Ataque } from '../modelo/ataque'
 import type { ModoActivacion } from '../modelo/activacion'
@@ -45,6 +46,7 @@ import type { Personaje } from '../modelo/personaje'
 import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
+import type { PersonajeEnJuego } from '../modelo/personajeEnJuego'
 import type { PersonajeNoJugador } from '../modelo/personajeNoJugador'
 import type { Puerta } from '../modelo/puerta'
 import type { Ubicacion } from '../modelo/ubicacion'
@@ -355,6 +357,31 @@ export class GestorMapa implements MapaEnJuego {
     this.#cambiar(this.#apuntarAccionNoJugador(this.#mapa, personaje, accionId))
   }
 
+  personaje(id: string): PersonajeEnJuego | undefined {
+    const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === id)
+    return personaje && this.#enJuego(personaje)
+  }
+
+  personajesEn(estancia: string): PersonajeEnJuego[] {
+    return todosLosPersonajes(this.#mapa)
+      .filter((p) => p.estancia === estancia)
+      .map((p) => this.#enJuego(p))
+  }
+
+  /**
+   * El personaje en juego: su estado y, calculados al preguntarlos con el mapa
+   * de ese momento (y donde esté entonces el personaje), si está trabado y sus
+   * apoyos
+   */
+  #enJuego(personaje: Personaje): PersonajeEnJuego {
+    const ahora = () => todosLosPersonajes(this.#mapa).find((p) => p.id === personaje.id) ?? personaje
+    return {
+      ...personaje,
+      estaTrabado: () => estaTrabado(this.#mapa, this.configuracion.distanciaControl, ahora()),
+      conApoyos: () => apoyosDe(this.#mapa, this.configuracion.distanciaControl, ahora()).map((p) => this.#enJuego(p)),
+    }
+  }
+
   puertaEn(ubicacion: Ubicacion): Puerta | undefined {
     return puertaEn(this.#mapa, ubicacion)
   }
@@ -414,7 +441,7 @@ export class GestorMapa implements MapaEnJuego {
     const encontrado = this.#personajeDe(personajeId)
     if (!encontrado?.personaje.casilla || motivoParaNoActuar(this.#mapa, this.configuracion, encontrado.escuadra.id, personajeId)) return
     const clase = await this.#claseDePersonaje(encontrado.escuadra.id, personajeId)
-    return clase?.opcionesMovimiento(encontrado.personaje, gastadoPor(this.#mapa, encontrado.personaje))
+    return clase?.opcionesMovimiento(this.#enJuego(encontrado.personaje), gastadoPor(this.#mapa, encontrado.personaje))
   }
 
   opcionesMovimientoNoJugador(personajeId: string, opciones: (personaje: PersonajeNoJugador, gastado: ReturnType<typeof gastadoPor>) => OpcionesMovimiento | undefined): OpcionesMovimiento | undefined {
@@ -489,7 +516,7 @@ export class GestorMapa implements MapaEnJuego {
     const medida = objetivo && medirAtaque(this.#mapa, this.configuracion, atacante, objetivo)
     if (!objetivo || !medida) return `No hay ningún personaje «${objetivoId}» colocado en el mapa`
     if (!esEnemigo(this.#mapa, objetivoId, jugadorDe(this.#mapa, atacante.id)?.alianza)) return `${objetivo.nombre} no es enemigo de ${atacante.nombre}`
-    return { atacante, objetivo, ...medida }
+    return { atacante: this.#enJuego(atacante), objetivo: this.#enJuego(objetivo), ...medida }
   }
 
   reducirVida(personajeId: string, puntos: number): string | undefined {
@@ -527,7 +554,7 @@ export class GestorMapa implements MapaEnJuego {
       const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
       if (!personaje?.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
       const vista = conPersonajes(this.#mapa, personaje.id, this.configuracion.terrenoPersonajes)
-      return { personaje, ...evaluarRecorrido(vista, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: casillasDeEnemigos(this.#mapa, personaje.id) }) }
+      return { personaje, ...evaluarRecorrido(vista, personaje, recorrido, opciones, { medicion: this.configuracion.medicionMovimiento, enemigos: casillasDeEnemigos(this.#mapa, personaje.id), distanciaControl: this.configuracion.distanciaControl }) }
     }
     const evaluado = evaluar()
     if ('motivo' in evaluado) return evaluado.motivo
@@ -591,7 +618,7 @@ export class GestorMapa implements MapaEnJuego {
     const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
     if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId) return []
     const clase = await this.#claseDePersonaje(escuadraId, encontrado.personaje.id)
-    return clase ? clase.acciones(encontrado.personaje, this) : []
+    return clase ? clase.acciones(this.#enJuego(encontrado.personaje), this) : []
   }
 
   #accionesDeEstancia(escuadraId: string, personajeId?: string): Accion[] {

@@ -126,6 +126,34 @@ export function conPersonajes(m: Mapa, personaje: string, terrenoPersonajes: Con
   }
 }
 
+/** Si una casilla del mapa está en la zona de control de alguno de los enemigos (sus casillas): a `distanciaControl` o menos, en recto o en diagonal */
+export const enZonaDeControl =
+  (enemigos: Casilla[], distanciaControl: number) =>
+  (c: Casilla): boolean =>
+    distanciaControl > 0 && enemigos.some((en) => distancia(c, en) <= distanciaControl)
+
+/**
+ * El mapa con la zona de control de los enemigos (sus casillas) como terreno
+ * impasable: para buscar rutas que la rodeen. Solo para trazar: no se guarda
+ */
+export function conZonaDeControl(m: Mapa, enemigos: Casilla[], distanciaControl: number): Mapa {
+  if (distanciaControl <= 0 || !enemigos.length) return m
+  const lado = 2 * distanciaControl + 1
+  const zona = enemigos.flatMap((en) =>
+    Array.from({ length: lado * lado }, (_, i) => {
+      const suya = casillaDelMapa(m, { x: en.x - distanciaControl + (i % lado), y: en.y - distanciaControl + Math.floor(i / lado) })
+      return suya ? [suya] : []
+    }).flat(),
+  )
+  return {
+    ...m,
+    estancias: m.estancias.map((e) => {
+      const suyas = zona.flatMap(({ estancia, casilla }) => (estancia.id === e.id ? [{ tipo: 'impasable' as const, posicion: casilla, columnas: 1, filas: 1 }] : []))
+      return suyas.length ? { ...e, terrenos: [...(e.terrenos ?? []), ...suyas] } : e
+    }),
+  }
+}
+
 /** Veces que cuesta entrar en la casilla del mapa lo que una normal: dos en terreno difícil y tres en muy difícil */
 function factorEn(m: Mapa, c: Casilla) {
   const en = casillaDelMapa(m, c)
@@ -241,14 +269,15 @@ function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefi
  * mapa, de la suya a la de destino, paso a paso según la `medicion` y
  * cruzando solo puertas abiertas) y en qué tramo cae cada paso. No puede
  * terminar encima de un objeto ni de otro personaje. `enemigos`: sus casillas del
- * mapa, para las opciones que se alejan de ellos o cargan
+ * mapa; salvo una carga, ningún paso puede entrar en su zona de control (a
+ * `distanciaControl` o menos de alguno)
  */
 export function evaluarRecorrido(
   m: Mapa,
   personaje: Personaje,
   recorrido: Casilla[],
   { base, variaciones }: OpcionesMovimiento,
-  { medicion = 'ortogonal', enemigos = [] }: { medicion?: MedicionMovimiento; enemigos?: Casilla[] } = {},
+  { medicion = 'ortogonal', enemigos = [], distanciaControl = 0 }: { medicion?: MedicionMovimiento; enemigos?: Casilla[]; distanciaControl?: number } = {},
 ): RecorridoEvaluado {
   const [salida, ...pasos] = recorrido
   const destino = pasos.at(-1)
@@ -263,14 +292,15 @@ export function evaluarRecorrido(
   if (otro) return { motivo: `No se puede terminar encima de ${otro.nombre}` }
 
   const opciones = [base, ...variaciones]
+  const entraEnZona = pasos.some(enZonaDeControl(enemigos, distanciaControl))
   const permite = (o: OpcionMovimiento) =>
-    (!o.alejarseDeEnemigos || pasos.every((c) => enemigos.every((en) => distancia(c, en) > (o.alejarseDeEnemigos ?? 0)))) &&
-    (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
+    (o.tipo === 'carga' || !entraEnZona) && (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
   const costes = costesDe(m, recorrido, medicion)
   for (const opcion of opciones) {
     const tramos = tramosDe(opcion, costes)
     if (tramos && permite(opcion)) return { opcion, tramos }
   }
+  if (entraEnZona && opciones.some((o) => o.tipo !== 'carga' && tramosDe(o, costes))) return { motivo: 'El recorrido entra en la zona de control de un enemigo' }
   const maximo = alcance({ base, variaciones })
   const coste = costeDe(m, recorrido, medicion)
   if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }

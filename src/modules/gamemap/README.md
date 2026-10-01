@@ -24,7 +24,7 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
-  `jugadores.ts`, `agrupar.ts`, `ataques.ts`), cada una con sus tests.
+  `jugadores.ts`, `agrupar.ts`, `ataques.ts`, `zonaDeControl.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
@@ -91,6 +91,10 @@ mismo sitio.
   encima de nada.
 - **Enemigo**: personaje de una alianza hostil hacia la del que se mueve. Su
   casilla es impasable y cuenta para alejarse o cargar.
+- **Personaje en juego**: lo que reciben las clases del proyecto: el estado
+  del personaje con `estaTrabado()` (en la zona de control de un enemigo) y
+  `conApoyos()` (los aliados en su zona de control), calculados al
+  preguntarlos. `MapaEnJuego` da cualquier otro (`personaje`, `personajesEn`).
 - **Clase de escuadra y de personaje**: las da el proyecto (`ProveedorPersonajes`) y
   dicen qué puede hacer cada uno: sus personajes, su modo de partida y cuándo
   termina su activación (`ClaseDeEscuadra`); cómo se mueve y qué acciones
@@ -98,8 +102,10 @@ mismo sitio.
 - **Configuración**: la da el proyecto. `jugadores` (el reparto inicial),
   `ordenActivaciones` (alternas entre alianzas o alianza a alianza), `modosActivacion` (agresivo o sigiloso, o normal) y
   `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
-  redondeando hacia arriba) y `terrenoPersonajes` (cómo cuenta la casilla de
-  otro personaje: normal, difícil, muy difícil o impasable).
+  redondeando hacia arriba), `terrenoPersonajes` (cómo cuenta la casilla de
+  otro personaje: normal, difícil, muy difícil o impasable) y
+  `distanciaControl` (casillas alrededor de un personaje que controla: salvo
+  cargando, nadie entra en la zona de control de un enemigo).
 - **Turno y activación**: la activación es de la escuadra y en ella pueden
   actuar todos sus personajes. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las

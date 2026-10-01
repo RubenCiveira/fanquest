@@ -1,5 +1,5 @@
 import { escuadrasDe, todosLosPersonajes } from './activaciones'
-import { casillasDeEnemigos, conPersonajes, enElMapa, evaluarRecorrido, ruta, sePuedePasar, transitable, type MedicionMovimiento } from './movimiento'
+import { casillasDeEnemigos, conPersonajes, conZonaDeControl, enElMapa, evaluarRecorrido, ruta, sePuedePasar, transitable, type MedicionMovimiento } from './movimiento'
 import type { Casilla } from './modelo/casilla'
 import type { Configuracion } from './modelo/configuracion'
 import type { Mapa } from './modelo/mapa'
@@ -39,13 +39,13 @@ export type RecorridoParaAgrupar = { recorrido: Casilla[]; opcion: OpcionMovimie
  * Cómo se acerca `miembro` a `lider`, de su misma escuadra, para agruparse
  * con su movimiento restante (`opciones`): a la casilla libre más cercana al
  * líder (sin terreno impasable, objetos ni personajes) a la que llega con su
- * opción base, sin acciones adicionales y con sus reglas (alejarse de
- * enemigos…). Si no llega a su lado, a la más cercana a la que llega. Nada si
+ * opción base, sin acciones adicionales y sin entrar en la zona de control
+ * de los enemigos. Si no llega a su lado, a la más cercana a la que llega. Nada si
  * ya está a su lado, no se puede acercar más o alguno no está colocado
  */
 export function recorridoParaAgrupar(
   m: Mapa,
-  { medicionMovimiento: medicion, terrenoPersonajes }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes'>,
+  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>,
   lider: Personaje,
   miembro: Personaje,
   opciones: OpcionesMovimiento,
@@ -61,8 +61,9 @@ export function recorridoParaAgrupar(
     // las siguientes están más lejos del líder que donde ya está
     if (clave(destino) === clave(suya)) return
     if (ocupadas.has(clave(destino)) || !transitable(vista, destino)) continue
-    const recorrido = ruta(vista, suya, destino, medicion)
-    const evaluado = recorrido && evaluarRecorrido(vista, miembro, recorrido, soloBase, { medicion, enemigos })
+    // la opción base no puede entrar en la zona de control de los enemigos: la ruta la rodea
+    const recorrido = ruta(conZonaDeControl(vista, enemigos, distanciaControl), suya, destino, medicion)
+    const evaluado = recorrido && evaluarRecorrido(vista, miembro, recorrido, soloBase, { medicion, enemigos, distanciaControl })
     if (recorrido && evaluado && 'opcion' in evaluado) return { recorrido, ...evaluado }
   }
 }

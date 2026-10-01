@@ -27,6 +27,12 @@ export type Configuracion = {
    * se puede terminar encima de otro personaje. Los enemigos, siempre impasables
    */
   terrenoPersonajes: 'normal' | TipoTerreno
+  /**
+   * Casillas alrededor de un personaje que controla (en recto o en diagonal;
+   * 1: las de su lado). Ningún movimiento puede entrar en la zona de control
+   * de un enemigo salvo una carga. Con 0, no hay zona de control
+   */
+  distanciaControl: number
   /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
   jugadores: Jugadores
 }

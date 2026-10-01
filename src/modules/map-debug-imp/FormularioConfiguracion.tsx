@@ -12,7 +12,11 @@ export function FormularioConfiguracion({ configuracion, onCambiar }: Props) {
       {ajustes.map((ajuste) => (
         <label key={ajuste} className="campo">
           {OPCIONES_CONFIGURACION[ajuste].etiqueta}
-          <select value={configuracion[ajuste]} onChange={(e) => onCambiar({ ...configuracion, [ajuste]: e.target.value })}>
+          <select
+            value={configuracion[ajuste]}
+            // los ajustes numéricos (la zona de control) siguen siendo números
+            onChange={(e) => onCambiar({ ...configuracion, [ajuste]: typeof configuracion[ajuste] === 'number' ? Number(e.target.value) : e.target.value })}
+          >
             {Object.entries(OPCIONES_CONFIGURACION[ajuste].valores).map(([valor, texto]) => (
               <option key={valor} value={valor}>
                 {texto}

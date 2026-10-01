@@ -5,6 +5,7 @@ import {
   activacionDeNoJugador,
   casillasDeEnemigos,
   conPersonajes,
+  conZonaDeControl,
   costeDe,
   costesDe,
   enElMapa,
@@ -295,12 +296,14 @@ function recortado(mapa: Mapa, recorrido: Casilla[], maximo: number, medicion: M
 
 /**
  * La ruta más corta (A*, según la medición) de la ficha a la casilla
- * `objetivo`, sea cual sea el camino que haya hecho el puntero. Si pasa del
+ * `objetivo`, sea cual sea el camino que haya hecho el puntero: rodeando la
+ * zona de control de los enemigos (`rodeando`, el mapa con ella impasable)
+ * si se puede y, si no (una carga), por donde sea. Si pasa del
  * alcance de sus opciones, se recorta hasta donde llega y queda `fuera`; si no
  * se puede llegar, la flecha se queda como estaba y también queda `fuera`
  */
-function trazar(mapa: Mapa, a: Arrastre, objetivo: Casilla, medicion: MedicionMovimiento): Arrastre {
-  const camino = ruta(mapa, a.recorrido[0], objetivo, medicion)
+function trazar(mapa: Mapa, rodeando: Mapa, a: Arrastre, objetivo: Casilla, medicion: MedicionMovimiento): Arrastre {
+  const camino = ruta(rodeando, a.recorrido[0], objetivo, medicion) ?? ruta(mapa, a.recorrido[0], objetivo, medicion)
   if (!camino) return { ...a, objetivo, fuera: true }
   const recorrido = a.opciones ? recortado(mapa, camino, alcance(a.opciones), medicion) : camino
   return { ...a, objetivo, recorrido, fuera: recorrido.length < camino.length }
@@ -324,6 +327,8 @@ type Props = {
   medicion?: MedicionMovimiento
   /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
   terrenoPersonajes?: Configuracion['terrenoPersonajes']
+  /** Casillas alrededor de un personaje que controla: salvo cargando, no se entra en la de un enemigo (sin zona de control, si no se dice) */
+  distanciaControl?: number
   /** Por qué no puede actuar ahora un personaje de una escuadra: si lo hay, se ve apagado y no se arrastra (pulsarlo solo lo elige) */
   motivoParaNoActuar?: (personajeId: string) => string | undefined
   /** Jugador al que le toca: los personajes no jugadores enemigos suyos se marcan como tales */
@@ -546,9 +551,11 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal' } = props
+  const { opcionesMovimiento, onMover, onAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0 } = props
   /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
   const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
+  /** Como lo ve la ficha, con la zona de control de sus enemigos impasable: para rutas que la rodeen */
+  const rodeando = (ficha: Personaje) => conZonaDeControl(vistoPor(ficha), casillasDeEnemigos(mapa, ficha.id), distanciaControl)
   const { estancias } = mapa
   const svg = useRef<SVGSVGElement>(null)
   // ids de las puntas de flecha, únicos aunque haya varios mapas en la página
@@ -570,7 +577,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     setArrastre({ ficha, objetivo: desde, recorrido: [desde] })
     // al llegar las opciones, la ruta que ya se estuviera mostrando se recorta a su alcance
     opcionesMovimiento?.(ficha.id).then((opciones) =>
-      setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(vistoPor(a.ficha), { ...a, opciones: opciones ?? null }, a.objetivo, medicion) : a)),
+      setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(vistoPor(a.ficha), rodeando(a.ficha), { ...a, opciones: opciones ?? null }, a.objetivo, medicion) : a)),
     )
   }
 
@@ -582,7 +589,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
       // sobre un enemigo, en vez de la flecha del recorrido, el icono de ataque
       const enemigo = onAtacar && enemigoEn(mapa, a.ficha.id, c)
       const medida = enemigo && medirAtaque(mapa, { medicionMovimiento: medicion, terrenoPersonajes }, a.ficha, enemigo)
-      return enemigo && medida ? { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } } : { ...trazar(vistoPor(a.ficha), a, c, medicion), ataque: undefined }
+      return enemigo && medida ? { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } } : { ...trazar(vistoPor(a.ficha), rodeando(a.ficha), a, c, medicion), ataque: undefined }
     })
   }
 
@@ -600,7 +607,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const evaluado: RecorridoEvaluado | undefined =
     arrastre?.opciones === null
       ? { motivo: `${arrastre.ficha.nombre} no puede moverse ahora` }
-      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion, enemigos: casillasDeEnemigos(mapa, arrastre.ficha.id) })
+      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion, enemigos: casillasDeEnemigos(mapa, arrastre.ficha.id), distanciaControl })
   const x0 = Math.min(...estancias.map((e) => origenDe(e).x))
   const y0 = Math.min(...estancias.map((e) => origenDe(e).y))
   const x1 = Math.max(...estancias.map((e) => origenDe(e).x + e.columnas))

@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Personaje, MapaEnJuego, Puerta } from '../../gamemap'
+import type { Personaje, PersonajeEnJuego, MapaEnJuego, Puerta } from '../../gamemap'
 import { esComando } from '../../gamemap'
 import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './personaje'
 import { JUGADORES_DE_PRUEBA } from '../configuracion'
 import { PuertasDePrueba } from './puerta'
+
+/** El personaje en juego, sin trabar y sin apoyos */
+const enJuego = <P extends Personaje>(p: P): P & PersonajeEnJuego => ({ ...p, estaTrabado: () => false, conApoyos: () => [] })
 
 /** Diálogos del banco de pruebas: el daño que se decide y el aviso, que se cierra al momento */
 const dialogos = (dano = 1) => ({ resolverAtaque: vi.fn(async () => dano), avisar: vi.fn(async (_aviso: { titulo: string; texto: string }) => {}) })
@@ -45,6 +48,8 @@ describe('acciones del personaje de prueba', () => {
     anadirMuebles: vi.fn(),
     cambiarJugadores: vi.fn(),
     terminarTurno: vi.fn(),
+    personaje: () => undefined,
+    personajesEn: () => [],
   }
   const enLaPuerta: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 2, y: 3 }, turnos: [] }
   /** El bárbaro, con la puerta de su casilla asociada */
@@ -144,6 +149,8 @@ describe('coger objetos', () => {
     anadirMuebles: vi.fn(),
     cambiarJugadores: vi.fn(),
     terminarTurno: vi.fn(),
+    personaje: () => undefined,
+    personajesEn: () => [],
   })
   const clase = () => new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, new PuertasDePrueba(), dialogos())
 
@@ -165,8 +172,8 @@ describe('coger objetos', () => {
 })
 
 describe('ataques del personaje de prueba', () => {
-  const barbaro: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }
-  const orco = { id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 2, y: 1 }, vida: 3, turnos: [], jugador: 'oscuridad' }
+  const barbaro = enJuego<Personaje>({ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] })
+  const orco = enJuego({ id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 2, y: 1 }, vida: 3, turnos: [], jugador: 'oscuridad' })
   const trayectoria = { casillas: [], aliados: 0, enemigos: 0, coberturas: { ninguna: 0, ligera: 0, pesada: 0, bloqueante: 0 }, objetos: 0, muros: 0 }
   const ataque = { atacante: barbaro, objetivo: orco, tipo: 'cuerpo-a-cuerpo' as const, distancia: 1, recorrido: 1, trayectoria }
   // el personaje de prueba pinta cada ataque en la consola
@@ -190,6 +197,8 @@ describe('ataques del personaje de prueba', () => {
       anadirMuebles: vi.fn(),
       cambiarJugadores: vi.fn(),
       terminarTurno: vi.fn(),
+    personaje: () => undefined,
+    personajesEn: () => [],
     }
   }
   const conDano = (dano: number, avisos = dialogos(dano)) => new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, new PuertasDePrueba(), avisos)

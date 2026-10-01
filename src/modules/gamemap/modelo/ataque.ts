@@ -1,5 +1,5 @@
 import type { Casilla } from './casilla'
-import type { Personaje } from './personaje'
+import type { PersonajeEnJuego } from './personajeEnJuego'
 import type { TipoCobertura } from './terreno'
 
 /** Cuerpo a cuerpo si el objetivo está pegado al atacante (también en diagonal, sin muros entre ellos); si no, a distancia */
@@ -31,4 +31,4 @@ export type Trayectoria = {
  * obstáculos y con el terreno; sin él, no se puede llegar) y por dónde pasa
  * la línea del ataque (`trayectoria`)
  */
-export type Ataque = { atacante: Personaje; objetivo: Personaje; tipo: TipoAtaque; distancia: number; recorrido?: number; trayectoria: Trayectoria }
+export type Ataque = { atacante: PersonajeEnJuego; objetivo: PersonajeEnJuego; tipo: TipoAtaque; distancia: number; recorrido?: number; trayectoria: Trayectoria }

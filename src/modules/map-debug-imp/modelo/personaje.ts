@@ -34,11 +34,12 @@ const DESLIZAR = { id: 'deslizar', nombre: 'Deslizar', icono: '💨' }
 const MOVIMIENTO = 6
 
 /**
- * Cómo se mueve un personaje de prueba: 6 casillas sin acercarse a un enemigo,
- * 8 para cargar contra uno o 6 más 3 deslizando (otra acción)
+ * Cómo se mueve un personaje de prueba: 6 casillas, 8 para cargar contra un
+ * enemigo (la única que entra en su zona de control) o 6 más 3 deslizando
+ * (otra acción)
  */
 export const MOVIMIENTO_DE_PRUEBA: OpcionesMovimiento = {
-  base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: MOVER, tramos: [{ distancia: MOVIMIENTO }], alejarseDeEnemigos: 1 },
+  base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: MOVER, tramos: [{ distancia: MOVIMIENTO }] },
   variaciones: [
     { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar', icono: '🐂' }, tramos: [{ distancia: 8 }], terminarJuntoAEnemigo: true },
     {
@@ -47,7 +48,6 @@ export const MOVIMIENTO_DE_PRUEBA: OpcionesMovimiento = {
       tipo: 'normal',
       accion: MOVER,
       tramos: [{ distancia: MOVIMIENTO }, { distancia: 3, accion: DESLIZAR }],
-      alejarseDeEnemigos: 1,
     },
   ],
 }
@@ -117,8 +117,9 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   }
 
   /**
-   * Pinta en la consola lo que el gestor dice del ataque (tipo, distancias y
-   * trayectoria, con las coberturas que cruza) y, si aún le queda su acción del turno: un monstruo falla
+   * Pinta en la consola lo que el gestor dice del ataque (tipo, distancias,
+   * trayectoria con las coberturas que cruza y si el atacante y el objetivo
+   * están trabados y con qué apoyos) y, si aún le queda su acción del turno: un monstruo falla
    * siempre contra un héroe (lo avisa en un diálogo); en otro caso, pide el
    * daño del ataque (`resolverAtaque`: el diálogo del banco de pruebas), se lo
    * quita al objetivo y, si se queda sin vida, lo elimina del mapa
@@ -136,6 +137,10 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
       coberturas: trayectoria.coberturas,
       objetos: trayectoria.objetos,
       muros: trayectoria.muros,
+      atacanteTrabado: atacante.estaTrabado(),
+      apoyosDelAtacante: atacante.conApoyos().map((p) => p.nombre),
+      objetivoTrabado: objetivo.estaTrabado(),
+      apoyosDelObjetivo: objetivo.conApoyos().map((p) => p.nombre),
     })
     await this.#gastarAccion(mapa)
     const esMonstruo = (id: string) => jugadorDe(mapa.mapa, id)?.id === JUGADOR_MONSTRUOS
