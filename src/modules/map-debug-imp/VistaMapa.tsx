@@ -481,7 +481,7 @@ function CapaEstancia({
                       {el.nombre}
                     </text>
                   )}
-                  <title>{el.tipo === 'mueble' && el.flags?.length ? `${el.nombre}: ${el.flags.join(', ')}` : el.nombre}</title>
+                  <title>{el.flags?.length ? `${el.nombre}: ${el.flags.join(', ')}` : el.nombre}</title>
                 </g>,
               ]
             : [],

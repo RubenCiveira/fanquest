@@ -38,8 +38,7 @@ describe('acciones del personaje de prueba', () => {
     tieneFlag: () => false,
     marcarFlag: vi.fn(),
     dameLoQueEstaAlLado: () => [],
-    tieneFlagMueble: () => false,
-    marcarFlagMueble: vi.fn(),
+    quitarFlag: vi.fn(),
     quitarElemento: vi.fn(),
     reducirVida: vi.fn(),
     eliminarPersonaje: vi.fn(),
@@ -118,10 +117,10 @@ describe('acciones del personaje de prueba', () => {
   })
 
   it('revisarlo lo marca revisado', async () => {
-    const conMueble = { ...mapa, marcarFlagMueble: vi.fn(), dameLoQueEstaAlLado: () => [{ id: 'mesa', tipo: 'mueble' as const, nombre: 'Mesa', columnas: 1, filas: 1 }] }
+    const conMueble = { ...mapa, marcarFlag: vi.fn(), dameLoQueEstaAlLado: () => [{ id: 'mesa', tipo: 'mueble' as const, nombre: 'Mesa', columnas: 1, filas: 1 }] }
     const [, revisar] = await barbaro().acciones(enLaPuerta, conMueble)
     await (esComando(revisar) && revisar.exec())
-    expect(conMueble.marcarFlagMueble).toHaveBeenCalledWith('mesa', 'revisado')
+    expect(conMueble.marcarFlag).toHaveBeenCalledWith('elemento', 'mesa', 'revisado')
   })
 
   it('junto a un mueble revisado no puede volver a revisarlo', async () => {
@@ -142,8 +141,7 @@ describe('coger objetos', () => {
     quitarElemento: vi.fn(() => motivo),
     reducirVida: vi.fn(),
     eliminarPersonaje: vi.fn(),
-    tieneFlagMueble: () => false,
-    marcarFlagMueble: vi.fn(),
+    quitarFlag: vi.fn(),
     abrirPuerta: vi.fn(),
     anadirPersonajes: vi.fn(),
     anadirMuebles: vi.fn(),
@@ -190,8 +188,7 @@ describe('ataques del personaje de prueba', () => {
       quitarElemento: vi.fn(),
       reducirVida: vi.fn(() => void (estado.personajesNoJugadores = [{ ...orco, vida: vidaTras }])),
       eliminarPersonaje: vi.fn(),
-      tieneFlagMueble: () => false,
-      marcarFlagMueble: vi.fn(),
+      quitarFlag: vi.fn(),
       abrirPuerta: vi.fn(),
       anadirPersonajes: vi.fn(),
       anadirMuebles: vi.fn(),

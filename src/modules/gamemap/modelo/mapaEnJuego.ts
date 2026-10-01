@@ -8,6 +8,7 @@ import type { Personaje } from './personaje'
 import type { PersonajeEnJuego } from './personajeEnJuego'
 import type { PersonajeNoJugador } from './personajeNoJugador'
 import type { Puerta } from './puerta'
+import type { TipoConFlags } from './tipoConFlags'
 import type { Ubicacion } from './ubicacion'
 
 /** Lo que el gestor deja hacer al proyecto sobre el mapa: al preguntar por las acciones y desde sus comandos */
@@ -20,18 +21,16 @@ export interface MapaEnJuego {
   personajesEn(estancia: string): PersonajeEnJuego[]
   /** Puerta de esa casilla, si la hay */
   puertaEn(ubicacion: Ubicacion): Puerta | undefined
-  /** Si esa estancia tiene marcada esa bandera de estado */
-  tieneFlag(estancia: string, flag: string): boolean
-  /** Marca esa bandera de estado en la estancia, si existe */
-  marcarFlag(estancia: string, flag: string): string | undefined
+  /** Si lo que tiene ese tipo e id (estancia, escuadra, personaje, elemento o puerta) tiene marcada esa bandera de estado */
+  tieneFlag(tipo: TipoConFlags, id: string, flag: string): boolean
+  /** Marca esa bandera de estado en lo que tiene ese tipo e id; si no está en el mapa, el motivo */
+  marcarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined
+  /** Quita esa bandera de estado de lo que tiene ese tipo e id; si no está en el mapa, el motivo */
+  quitarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined
   /** Elementos colocados junto al personaje */
   dameLoQueEstaAlLado(personaje: Personaje): Elemento[]
   /** Quita el elemento de su estancia (un personaje coge el objeto…); si no está, el motivo */
   quitarElemento(elemento: string): string | undefined
-  /** Si ese mueble tiene marcada esa bandera de estado */
-  tieneFlagMueble(mueble: string, flag: string): boolean
-  /** Marca esa bandera de estado en el mueble, si existe */
-  marcarFlagMueble(mueble: string, flag: string): string | undefined
   /**
    * Abre la puerta de esa casilla: pide al proveedor la estancia a la que da
    * y la marca abierta hacia ella; si es de un muro interior, solo la abre (y

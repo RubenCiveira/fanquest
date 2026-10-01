@@ -18,7 +18,7 @@ export class RevisarMueble implements AccionDeObjeto {
   }
 
   async hacer() {
-    const motivo = this.#mapa.marcarFlagMueble(this.#mueble.id, 'revisado')
+    const motivo = this.#mapa.marcarFlag('elemento', this.#mueble.id, 'revisado')
     if (motivo) throw new Error(motivo)
   }
 }

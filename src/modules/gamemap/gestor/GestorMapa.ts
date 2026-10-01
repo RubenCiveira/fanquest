@@ -23,6 +23,7 @@ import { conVidaReducida, medirAtaque, sinPersonaje } from '../ataques'
 import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { estanciasDe } from '../estancias'
+import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillasDeEnemigos, conPersonajes, desplazar, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
@@ -49,6 +50,7 @@ import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
 import type { PersonajeEnJuego } from '../modelo/personajeEnJuego'
 import type { PersonajeNoJugador } from '../modelo/personajeNoJugador'
 import type { Puerta } from '../modelo/puerta'
+import type { TipoConFlags } from '../modelo/tipoConFlags'
 import type { Ubicacion } from '../modelo/ubicacion'
 import type { ProveedorMapa } from './ProveedorMapa'
 
@@ -342,7 +344,7 @@ export class GestorMapa implements MapaEnJuego {
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
     if (!delPersonaje && !deEstancia && !deEscuadra && !delGestor) return `«${accionId}» no es una acción disponible ahora`
     const resultado = delPersonaje && esComando(delPersonaje) ? await delPersonaje.exec() : undefined
-    if (deEstancia && personajeId) this.marcarFlag(this.#personajeDe(personajeId)?.personaje.estancia ?? '', 'sin_trampas')
+    if (deEstancia && personajeId) this.marcarFlag('estancia', this.#personajeDe(personajeId)?.personaje.estancia ?? '', 'sin_trampas')
     if (deEscuadra && personajeId) await this.#agrupar(escuadraId, personajeId)
     this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, accionId, (delPersonaje || deEstancia || deEscuadra) && personajeId, resultado))
     await this.#preguntarSiCompleta(escuadraId)
@@ -387,13 +389,20 @@ export class GestorMapa implements MapaEnJuego {
     return puertaEn(this.#mapa, ubicacion)
   }
 
-  tieneFlag(estancia: string, flag: string): boolean {
-    return this.#estancia(estancia)?.flags?.includes(flag) ?? false
+  tieneFlag(tipo: TipoConFlags, id: string, flag: string): boolean {
+    return flagsDe(this.#mapa, tipo, id)?.includes(flag) ?? false
   }
 
-  marcarFlag(estancia: string, flag: string): string | undefined {
-    if (!this.#estancia(estancia)) return `No hay ninguna estancia «${estancia}» en el mapa`
-    this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map((e) => this.#marcarFlag(e, estancia, flag)) })
+  marcarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined {
+    const flags = flagsDe(this.#mapa, tipo, id)
+    if (!flags) return motivoSinFlags(tipo, id)
+    if (!flags.includes(flag)) this.#cambiar(conFlags(this.#mapa, tipo, id, (f) => [...f, flag]))
+  }
+
+  quitarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined {
+    const flags = flagsDe(this.#mapa, tipo, id)
+    if (!flags) return motivoSinFlags(tipo, id)
+    if (flags.includes(flag)) this.#cambiar(conFlags(this.#mapa, tipo, id, (f) => f.filter((otra) => otra !== flag)))
   }
 
   dameLoQueEstaAlLado(personaje: Personaje): Elemento[] {
@@ -411,16 +420,6 @@ export class GestorMapa implements MapaEnJuego {
     if (!this.#elemento(elementoId)) return `No hay ningún elemento «${elementoId}» en el mapa`
     const sin = (e: Estancia): Estancia => ({ ...e, elementos: e.elementos.filter((el) => el.id !== elementoId), estancias: e.estancias.map(sin) })
     this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map(sin) })
-  }
-
-  tieneFlagMueble(mueble: string, flag: string): boolean {
-    const elemento = this.#elemento(mueble)
-    return elemento?.tipo === 'mueble' && (elemento.flags?.includes(flag) ?? false)
-  }
-
-  marcarFlagMueble(mueble: string, flag: string): string | undefined {
-    if (!this.#elemento(mueble)) return `No hay ningún mueble «${mueble}» en el mapa`
-    this.#cambiar({ ...this.#mapa, estancias: this.#mapa.estancias.map((e) => this.#marcarFlagMueble(e, mueble, flag)) })
   }
 
   async abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> {
@@ -656,7 +655,7 @@ export class GestorMapa implements MapaEnJuego {
   /** «Buscar trampas», para el personaje colocado de una escuadra que busca trampas (`ClaseDeEscuadra.buscaTrampas`) en una estancia sin buscar */
   async #accionesDeEstancia(escuadraId: string, personajeId?: string): Promise<Accion[]> {
     const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
-    if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId || this.tieneFlag(encontrado.personaje.estancia, 'sin_trampas')) return []
+    if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId || this.tieneFlag('estancia', encontrado.personaje.estancia, 'sin_trampas')) return []
     const clase = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
     return clase?.buscaTrampas === false ? [] : [BUSCAR_TRAMPAS]
   }
@@ -689,19 +688,6 @@ export class GestorMapa implements MapaEnJuego {
 
   #elemento(id: string): Elemento | undefined {
     return this.#mapa.estancias.flatMap((e) => estanciasDe(e).flatMap(({ estancia }) => estancia.elementos)).find((el) => el.id === id)
-  }
-
-  #marcarFlag(estancia: Estancia, id: string, flag: string): Estancia {
-    if (estancia.id !== id) return { ...estancia, estancias: estancia.estancias.map((e) => this.#marcarFlag(e, id, flag)) }
-    return estancia.flags?.includes(flag) ? estancia : { ...estancia, flags: [...(estancia.flags ?? []), flag] }
-  }
-
-  #marcarFlagMueble(estancia: Estancia, id: string, flag: string): Estancia {
-    return {
-      ...estancia,
-      elementos: estancia.elementos.map((el) => (el.id === id && el.tipo === 'mueble' && !el.flags?.includes(flag) ? { ...el, flags: [...(el.flags ?? []), flag] } : el)),
-      estancias: estancia.estancias.map((e) => this.#marcarFlagMueble(e, id, flag)),
-    }
   }
 
   #estaAlLado(casilla: Casilla, elemento: Elemento): boolean {

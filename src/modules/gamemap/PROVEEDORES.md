@@ -32,6 +32,7 @@ type Escuadra = {
   activo?: string             // el personaje que está actuando
   modo?: ModoActivacion       // el último en que se activó (o el de partida)
   turnos: TurnoDeEscuadra[]   // { numero, activacion?, acciones: [{ accion, personaje? }] }
+  flags?: string[]            // marcas de estado (`marcarFlag('escuadra', …)`)
 }
 
 type Personaje = {
@@ -42,6 +43,7 @@ type Personaje = {
   casilla?: Casilla           // su casilla en ella; sin ella, en la zona de espera
   vida?: number               // puntos de vida que le quedan; sin ellos, no se lleva la cuenta
   turnos: TurnoDePersonaje[]      // { numero, acciones: string[], movimientos: [{ opcion, casillas, acciones }] }
+  flags?: string[]            // marcas de estado: aturdido… (`marcarFlag('personaje', …)`)
 }
 ```
 
@@ -209,9 +211,9 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
 - Los objetos no llevan posición: el gestor busca un hueco para cada uno y,
   si no cabe, lo deja en la zona de espera para colocarlo a mano.
 - Los `muebles` son fijos: el proyecto les da un id estable, el gestor los
-  pone al azar donde quepan y no se mueven a mano. Llevan su estado en
-  `flags` (`marcarFlagMueble`, `tieneFlagMueble`): el banco de pruebas marca
-  `revisado` al revisar uno.
+  pone al azar donde quepan y no se mueven a mano. Como todo lo que está vivo
+  en el mapa, llevan su estado en `flags` (`marcarFlag('elemento', id, …)`):
+  el banco de pruebas marca `revisado` al revisar uno.
 - Los `terrenos` sí la llevan (en casillas de la estancia): zonas en las que
   entrar en cada casilla cuesta dos (`dificil`) o tres (`muy-dificil`), o que
   no se pueden pisar (`impasable`). Ni objetos ni personajes se colocan en
@@ -357,12 +359,11 @@ interface MapaEnJuego {
   personaje(id: string): PersonajeEnJuego | undefined  // cualquier personaje del mapa, en juego
   personajesEn(estancia: string): PersonajeEnJuego[]   // los de esa estancia, en juego
   puertaEn(ubicacion: Ubicacion): Puerta | undefined   // la puerta de esa casilla
-  tieneFlag(estancia: string, flag: string): boolean   // marcas de estado de una estancia (`sin_trampas`…)
-  marcarFlag(estancia: string, flag: string): string | undefined
+  tieneFlag(tipo: TipoConFlags, id: string, flag: string): boolean // marcas de estado (`sin_trampas`, `aturdido`, `revisado`…)
+  marcarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined // si no está en el mapa, el motivo
+  quitarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined
   dameLoQueEstaAlLado(personaje: Personaje): Elemento[] // objetos y muebles colocados junto a él (sin diagonales)
   quitarElemento(elemento: string): string | undefined // lo saca de su estancia (el personaje lo coge…)
-  tieneFlagMueble(mueble: string, flag: string): boolean // marcas de estado de un mueble (`revisado`…)
-  marcarFlagMueble(mueble: string, flag: string): string | undefined
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // pide la estancia de detrás y la deja abierta
   anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] // como los de la descripción
   anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[] // al azar donde quepan
@@ -410,7 +411,7 @@ En el banco de pruebas (`map-debug-imp/modelo/`):
   `AbrirPuerta` si es una salida cerrada (`puerta.abrir()` →
   `mapa.abrirPuerta(donde)`); `CogerObjeto` quita el objeto de la estancia
   (`mapa.quitarElemento`: en teoría pasa a su inventario) y `RevisarMueble`
-  lo marca `revisado` (`mapa.marcarFlagMueble`).
+  lo marca `revisado` (`mapa.marcarFlag('elemento', …)`).
 - `PersonajeDePrueba` (`implements ClaseDePersonaje`) hace **una acción por
   turno** (moverse no cuenta). Compone sus comandos con las acciones de los
   objetos de su casilla, las de revisar cada mueble sin revisar y coger cada

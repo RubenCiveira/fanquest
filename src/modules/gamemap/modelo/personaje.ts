@@ -22,4 +22,6 @@ export type Personaje = {
   casilla?: Casilla
   vida?: number
   turnos: TurnoDePersonaje[]
+  /** Marcas de estado del personaje que cambian durante la partida (aturdido…) */
+  flags?: string[]
 }

@@ -7,7 +7,7 @@ import type { Muro } from './muro'
 import type { Terreno } from './terreno'
 
 /** Objeto que pide la descripción: la librería le da id y le busca sitio */
-export type DescripcionElemento = Omit<Objeto, 'id' | 'posicion'>
+export type DescripcionElemento = Omit<Objeto, 'id' | 'posicion' | 'flags'>
 
 /** Mueble fijo que pide la descripción: el proyecto da el id estable */
 export type DescripcionMueble = Omit<Mueble, 'posicion' | 'flags'>

@@ -232,7 +232,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
   it('buscar trampas marca la estancia y deja de estar disponible', async () => {
     const { gestor } = await conInicial()
     await gestor.ejecutarAccion('rojos', 'buscar-trampas', 'barbaro')
-    expect([gestor.tieneFlag('estancia-1', 'sin_trampas'), (await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)]).toEqual([
+    expect([gestor.tieneFlag('estancia', 'estancia-1', 'sin_trampas'), (await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)]).toEqual([
       true,
       ['gritar', 'cambiar-modo', 'terminar-turno'],
     ])
@@ -240,8 +240,20 @@ describe('gestor del mapa: activaciones y acciones', () => {
 
   it('permite marcar y consultar flags de estancias', async () => {
     const { gestor } = await conInicial()
-    gestor.marcarFlag('estancia-1', 'sin_trampas')
-    expect(gestor.tieneFlag('estancia-1', 'sin_trampas')).toBe(true)
+    gestor.marcarFlag('estancia', 'estancia-1', 'sin_trampas')
+    expect(gestor.tieneFlag('estancia', 'estancia-1', 'sin_trampas')).toBe(true)
+  })
+
+  it('quita flags de personajes', async () => {
+    const { gestor } = await conInicial()
+    gestor.marcarFlag('personaje', 'barbaro', 'aturdido')
+    gestor.quitarFlag('personaje', 'barbaro', 'aturdido')
+    expect(gestor.tieneFlag('personaje', 'barbaro', 'aturdido')).toBe(false)
+  })
+
+  it('no marca flags en lo que no está en el mapa', async () => {
+    const { gestor } = await conInicial()
+    expect(gestor.marcarFlag('escuadra', 'nadie', 'aturdida')).toBe('No hay ninguna escuadra «nadie» en el mapa')
   })
 
   it('un comando del personaje se ejecuta con su propio código', async () => {
@@ -431,8 +443,8 @@ describe('gestor del mapa: muebles', () => {
   it('marca flags de muebles y los consulta', async () => {
     const { gestor } = await conInicial(amplia)
     gestor.anadirMuebles('estancia-1', [{ id: 'mesa', tipo: 'mueble', nombre: 'Mesa', columnas: 1, filas: 1 }])
-    gestor.marcarFlagMueble('mesa', 'revisado')
-    expect(gestor.tieneFlagMueble('mesa', 'revisado')).toBe(true)
+    gestor.marcarFlag('elemento', 'mesa', 'revisado')
+    expect(gestor.tieneFlag('elemento', 'mesa', 'revisado')).toBe(true)
   })
 
   it('devuelve los muebles colocados al lado de un personaje', async () => {

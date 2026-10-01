@@ -18,4 +18,6 @@ export type Escuadra = {
   activo?: string
   modo?: ModoActivacion
   turnos: TurnoDeEscuadra[]
+  /** Marcas de estado de la escuadra que cambian durante la partida */
+  flags?: string[]
 }

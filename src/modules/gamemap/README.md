@@ -77,11 +77,14 @@ mismo sitio.
   tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**
   (sin `posicion`) para colocarlo a mano. Un personaje puede cogerlo: sale de
   la estancia (`quitarElemento`).
-- **Mueble** (elemento): fijo, con id del proyecto, imagen opcional y marcas
-  de estado (`flags`, como `revisado`). El gestor lo pone al azar donde quepa
-  y no se mueve a mano.
-- **Marcas de estancia** (`flags`): estado que cambia en la partida, como
-  `sin_trampas` tras «Buscar trampas».
+- **Mueble** (elemento): fijo, con id del proyecto e imagen opcional. El
+  gestor lo pone al azar donde quepa y no se mueve a mano.
+- **Marcas de estado** (`flags`): estado que cambia en la partida. Las llevan
+  las estancias (`sin_trampas` tras «Buscar trampas»), las escuadras, los
+  personajes (`aturdido`…), los objetos y muebles (`revisado`…) y las
+  puertas. Se consultan y cambian con `tieneFlag`, `marcarFlag` y
+  `quitarFlag`, diciendo el tipo (`estancia`, `escuadra`, `personaje`,
+  `elemento` o `puerta`) y el id.
 - **Escuadra y personaje** (estado): el gestor guarda cada escuadra con sus
   personajes, su personaje activo, su último modo y sus turnos (activación y
   acciones); y cada personaje con su posición (estancia y casilla; sin casilla, en

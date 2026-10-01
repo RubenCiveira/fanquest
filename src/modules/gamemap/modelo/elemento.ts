@@ -6,7 +6,7 @@ import type { Medida } from './medida'
  * esquina superior izquierda; sin ella está en la zona de espera, para que el
  * jugador lo coloque a mano
  */
-export type Objeto = Medida & { id: string; tipo: 'objeto'; nombre: string; posicion?: Casilla }
+export type Objeto = Medida & { id: string; tipo: 'objeto'; nombre: string; posicion?: Casilla; flags?: string[] }
 
 /** Mueble fijo de la estancia: ocupa casillas, puede tener imagen y estado propio */
 export type Mueble = Medida & { id: string; tipo: 'mueble'; nombre: string; posicion?: Casilla; imagenVtt?: string; flags?: string[] }

@@ -8,4 +8,4 @@ import type { Direccion } from './direccion'
  * estancia a la que da. Las `interior`, en un muro de dentro de la estancia
  * (`Estancia.muros`): cerrada no se cruza; al abrirla da a la misma estancia
  */
-export type Puerta = { id: string; tipo: 'entrada' | 'salida' | 'interior'; casilla: Casilla; lado: Direccion; abierta?: boolean; destino?: string }
+export type Puerta = { id: string; tipo: 'entrada' | 'salida' | 'interior'; casilla: Casilla; lado: Direccion; abierta?: boolean; destino?: string; flags?: string[] }
