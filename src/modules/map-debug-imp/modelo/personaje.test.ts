@@ -240,6 +240,13 @@ describe('ataques del personaje de prueba', () => {
     expect(mapa.reducirVida).toHaveBeenCalledWith('orco', 2)
   })
 
+  it('pinta en la consola los apoyos como personajes en juego, para navegarlos', async () => {
+    log.mockClear()
+    const enano = enJuego<Personaje>({ id: 'enano', nombre: 'Enano', estancia: 'sala', turnos: [] })
+    await conDano(1).atacar({ ...ataque, atacante: { ...barbaro, conApoyos: () => [enano] } }, conJugadores())
+    expect(log.mock.lastCall?.[1].apoyosDelAtacante).toEqual([enano])
+  })
+
   it('pinta en la consola lo que el gestor dice del ataque', async () => {
     log.mockClear()
     await conDano(1).atacar({ ...ataque, trayectoria: { ...trayectoria, casillas: [{ x: 2, y: 1 }], enemigos: 1 } }, conJugadores())

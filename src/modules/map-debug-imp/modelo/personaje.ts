@@ -138,9 +138,10 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
       objetos: trayectoria.objetos,
       muros: trayectoria.muros,
       atacanteTrabado: atacante.estaTrabado(),
-      apoyosDelAtacante: atacante.conApoyos().map((p) => p.nombre),
+      // los propios personajes en juego, para poder navegarlos en la consola
+      apoyosDelAtacante: atacante.conApoyos(),
       objetivoTrabado: objetivo.estaTrabado(),
-      apoyosDelObjetivo: objetivo.conApoyos().map((p) => p.nombre),
+      apoyosDelObjetivo: objetivo.conApoyos(),
     })
     await this.#gastarAccion(mapa)
     const esMonstruo = (id: string) => jugadorDe(mapa.mapa, id)?.id === JUGADOR_MONSTRUOS
