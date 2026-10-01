@@ -350,7 +350,7 @@
   pointer-events: none;
 }
 
-/* colores del movimiento: verde el normal, rojizo el tramo que consume otra acción (deslizar), morado la carga y gris lo que no vale */
+/* colores del movimiento: verde el normal, rojizo el tramo que consume otra acción (deslizar), morado la carga, ocre destrabarse, verde azulado posicionarse y gris lo que no vale */
 .vista-recorrido .normal {
   stroke: var(--musgo);
 }
@@ -361,6 +361,14 @@
 
 .vista-recorrido .carga {
   stroke: #6b3f8f;
+}
+
+.vista-recorrido .destrabarse {
+  stroke: #a0701a;
+}
+
+.vista-recorrido .posicionarse {
+  stroke: #2f7a7a;
 }
 
 .vista-recorrido .invalido {
@@ -378,6 +386,14 @@
 
 .vista-recorrido-punta.carga {
   fill: #6b3f8f;
+}
+
+.vista-recorrido-punta.destrabarse {
+  fill: #a0701a;
+}
+
+.vista-recorrido-punta.posicionarse {
+  fill: #2f7a7a;
 }
 
 .vista-recorrido-punta.invalido {

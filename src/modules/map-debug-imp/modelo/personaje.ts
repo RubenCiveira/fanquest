@@ -42,8 +42,10 @@ const MOVIMIENTO = 6
 
 /**
  * Cómo se mueve un personaje de prueba: 6 casillas, 8 para cargar contra un
- * enemigo (la única que entra en su zona de control) o 6 más 3 deslizando
- * (otra acción)
+ * enemigo (sin estar trabado, cruzando su zona de control), 6 más 3
+ * deslizando (otra acción) o, trabado en cuerpo a cuerpo, 6 para destrabarse
+ * (salir de la zona de control enemiga) o para posicionarse (pegado a quien
+ * lo traba)
  */
 export const MOVIMIENTO_DE_PRUEBA: OpcionesMovimiento = {
   base: { id: 'mover', nombre: 'Mover', tipo: 'normal', accion: MOVER, tramos: [{ distancia: MOVIMIENTO }] },
@@ -56,6 +58,8 @@ export const MOVIMIENTO_DE_PRUEBA: OpcionesMovimiento = {
       accion: MOVER,
       tramos: [{ distancia: MOVIMIENTO }, { distancia: 3, accion: DESLIZAR }],
     },
+    { id: 'destrabarse', nombre: 'Destrabarse', tipo: 'destrabarse', accion: { id: 'destrabarse', nombre: 'Destrabarse', icono: '🏃' }, tramos: [{ distancia: MOVIMIENTO }] },
+    { id: 'posicionarse', nombre: 'Posicionarse', tipo: 'posicionarse', accion: { id: 'posicionarse', nombre: 'Posicionarse', icono: '🤺' }, tramos: [{ distancia: MOVIMIENTO }] },
   ],
 }
 

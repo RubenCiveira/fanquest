@@ -85,6 +85,7 @@ export {
   gastadoPor,
   desplazar,
   mover,
+  planearMovimiento,
   ruta,
   sePuedePasar,
   transitable,

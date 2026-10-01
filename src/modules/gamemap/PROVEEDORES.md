@@ -130,9 +130,14 @@ configuracion: {
   además hay terreno en esa casilla, cuenta el peor de los dos. La casilla de
   un enemigo es siempre impasable.
 - `distanciaControl`: casillas alrededor de un personaje que controla (en
-  recto o en diagonal; 1, las de su lado). Ningún movimiento puede entrar en
-  la zona de control de un enemigo, salvo una carga (`tipo: 'carga'`), que
-  puede atravesarla para contactar con él. Con 0 no hay zona de control. La
+  recto o en diagonal; 1, las de su lado). Quien está en la zona de control
+  de un enemigo está trabado en cuerpo a cuerpo. Un movimiento normal no
+  puede empezar en ella (trabado, no se mueve así) ni entrar; una carga
+  (`tipo: 'carga'`) tiene que empezar fuera (trabado no se carga) y puede
+  atravesarla para contactar con el enemigo; destrabarse (`tipo:
+  'destrabarse'`) tiene que empezar en ella y terminar fuera de toda zona
+  enemiga; y posicionarse (`tipo: 'posicionarse'`) tiene que empezar en ella
+  y terminar pegado a uno de los enemigos que lo traban. Con 0 no hay zona de control. La
   flecha del arrastre y «Agrupar aquí» buscan rutas que la rodeen; si el
   recorrido entra en ella, se rechaza diciéndolo.
 
@@ -482,7 +487,7 @@ type OpcionesMovimiento = { base: OpcionMovimiento; variaciones: OpcionMovimient
 type OpcionMovimiento = {
   id: string
   nombre: string                  // se muestra junto a la flecha
-  tipo: 'normal' | 'carga'        // la carga se dibuja en otro color y es la única que entra en la zona de control de un enemigo
+  tipo: 'normal' | 'carga' | 'destrabarse' | 'posicionarse' // ver `distanciaControl`: según empiece o no trabado y dónde termine
   accion: Accion                  // la que consume moverse así
   tramos: TramoMovimiento[]       // el primero es el movimiento; los siguientes lo alargan
   terminarJuntoAEnemigo?: boolean // carga
@@ -505,6 +510,19 @@ type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la ad
 - Al mover, el gestor apunta el movimiento en el turno del personaje y las
   acciones que consume (la de la opción y la de cada tramo adicional usado)
   en el de su escuadra; si no había empezado, empieza su activación.
+- Para saber cómo puede llegar un personaje a una casilla, el motor tiene
+  `planearMovimiento(mapa, configuracion, personaje, destino, opciones)`:
+  prueba cada opción por su mejor camino (las normales, rodeando la zona de
+  control de los enemigos; las demás, por el más corto, aunque la crucen) y
+  devuelve la primera que llega con su recorrido o, si ninguna, el motivo y
+  el recorrido intentado. Así, sin estar trabado, se puede `mover` sin pasar
+  por la zona de control o `cargar` cruzándola hasta quedar junto a un
+  enemigo; trabado, `destrabarse` saliendo de ella o `posicionarse` pegado a
+  quien lo traba. El banco de pruebas tiene las cuatro (destrabarse y
+  posicionarse, de 6 casillas como mover). La vista
+  del banco de pruebas traza con él la flecha del arrastre y «Agrupar aquí»
+  busca con él cómo acercar a cada uno; `moverPersonaje` valida el recorrido
+  que se le pasa.
 - La zona de control (`Configuracion.distanciaControl`) y `terminarJuntoAEnemigo`
   miran las casillas de los enemigos del personaje que se mueve (los de
   alianzas hostiles hacia la suya): solo una carga entra en la zona de control

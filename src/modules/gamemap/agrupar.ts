@@ -1,5 +1,5 @@
 import { escuadrasDe, todosLosPersonajes } from './activaciones'
-import { casillasDeEnemigos, conPersonajes, conZonaDeControl, enElMapa, evaluarRecorrido, ruta, sePuedePasar, transitable, type MedicionMovimiento } from './movimiento'
+import { conPersonajes, enElMapa, planearMovimiento, sePuedePasar, transitable, type MedicionMovimiento } from './movimiento'
 import type { Casilla } from './modelo/casilla'
 import type { Configuracion } from './modelo/configuracion'
 import type { Mapa } from './modelo/mapa'
@@ -45,7 +45,7 @@ export type RecorridoParaAgrupar = { recorrido: Casilla[]; opcion: OpcionMovimie
  */
 export function recorridoParaAgrupar(
   m: Mapa,
-  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>,
+  config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>,
   lider: Personaje,
   miembro: Personaje,
   opciones: OpcionesMovimiento,
@@ -54,17 +54,14 @@ export function recorridoParaAgrupar(
   const suya = enElMapa(m, miembro)
   if (!centro || !suya || junto(suya, centro)) return
   const ocupadas = new Set(todosLosPersonajes(m).flatMap((p) => enElMapa(m, p) ?? []).map(clave))
-  const vista = conPersonajes(m, miembro.id, terrenoPersonajes)
+  const vista = conPersonajes(m, miembro.id, config.terrenoPersonajes)
   const soloBase = { base: opciones.base, variaciones: [] }
-  const enemigos = casillasDeEnemigos(m, miembro.id)
-  for (const destino of alrededor(conPersonajes(m, lider.id, 'normal'), centro, medicion)) {
+  for (const destino of alrededor(conPersonajes(m, lider.id, 'normal'), centro, config.medicionMovimiento)) {
     // las siguientes están más lejos del líder que donde ya está
     if (clave(destino) === clave(suya)) return
     if (ocupadas.has(clave(destino)) || !transitable(vista, destino)) continue
-    // la opción base no puede entrar en la zona de control de los enemigos: la ruta la rodea
-    const recorrido = ruta(conZonaDeControl(vista, enemigos, distanciaControl), suya, destino, medicion)
-    const evaluado = recorrido && evaluarRecorrido(vista, miembro, recorrido, soloBase, { medicion, enemigos, distanciaControl })
-    if (recorrido && evaluado && 'opcion' in evaluado) return { recorrido, ...evaluado }
+    const plan = planearMovimiento(m, config, miembro, destino, soloBase)
+    if ('opcion' in plan) return plan
   }
 }
 

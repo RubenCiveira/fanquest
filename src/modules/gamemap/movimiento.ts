@@ -264,13 +264,22 @@ function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefi
   return tramos.every((t) => t >= 0) ? tramos : undefined
 }
 
+/** Motivo de `evaluarRecorrido` cuando el recorrido entra en la zona de control de un enemigo sin cargar */
+const EN_ZONA_DE_CONTROL = 'El recorrido entra en la zona de control de un enemigo'
+
+/** Motivo de `evaluarRecorrido` para destrabarse sin salir de la zona de control enemiga */
+const SIN_SALIR_DE_LA_ZONA = 'Para destrabarse tiene que terminar fuera de la zona de control enemiga'
+
 /**
  * Qué opción de movimiento permite el recorrido del personaje (en casillas del
  * mapa, de la suya a la de destino, paso a paso según la `medicion` y
  * cruzando solo puertas abiertas) y en qué tramo cae cada paso. No puede
  * terminar encima de un objeto ni de otro personaje. `enemigos`: sus casillas del
- * mapa; salvo una carga, ningún paso puede entrar en su zona de control (a
- * `distanciaControl` o menos de alguno)
+ * mapa, para su zona de control (a `distanciaControl` o menos de alguno):
+ * quien empieza en ella está trabado. Un movimiento normal no puede empezar
+ * en ella ni entrar; una carga tiene que empezar fuera y puede cruzarla;
+ * destrabarse tiene que empezar en ella y terminar fuera; posicionarse tiene
+ * que empezar en ella y terminar pegado a uno de los enemigos que lo traban
  */
 export function evaluarRecorrido(
   m: Mapa,
@@ -292,19 +301,71 @@ export function evaluarRecorrido(
   if (otro) return { motivo: `No se puede terminar encima de ${otro.nombre}` }
 
   const opciones = [base, ...variaciones]
-  const entraEnZona = pasos.some(enZonaDeControl(enemigos, distanciaControl))
-  const permite = (o: OpcionMovimiento) =>
-    (o.tipo === 'carga' || !entraEnZona) && (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
+  const enZona = enZonaDeControl(enemigos, distanciaControl)
+  const [trabado, entraEnZona, terminaEnZona] = [enZona(salida), pasos.some(enZona), enZona(destino)]
+  const loTraban = enemigos.filter((en) => enZonaDeControl([en], distanciaControl)(salida))
+  const segunZona: Record<OpcionMovimiento['tipo'], boolean> = {
+    normal: !trabado && !entraEnZona,
+    carga: !trabado,
+    destrabarse: trabado && !terminaEnZona,
+    posicionarse: trabado && loTraban.some((en) => distancia(destino, en) === 1),
+  }
+  const permite = (o: OpcionMovimiento) => segunZona[o.tipo] && (!o.terminarJuntoAEnemigo || enemigos.some((en) => distancia(destino, en) === 1))
   const costes = costesDe(m, recorrido, medicion)
   for (const opcion of opciones) {
     const tramos = tramosDe(opcion, costes)
     if (tramos && permite(opcion)) return { opcion, tramos }
   }
-  if (entraEnZona && opciones.some((o) => o.tipo !== 'carga' && tramosDe(o, costes))) return { motivo: 'El recorrido entra en la zona de control de un enemigo' }
+  const llega = (tipo: OpcionMovimiento['tipo']) => opciones.some((o) => o.tipo === tipo && tramosDe(o, costes))
+  const terminaJunto = enemigos.some((en) => distancia(destino, en) === 1)
+  if (trabado && terminaJunto && llega('posicionarse')) return { motivo: 'Para posicionarse tiene que pegarse a un enemigo que lo traba' }
+  if (trabado && terminaJunto && llega('carga')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: no puede cargar, solo posicionarse junto a quien lo traba` }
+  if (trabado && terminaEnZona && llega('destrabarse')) return { motivo: SIN_SALIR_DE_LA_ZONA }
+  if (trabado && llega('normal')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: para salir tiene que destrabarse` }
+  if (entraEnZona && llega('normal')) return { motivo: EN_ZONA_DE_CONTROL }
   const maximo = alcance({ base, variaciones })
   const coste = costeDe(m, recorrido, medicion)
   if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }
   return { motivo: 'Ninguna forma de moverse permite ese recorrido' }
+}
+
+/**
+ * Cómo puede llegar el personaje desde su casilla a la de `destino` (del
+ * mapa) con alguna de sus `opciones`, cada una por su mejor camino según las
+ * reglas de `config`: las normales, rodeando la zona de control de sus
+ * enemigos; las demás (cargar, destrabarse, posicionarse), por el más corto,
+ * aunque la crucen. Vale la primera
+ * que llega (la base y después las variaciones), con su recorrido. Si
+ * ninguna, el motivo (que entra en la zona de control, si es lo que lo
+ * impide) y el recorrido más corto que se ha intentado, para dibujarlo
+ */
+export function planearMovimiento(
+  m: Mapa,
+  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>,
+  personaje: Personaje,
+  destino: Casilla,
+  opciones: OpcionesMovimiento,
+): (Valido & { recorrido: Casilla[] }) | { motivo: string; recorrido?: Casilla[] } {
+  const desde = enElMapa(m, personaje)
+  if (!desde) return { motivo: `${personaje.nombre} no está colocado en el mapa` }
+  const vista = conPersonajes(m, personaje.id, terrenoPersonajes)
+  const enemigos = casillasDeEnemigos(m, personaje.id)
+  const reglas = { medicion, enemigos, distanciaControl }
+  const directo = ruta(vista, desde, destino, medicion)
+  const rodeando = ruta(conZonaDeControl(vista, enemigos, distanciaControl), desde, destino, medicion)
+  for (const opcion of [opciones.base, ...opciones.variaciones]) {
+    const recorrido = opcion.tipo === 'normal' ? rodeando : directo
+    const evaluado = recorrido && evaluarRecorrido(vista, personaje, recorrido, { base: opcion, variaciones: [] }, reglas)
+    if (recorrido && evaluado && 'opcion' in evaluado) return { recorrido, ...evaluado }
+  }
+  const motivoDe = (recorrido: Casilla[]) => {
+    const evaluado = evaluarRecorrido(vista, personaje, recorrido, opciones, reglas)
+    return 'motivo' in evaluado ? evaluado.motivo : 'Ninguna forma de moverse permite ese recorrido'
+  }
+  // trabado (solo puede salir o posicionarse, por el camino corto), o si por el camino corto lo que lo impide es la zona de control, es lo que importa
+  const trabado = enZonaDeControl(enemigos, distanciaControl)(desde)
+  if (directo && (!rodeando || trabado || motivoDe(directo) === EN_ZONA_DE_CONTROL)) return { motivo: motivoDe(directo), recorrido: directo }
+  return rodeando ? { motivo: motivoDe(rodeando), recorrido: rodeando } : { motivo: 'No se puede llegar ahí' }
 }
 
 type Valido = { opcion: OpcionMovimiento; tramos: number[] }

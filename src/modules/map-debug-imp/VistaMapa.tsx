@@ -5,7 +5,6 @@ import {
   activacionDeNoJugador,
   casillasDeEnemigos,
   conPersonajes,
-  conZonaDeControl,
   costeDe,
   costesDe,
   enElMapa,
@@ -16,6 +15,7 @@ import {
   estanciasDe,
   evaluarRecorrido,
   medirAtaque,
+  planearMovimiento,
   ruta,
   type Accion,
   type Activacion,
@@ -237,13 +237,13 @@ function Corona({
 }
 
 /** Cómo se pinta cada paso de la flecha: un color por tipo de movimiento y otro para los tramos que consumen otra acción */
-const CLASES_FLECHA = ['normal', 'accion', 'carga', 'invalido'] as const
+const CLASES_FLECHA = ['normal', 'accion', 'carga', 'destrabarse', 'posicionarse', 'invalido'] as const
 
 type ClaseFlecha = (typeof CLASES_FLECHA)[number]
 
 function claseDelPaso(evaluado: RecorridoEvaluado | undefined, paso: number): ClaseFlecha {
   if (!evaluado || 'motivo' in evaluado) return 'invalido'
-  if (evaluado.opcion.tipo === 'carga') return 'carga'
+  if (evaluado.opcion.tipo !== 'normal') return evaluado.opcion.tipo
   return evaluado.opcion.tramos[evaluado.tramos[paso]]?.accion ? 'accion' : 'normal'
 }
 
@@ -304,18 +304,25 @@ function recortado(mapa: Mapa, recorrido: Casilla[], maximo: number, medicion: M
   return pasa < 0 ? recorrido : recorrido.slice(0, pasa + 1)
 }
 
+/** Reglas del movimiento con las que se traza la ruta */
+type ReglasDeRuta = Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl'>
+
 /**
- * La ruta más corta (A*, según la medición) de la ficha a la casilla
- * `objetivo`, sea cual sea el camino que haya hecho el puntero: rodeando la
- * zona de control de los enemigos (`rodeando`, el mapa con ella impasable)
- * si se puede y, si no (una carga), por donde sea. Si pasa del
- * alcance de sus opciones, se recorta hasta donde llega y queda `fuera`; si no
- * se puede llegar, la flecha se queda como estaba y también queda `fuera`
+ * La ruta de la ficha a la casilla `objetivo`, sea cual sea el camino que haya
+ * hecho el puntero: la que decide el motor (`planearMovimiento`: cada forma
+ * de moverse por su mejor camino, rodeando la zona de control si no es una
+ * carga). Si ninguna llega, la más corta que ha intentado (o, mientras llegan
+ * las opciones, la más corta): si pasa del alcance de sus opciones, se recorta
+ * hasta donde llega y queda `fuera`; si no se puede llegar, la flecha se queda
+ * como estaba y también queda `fuera`
  */
-function trazar(mapa: Mapa, rodeando: Mapa, a: Arrastre, objetivo: Casilla, medicion: MedicionMovimiento): Arrastre {
-  const camino = ruta(rodeando, a.recorrido[0], objetivo, medicion) ?? ruta(mapa, a.recorrido[0], objetivo, medicion)
+function trazar(mapa: Mapa, reglas: ReglasDeRuta, a: Arrastre, objetivo: Casilla): Arrastre {
+  const plan = a.opciones ? planearMovimiento(mapa, reglas, a.ficha, objetivo, a.opciones) : undefined
+  if (plan && 'opcion' in plan) return { ...a, objetivo, recorrido: plan.recorrido, fuera: false }
+  const vista = conPersonajes(mapa, a.ficha.id, reglas.terrenoPersonajes)
+  const camino = plan?.recorrido ?? ruta(vista, a.recorrido[0], objetivo, reglas.medicionMovimiento)
   if (!camino) return { ...a, objetivo, fuera: true }
-  const recorrido = a.opciones ? recortado(mapa, camino, alcance(a.opciones), medicion) : camino
+  const recorrido = a.opciones ? recortado(vista, camino, alcance(a.opciones), reglas.medicionMovimiento) : camino
   return { ...a, objetivo, recorrido, fuera: recorrido.length < camino.length }
 }
 
@@ -566,8 +573,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const { opcionesMovimiento, onMover, onAtacar, motivoParaNoAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0 } = props
   /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
   const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
-  /** Como lo ve la ficha, con la zona de control de sus enemigos impasable: para rutas que la rodeen */
-  const rodeando = (ficha: Personaje) => conZonaDeControl(vistoPor(ficha), casillasDeEnemigos(mapa, ficha.id), distanciaControl)
+  const reglas: ReglasDeRuta = { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl }
   const { estancias } = mapa
   const svg = useRef<SVGSVGElement>(null)
   // ids de las puntas de flecha, únicos aunque haya varios mapas en la página
@@ -589,7 +595,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     setArrastre({ ficha, objetivo: desde, recorrido: [desde] })
     // al llegar las opciones, la ruta que ya se estuviera mostrando se recorta a su alcance
     opcionesMovimiento?.(ficha.id).then((opciones) =>
-      setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(vistoPor(a.ficha), rodeando(a.ficha), { ...a, opciones: opciones ?? null }, a.objetivo, medicion) : a)),
+      setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(mapa, reglas, { ...a, opciones: opciones ?? null }, a.objetivo) : a)),
     )
   }
 
@@ -600,7 +606,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     const { ficha } = arrastre
     const enemigo = onAtacar && enemigoEn(mapa, ficha.id, c)
     const medida = enemigo && medirAtaque(mapa, { medicionMovimiento: medicion, terrenoPersonajes }, ficha, enemigo)
-    if (!enemigo || !medida) return setArrastre((a) => a && { ...trazar(vistoPor(a.ficha), rodeando(a.ficha), a, c, medicion), ataque: undefined })
+    if (!enemigo || !medida) return setArrastre((a) => a && { ...trazar(mapa, reglas, a, c), ataque: undefined })
     setArrastre((a) => a && { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } })
     // si no puede atacarlo, el icono lo dice; la respuesta solo vale si el puntero sigue sobre ese enemigo
     motivoParaNoAtacar?.(ficha.id, enemigo.id).then((motivo) =>

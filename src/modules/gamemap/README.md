@@ -127,7 +127,11 @@ mismo sitio.
   personaje sus `OpcionesMovimiento` (movimiento base y variaciones, en tramos que
   pueden consumir acciones adicionales). El recorrido vale con la primera
   opción que lo permite, por todo el mapa cruzando puertas abiertas; si
-  consume una acción adicional, antes se pide confirmación.
+  consume una acción adicional, antes se pide confirmación. El motor planea
+  el camino hasta una casilla (`planearMovimiento`): moviéndose, rodeando la
+  zona de control de los enemigos; cargando, cruzándola hasta quedar junto a
+  uno. Trabado en ella no puede moverse ni cargar: solo destrabarse, saliendo
+  de ella, o posicionarse, pegado a quien lo traba.
 - **Ataque**: al arrastrar una ficha sobre la de un enemigo, el gestor pide a
   la clase del personaje que ataque (`atacar`), con el tipo (cuerpo a cuerpo o
   a distancia), la distancia según la medición del movimiento, lo que costaría

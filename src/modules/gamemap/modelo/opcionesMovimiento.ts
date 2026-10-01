@@ -12,11 +12,15 @@ export type OpcionMovimiento = {
   id: string
   nombre: string
   /**
-   * `carga` es un movimiento para contactar con el enemigo: se dibuja distinto
-   * y es el único que puede entrar en la zona de control de un enemigo
-   * (`Configuracion.distanciaControl`)
+   * Cómo trata la zona de control de los enemigos (`Configuracion.distanciaControl`;
+   * quien empieza en ella está trabado en cuerpo a cuerpo): `normal` no puede
+   * empezar en ella ni entrar; `carga`, para contactar con un enemigo, tiene
+   * que empezar fuera y puede cruzarla; `destrabarse` tiene que empezar en
+   * ella y terminar fuera de toda zona enemiga; `posicionarse` tiene que
+   * empezar en ella y terminar pegado a uno de los enemigos que lo traban.
+   * Las que no son normales se dibujan distinto
    */
-  tipo: 'normal' | 'carga'
+  tipo: 'normal' | 'carga' | 'destrabarse' | 'posicionarse'
   accion: Accion
   tramos: TramoMovimiento[]
   /** Tiene que terminar junto a un enemigo (también en diagonal) */
