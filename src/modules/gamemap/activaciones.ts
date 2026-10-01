@@ -87,13 +87,22 @@ export const escuadraActiva = (m: Mapa): Escuadra | undefined =>
 /** Los mismos elementos empezando por el de la posición `desde` y dando la vuelta */
 const rotar = <T>(xs: T[], desde: number) => xs.map((_, i) => xs[(i + desde) % xs.length])
 
+/** Activaciones que ha terminado el jugador en el turno en curso: de sus escuadras y de sus personajes no jugadores */
+export const terminadasEnElTurno = (m: Mapa, jugador: string): number =>
+  escuadrasDe(m).filter((e) => e.jugador === jugador && activacionDe(m, e.id)?.terminada).length +
+  activacionesDeJugador(m, jugador).filter((a) => a.activacion.terminada).length
+
 /**
  * Jugador al que le toca: el de la escuadra que se está activando o, si no
  * hay, el siguiente que tenga alguna escuadra por activar en el turno. Con
- * activaciones `alternas`, empezando por la alianza siguiente a la del último
- * que terminó una activación; con `personajes-primero`, por la primera
- * alianza. Dentro de cada alianza, el siguiente al último de ella que
- * terminó. Nadie si no hay reparto de jugadores o nadie tiene nada que activar
+ * `iniciativa`, el del primer hueco del orden del turno (`Mapa.ordenDelTurno`)
+ * que aún tenga activaciones en él (los huecos de un jugador se van llenando
+ * en orden con las que ha terminado) y algo por activar; si no queda
+ * ninguno, como `alternas`. Con activaciones `alternas`, empezando por la
+ * alianza siguiente a la del último que terminó una activación; con
+ * `personajes-primero`, por la primera alianza. Dentro de cada alianza, el
+ * siguiente al último de ella que terminó. Nadie si no hay reparto de
+ * jugadores o nadie tiene nada que activar
  */
 export function jugadorEnTurno(m: Mapa, { ordenActivaciones }: Pick<Configuracion, 'ordenActivaciones'>): Jugador | undefined {
   const { alianzas, jugadores } = jugadoresDe(m)
@@ -105,8 +114,16 @@ export function jugadorEnTurno(m: Mapa, { ordenActivaciones }: Pick<Configuracio
   const pendiente = (j: Jugador) =>
     escuadrasDe(m).some((e) => e.jugador === j.id && e.personajes.length && !activacionDe(m, e.id)) ||
     personajesNoJugadoresDe(m).some((p) => p.jugador === j.id && !activacionDeNoJugador(m, p.id)?.activacion.terminada)
+  const huecos = ordenActivaciones === 'iniciativa' && m.ordenDelTurno?.numero === numeroDeTurno(m) ? m.ordenDelTurno.huecos : []
+  const sinHueco = new Map(jugadores.map((j) => [j.id, terminadasEnElTurno(m, j.id)]))
+  for (const { jugador, activaciones = Number.POSITIVE_INFINITY } of huecos) {
+    const suyo = jugadores.find((j) => j.id === jugador)
+    const llenas = Math.min(sinHueco.get(jugador) ?? 0, activaciones)
+    sinHueco.set(jugador, (sinHueco.get(jugador) ?? 0) - llenas)
+    if (suyo && llenas < activaciones && pendiente(suyo)) return suyo
+  }
   const ultimo = jugadores.find((j) => j.id === rotacion.at(-1))
-  const desde = ordenActivaciones === 'alternas' && ultimo ? alianzas.findIndex((a) => a.id === ultimo.alianza) + 1 : 0
+  const desde = ordenActivaciones !== 'personajes-primero' && ultimo ? alianzas.findIndex((a) => a.id === ultimo.alianza) + 1 : 0
   for (const alianza of rotar(alianzas, desde)) {
     const suyos = jugadores.filter((j) => j.alianza === alianza.id)
     const ultimoSuyo = suyos.findIndex((j) => j.id === rotacion.findLast((id) => suyos.some((s) => s.id === id)))

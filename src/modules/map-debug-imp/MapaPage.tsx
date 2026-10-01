@@ -25,6 +25,7 @@ import { esCancelacion, useProveedorDebug } from './useProveedorDebug'
 import { VistaMapa } from './VistaMapa'
 import { movimientoDePrueba } from './modelo/personaje'
 import { tieneEnemigosActivosEnEstancia } from './trampas'
+import { textoDeIniciativa } from './iniciativa'
 import './mapDebug.css'
 
 /** Un mapa de prueba: pulsa una casilla para ver de qué estancia es */
@@ -150,6 +151,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   }
 
   const numero = numeroDeTurno(mapa)
+  const iniciativa = textoDeIniciativa(mapa)
   const enTurno = jugadorEnTurno(mapa, configuracion)
   const nombreDeJugador = (jugador: string) => jugadoresDe(mapa).jugadores.find((j) => j.id === jugador)?.nombre ?? jugador
   const esNoJugador = (personaje: string) => personajesNoJugadoresDe(mapa).some((p) => p.id === personaje)
@@ -173,6 +175,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
       <div className="map-debug-turno">
         <strong>Turno {numero}</strong>
         <span className="nota">{enTurno ? `Le toca a ${enTurno.nombre}${modoNoJugador ? ` en modo ${modoNoJugador}` : ''}.` : 'Nadie tiene nada que activar: termina el turno.'}</span>
+        {iniciativa && <span className="nota">Iniciativa: {iniciativa}.</span>}
         <button type="button" className="button secondary" onClick={() => setNota(gestor.terminarTurno())}>
           Terminar turno
         </button>

@@ -21,6 +21,7 @@ import { cargarConfiguracion, guardarConfiguracion, JUGADOR_MONSTRUOS } from './
 import { DialogoAtaque } from './DialogoAtaque'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba, sinCoherenciaDePrueba } from './escuadras'
+import { iniciativaDePrueba } from './iniciativa'
 import { PersonajeDePrueba, type DialogosDePrueba } from './modelo/personaje'
 import { PuertasDePrueba } from './modelo/puerta'
 
@@ -107,6 +108,7 @@ export function useProveedorDebug(inicial?: Mapa) {
             : {}),
         }),
       finDeTurno: (mapa) => setFinTurno(mapa),
+      ordenDelTurno: (mapa) => iniciativaDePrueba(mapa.mapa),
       escuadraSinCoherencia: (escuadra, fuera, mapa) => void sinCoherenciaDePrueba(escuadra, fuera, mapa, dialogos),
       describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>

@@ -15,6 +15,7 @@ import {
 } from './activaciones'
 import { crearEstancia } from './estancias'
 import type { Configuracion } from './modelo/configuracion'
+import type { HuecoDelTurno } from './modelo/ordenDelTurno'
 import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 
@@ -170,6 +171,27 @@ describe('a qué jugador le toca', () => {
 
   it('alternas: un jugador sigue pendiente mientras le queden PNJ sin activar', () => {
     expect(sucesion(conDosMonstruos, { ...normales, ordenActivaciones: 'alternas' })).toEqual(['Ana', 'La Oscuridad', 'Bruno', 'La Oscuridad'])
+  })
+
+  /** Con iniciativa y esos huecos como orden del turno en curso */
+  const conOrden = (m: Mapa, ...huecos: HuecoDelTurno[]): Mapa => ({ ...m, ordenDelTurno: { numero: 1, huecos } })
+  const iniciativa: Configuracion = { ...normales, ordenActivaciones: 'iniciativa' }
+
+  it('iniciativa: sigue el orden del turno', () => {
+    expect(sucesion(conOrden(partida, { jugador: 'bruno' }, { jugador: 'tomas' }, { jugador: 'ana' }), iniciativa)).toEqual(['Bruno', 'Tomás', 'Ana'])
+  })
+
+  it('iniciativa: en su hueco, cada uno activa hasta su cupo; sin cupo, lo que le quede', () => {
+    const orden = conOrden(conDosMonstruos, { jugador: 'oscuridad', activaciones: 1 }, { jugador: 'ana' }, { jugador: 'bruno' }, { jugador: 'oscuridad' })
+    expect(sucesion(orden, iniciativa)).toEqual(['La Oscuridad', 'Ana', 'Bruno', 'La Oscuridad'])
+  })
+
+  it('iniciativa: acabado el orden, lo que queda va como alternas', () => {
+    expect(sucesion(conOrden(partida, { jugador: 'bruno' }), iniciativa)).toEqual(['Bruno', 'Ana', 'Tomás'])
+  })
+
+  it('iniciativa: sin orden del turno en curso, como alternas', () => {
+    expect(sucesion({ ...conOrden(partida, { jugador: 'bruno' }), turno: 2 }, iniciativa)).toEqual(['Ana', 'Bruno', 'Tomás'])
   })
 
   it('alianza a alianza: los PNJ restantes se activan al final', () => {

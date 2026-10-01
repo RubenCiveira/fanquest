@@ -27,6 +27,7 @@ export type { Medida } from './modelo/medida'
 export type { MovimientoGastado } from './modelo/movimientoGastado'
 export type { MovimientoHecho } from './modelo/movimientoHecho'
 export type { OpcionesMovimiento, OpcionMovimiento, TramoMovimiento } from './modelo/opcionesMovimiento'
+export type { HuecoDelTurno, OrdenDelTurno } from './modelo/ordenDelTurno'
 export type { PersonajeEnJuego } from './modelo/personajeEnJuego'
 export type { PersonajeNoJugador } from './modelo/personajeNoJugador'
 export type { Puerta } from './modelo/puerta'
@@ -54,6 +55,7 @@ export {
   sinAcciones,
   jugadorEnTurno,
   jugadoresDe,
+  terminadasEnElTurno,
   motivoDeTurno,
   personajesDelMapa,
   personajesNoJugadoresDe,

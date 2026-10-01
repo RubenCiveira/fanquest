@@ -9,6 +9,7 @@ import type { Ubicacion } from '../modelo/ubicacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { Coherencia } from '../modelo/coherencia'
+import type { HuecoDelTurno } from '../modelo/ordenDelTurno'
 import type { Escuadra } from '../modelo/escuadra'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
 import type { Direccion } from '../modelo/direccion'
@@ -381,6 +382,36 @@ describe('gestor del mapa: al entrar en cada casilla', () => {
     await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 1))
     const rojos = gestor.mapa.escuadras?.[0]
     expect([rojos?.personajes.map((h) => h.id), rojos && turnoDeEscuadra(rojos, 1).acciones]).toEqual([['elfo'], []])
+  })
+})
+
+describe('gestor del mapa: orden del turno con iniciativa', () => {
+  /** Proveedor con iniciativa: en cada turno, primero los azules (Ana) */
+  async function conIniciativa(ordenDelTurno?: (mapa: MapaEnJuego) => HuecoDelTurno[]) {
+    const base = proveedor()
+    const p = { ...base, configuracion: { ...base.configuracion, ordenActivaciones: 'iniciativa' as const }, ordenDelTurno: vi.fn(ordenDelTurno ?? (() => [{ jugador: 'j1' }])) }
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    return { gestor, p }
+  }
+
+  it('al empezar la partida, pide el orden del primer turno y lo guarda', async () => {
+    const { gestor } = await conIniciativa()
+    expect(gestor.mapa.ordenDelTurno).toEqual({ numero: 1, huecos: [{ jugador: 'j1' }] })
+  })
+
+  it('al empezar cada turno, pide el suyo', async () => {
+    const { gestor, p } = await conIniciativa()
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    await gestor.ejecutarAccion('azules', 'terminar-turno')
+    gestor.terminarTurno()
+    expect([p.ordenDelTurno.mock.calls.length, gestor.mapa.ordenDelTurno?.numero]).toEqual([2, 2])
+  })
+
+  it('sin iniciativa, no lo pide', async () => {
+    const p = { ...proveedor(), ordenDelTurno: vi.fn(() => []) }
+    await new GestorMapa(p).nuevaEstancia()
+    expect(p.ordenDelTurno).not.toHaveBeenCalled()
   })
 })
 

@@ -1,5 +1,6 @@
 import type { Jugador } from '../modelo/jugador'
 import type { Escuadra } from '../modelo/escuadra'
+import type { HuecoDelTurno } from '../modelo/ordenDelTurno'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { PersonajeEnJuego } from '../modelo/personajeEnJuego'
 
@@ -13,6 +14,14 @@ export interface ProveedorTurnos {
   turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
   /** Cuando nadie tiene más activaciones pendientes, antes de empezar el siguiente turno */
   finDeTurno(mapa: MapaEnJuego): void
+  /**
+   * Con `ordenActivaciones: 'iniciativa'`, al empezar cada turno (también el
+   * primero): en qué orden activan los jugadores (cartas de iniciativa…),
+   * cada uno con cuántas activaciones seguidas (sin decirlo, todas las que le
+   * queden). Lo que quede al acabar el orden va como `alternas`. Sin él, todo
+   * va como `alternas`
+   */
+  ordenDelTurno?(mapa: MapaEnJuego): HuecoDelTurno[]
   /**
    * Cuando termina la activación de una escuadra y, con la coherencia de la
    * configuración (`Configuracion.coherencia`), algunos de sus personajes quedan fuera:

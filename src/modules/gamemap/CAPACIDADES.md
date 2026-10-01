@@ -96,7 +96,7 @@ juego que mejor encaja.
 | `cuerpoACuerpo` | `ortogonal` (o `diagonal` para armas con ataque diagonal, ver huecos) | Área de ataque normal: la casilla de delante |
 | `terrenoPersonajes` | `normal` | Se pasa por encima de los aliados, pero no se termina en su casilla. El motor ya lo hace así |
 | `distanciaControl` | `1` | Con las «Nuevas reglas de movimiento», salir de una casilla del área de influencia enemiga hace perder el resto del movimiento |
-| `ordenActivaciones` | `personajes-primero` | Los héroes juegan primero y el MB, al final de la ronda |
+| `ordenActivaciones` | `personajes-primero` o `iniciativa` | Los héroes juegan primero y el MB, al final de la ronda; con las cartas de iniciativa, en el orden que salga |
 | `modosActivacion` | `normal` | |
 | `coherencia` | `ninguna` | Cada héroe es su propia escuadra |
 | `jugadores` | Alianza `heroes` (un jugador humano con todos los héroes, o uno por héroe) y alianza `mazmorra` (jugador `malvado-brujo` de tipo `ia`), hostiles entre sí | |
@@ -218,13 +218,13 @@ recibe y el proyecto juega por él con estas piezas:
   añade un cofre al mazo de Atrezo. Se guarda aparte del `Mapa`, con la
   partida del proyecto.
 - **Orden de juego:** el clásico (héroes y luego MB) es `personajes-primero`.
-  - Las **cartas de iniciativa** (un orden al azar cada vez que aparecen
-    monstruos) no tienen equivalente. Se puede aproximar reordenando
-    `jugadores` con `cambiarJugadores` en `finDeTurno`, con un jugador por
-    héroe.
+  - Las **cartas de iniciativa** son `ordenActivaciones: 'iniciativa'`: al
+    empezar cada turno, `ProveedorTurnos.ordenDelTurno` reparte las cartas
+    y devuelve los huecos en orden, con un jugador por héroe.
   - Que el MB active «héroes − 1» monstruos en su hueco y el resto al final
-    («turno escoba») necesita un orden de activación decidido por el proyecto
-    (ver huecos).
+    («turno escoba») son dos huecos suyos: `{ jugador: 'mb', activaciones:
+    héroes − 1 }` y, al final, `{ jugador: 'mb' }`. El banco de pruebas ya
+    lo hace así.
 
 ### 2.6 Exteriores
 
@@ -255,7 +255,7 @@ recibe y el proyecto juega por él con estas piezas:
 | Dado de Trampa al entrar en una sección | ✅ `alEntrar` (en el banco de pruebas) |
 | Puertas secretas | ❌ Falta añadir puertas a estancias ya construidas |
 | IA del MB | 🟡 Proyecto, con todas las consultas que necesita |
-| Cartas de iniciativa y «turno escoba» | ❌ Falta un orden de activación del proyecto |
+| Cartas de iniciativa y «turno escoba» | ✅ `iniciativa` y `ordenDelTurno` |
 | Áreas de influencia de elementos escenográficos | 🟡 Proyecto, con `alEntrar` |
 
 ## 3. One Page Rules: Grimdark Future y Firefight
@@ -382,10 +382,12 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
   retiran con `eliminarPersonaje` de cada modelo.
 - **Rondas:** `finDeTurno` cuenta `mapa.turno` y, tras la cuarta, comprueba los
   objetivos.
-  - **Quién empieza:** el motor continúa la rotación de un turno al siguiente.
-    La regla de OPR es que empieza quien terminó primero la ronda anterior, y
-    para eso hace falta que el proyecto pueda decidir quién empieza (ver
-    huecos).
+  - **Quién empieza:** con `alternas`, el motor continúa la rotación de un
+    turno al siguiente. Para la regla de OPR (empieza quien terminó primero
+    la ronda anterior), `ordenActivaciones: 'iniciativa'` con un
+    `ordenDelTurno` que ponga primero a ese jugador; el resto va como
+    `alternas`. Quién terminó primero lo apunta el proyecto (por ejemplo,
+    con un flag al terminar la última activación de cada jugador).
 - **Objetivos:** marcadores como objetos fijos (o muebles). Un objetivo está
   controlado si hay unidades sin aturdir a 3″ o menos y ninguna enemiga. Lo
   calcula el proyecto en `finDeTurno`.
@@ -456,7 +458,7 @@ elegir objetivo y acción con las mismas consultas.
 | Respuesta del defensor, consolidación y empujar | ✅ `desplazar` y `desplazarEscuadra` |
 | Coherencia de unidad | 🟡 `coherencia`: la cadena de 1″ o la distancia con todos, una de las dos |
 | Aturdido y moral | 🟡 Proyecto, con aturdido y fatiga como flags |
-| Quién empieza la ronda | ❌ Falta un orden de activación del proyecto |
+| Quién empieza la ronda | 🟡 `iniciativa` y `ordenDelTurno`; quién terminó primero lo apunta el proyecto |
 | Despliegue alterno en zonas y emboscada | 🟡 La zona de espera y `colocarPersonaje` existen; faltan zonas y validación |
 | 1 contra 1 en el mismo dispositivo y equipos | ✅ |
 | IA de solitario | 🟡 Proyecto, con las consultas del motor |
@@ -472,7 +474,7 @@ un juego en el motor: son puntos de extensión.
 | 2 | ✅ **Aviso por casilla durante el movimiento y cortar el recorrido** | FAI (Dado de Trampa, áreas de influencia), OPR (terreno peligroso) | Hecho: `ClaseDePersonaje.alEntrar(personaje, donde, mapa)`, por cada casilla en que podría quedarse, responde `seguir`, `detenerse` o `terminar-turno`. Falta para los personajes no jugadores y al agrupar |
 | 3 | ✅ **Movimientos forzados** fuera de la activación y de las opciones de la clase | OPR (respuesta a la carga, consolidar, retroceder, empujar aturdidos), FetenQuest (empujar) | Hecho: `MapaEnJuego.desplazar` y `desplazarEscuadra`, hacia o lejos de una referencia (`casillas` que puede recorrer, `hasta` dónde) o por un recorrido, con las reglas del mapa y sin gastar movimiento; `planearDesplazamiento` para previsualizar |
 | 4 | ✅ **Coherencia de escuadra** | OPR | Hecho: `coherencia` y `distanciaCoherencia` en la configuración (en cadena, con todos o desde el centro), comprobada al terminar la activación (`escuadraSinCoherencia`) y con guía para dibujarla. Falta combinar dos reglas (1″ en cadena y 6″ o 9″ con todos) |
-| 5 | **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Un `ordenDelTurno?(mapa)` opcional en `ProveedorTurnos` que dé los jugadores del turno que empieza; sin él, la rotación de hoy |
+| 5 | ✅ **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Hecho: `ordenActivaciones: 'iniciativa'` en la configuración y `ProveedorTurnos.ordenDelTurno(mapa)`, que al empezar cada turno da los huecos (jugador y cuántas activaciones seguidas; sin cupo, todas); lo que queda después va como `alternas` |
 | 6 | **Ataque de escuadra contra escuadra** (1.1) | OPR (disparo y cuerpo a cuerpo de unidad) | Un modo de ataque `uno-a-uno` (el de hoy) o `escuadra`, en la configuración como `coherencia` (o por clase de escuadra si un juego mezcla los dos). Con `escuadra`, al soltar un personaje sobre un enemigo el gestor reúne a los de su escuadra con acciones disponibles a los que su clase deja atacar a algún personaje de la escuadra objetivo, llama a un `atacarEscuadra(ataques, mapa)` de la clase de escuadra con un `Ataque` por atacante y apunta la acción a todos. El reparto del daño es de la clase, con una ayuda del gestor que proponga el orden (los más cercanos primero) y deje elegir al defensor |
 | 7 | **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | `etiqueta?: string` en `Terreno`, para que la clase lo reconozca en `alEntrar` y en `trayectoria` |
 | 8 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
@@ -482,14 +484,13 @@ un juego en el motor: son puntos de extensión.
 | 12 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
 | 13 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 
-Con 1 a 4 (hechos) se puede jugar FAI completo en solitario y OPR con una
-aproximación razonable. Con 5 y 6, OPR queda fiel a sus reglas. Del 7 al 13 son
+Con 1 a 5 (hechos) se puede jugar FAI completo en solitario y OPR con una
+aproximación razonable. Con 6, OPR queda fiel a sus reglas. Del 7 al 13 son
 mejoras de fidelidad.
 
 **Orden recomendado:**
 
-1. **Orden de activación (5)** y **ataque de escuadra contra escuadra (6)**
-   antes de empezar OPR.
+1. **Ataque de escuadra contra escuadra (6)** antes de empezar OPR.
 2. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
    trampas, muebles y monstruos de prueba, y que sería el primer juego real
    del motor.

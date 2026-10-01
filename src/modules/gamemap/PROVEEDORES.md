@@ -68,6 +68,7 @@ movimientos con las acciones que consumieron.
 | `ProveedorEstancias` | `estanciaCreada(estancia, mapa)` | Cuando la estancia ya está creada y en su sitio |
 | `ProveedorTurnos` | `turnoDe(jugador, mapa)` | Tras cada activación que termina y al empezar un turno, si a alguien le toca |
 | `ProveedorTurnos` | `finDeTurno(mapa)` | Cuando termina la última activación pendiente del turno |
+| `ProveedorTurnos` | `ordenDelTurno?(mapa)` | Con `ordenActivaciones: 'iniciativa'`, al empezar cada turno (también el primero) |
 | `ProveedorTurnos` | `escuadraSinCoherencia?(escuadra, fuera, mapa)` | Cuando termina la activación de una escuadra y, con la coherencia de la configuración, le quedan personajes fuera |
 | `ProveedorPersonajes` | `listarEscuadras()` | La primera vez que necesita las clases (una sola vez por gestor) |
 | `ClaseDeEscuadra` | `personajes()` | Al crear la estancia inicial y al buscar la clase de un personaje |
@@ -84,7 +85,7 @@ movimientos con las acciones que consumieron.
 
 ```ts
 configuracion: {
-  ordenActivaciones: 'alternas' | 'personajes-primero',
+  ordenActivaciones: 'alternas' | 'personajes-primero' | 'iniciativa',
   modosActivacion: 'normal' | 'agresivo-sigiloso',
   medicionMovimiento: 'ortogonal' | 'diagonal' | 'euclidea',
   terrenoPersonajes: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
@@ -114,7 +115,18 @@ configuracion: {
   `alternas`, tras cada activación la siguiente alianza y, dentro de ella, el
   siguiente jugador al último suyo que activó: A (alianza 1), B (alianza 2),
   T (alianza 1)… Con `personajes-primero`, la primera alianza hasta que no le
-  quede nada que activar (rotando sus jugadores), luego la siguiente. Se salta
+  quede nada que activar (rotando sus jugadores), luego la siguiente. Con
+  `iniciativa`, al empezar cada turno (también el primero) el gestor pide el
+  orden al proveedor (`ProveedorTurnos.ordenDelTurno`) y lo guarda en el
+  mapa (`mapa.ordenDelTurno`): una lista de huecos `{ jugador, activaciones? }`.
+  Le toca al del primer hueco que aún tenga activaciones (sin
+  `activaciones`, todas las que le queden) y algo por activar; los huecos de
+  un jugador se van llenando en orden con las activaciones que termina.
+  Acabado el orden, o sin `ordenDelTurno`, lo que queda va como `alternas`.
+  El banco de pruebas reparte cartas de iniciativa como Aventuras
+  Infinitas: una al azar a cada jugador con algo en el mapa; en su hueco, la
+  IA activa tantas como escuadras de humanos menos una, y al final lo que le
+  quede (el turno escoba). La página muestra el orden del turno. Se salta
   a quien no tiene escuadras por activar en el turno. Solo se pueden elegir
   las miniaturas del jugador al que le toca (`gestor.jugadorEnTurno`). En la
   activación de una escuadra pueden actuar todos sus personajes; cada
@@ -203,6 +215,7 @@ usa al soltar una ficha en un tramo que consume una acción adicional
 ```ts
 turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
 finDeTurno(mapa: MapaEnJuego): void
+ordenDelTurno?(mapa: MapaEnJuego): { jugador: string; activaciones?: number }[] // con `iniciativa`; ver `ordenActivaciones`
 escuadraSinCoherencia?(escuadra: Escuadra, fuera: PersonajeEnJuego[], mapa: MapaEnJuego): void
 ```
 

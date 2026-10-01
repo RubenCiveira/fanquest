@@ -39,7 +39,7 @@ export type Ajuste = Exclude<keyof Configuracion, 'jugadores'>
 
 /** Textos del formulario para cada valor de cada ajuste */
 export const OPCIONES_CONFIGURACION: { [K in Ajuste]: { etiqueta: string; valores: Record<Configuracion[K], string> } } = {
-  ordenActivaciones: { etiqueta: 'Orden de activación', valores: { alternas: 'Alternas entre alianzas', 'personajes-primero': 'Alianza a alianza' } },
+  ordenActivaciones: { etiqueta: 'Orden de activación', valores: { alternas: 'Alternas entre alianzas', 'personajes-primero': 'Alianza a alianza', iniciativa: 'Cartas de iniciativa en cada turno' } },
   modosActivacion: { etiqueta: 'Modo de activación', valores: { 'agresivo-sigiloso': 'Agresivo o sigiloso', normal: 'Todas normales' } },
   medicionMovimiento: {
     etiqueta: 'Medición del movimiento',

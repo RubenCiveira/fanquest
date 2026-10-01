@@ -123,13 +123,17 @@ mismo sitio.
   termina su activación (`ClaseDeEscuadra`); cómo se mueve y qué acciones
   tiene donde está (`ClaseDePersonaje`).
 - **Configuración**: la da el proyecto. `jugadores` (el reparto inicial),
-  `ordenActivaciones` (alternas entre alianzas o alianza a alianza), `modosActivacion` (agresivo o sigiloso, o normal) y
+  `ordenActivaciones` (alternas entre alianzas, alianza a alianza o por
+  iniciativa, con el orden que da el proveedor en cada turno),
+  `modosActivacion` (agresivo o sigiloso, o normal),
   `medicionMovimiento` (sin diagonales, diagonal como recta o por Pitágoras
   redondeando hacia arriba), `terrenoPersonajes` (cómo cuenta la casilla de
   otro personaje: normal, difícil, muy difícil o impasable) y
   `distanciaControl` (casillas alrededor de un personaje que controla: salvo
   cargando, nadie entra en la zona de control de un enemigo) y
-  `cuerpoACuerpo` (contacto solo en recto o también en diagonal).
+  `cuerpoACuerpo` (contacto solo en recto o también en diagonal) y
+  `coherencia` con `distanciaCoherencia` (si las escuadras se mantienen
+  juntas y cómo).
 - **Turno y activación**: la activación es de la escuadra y en ella pueden
   actuar todos sus personajes. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las

@@ -836,7 +836,9 @@ export class GestorMapa implements MapaEnJuego {
   }
 
   /**
-   * Guarda el mapa y avisa del cambio. Si ha terminado la activación de
+   * Guarda el mapa y avisa del cambio. Con iniciativa, si empieza un turno
+   * sin orden, se lo pide al proveedor (`ordenDelTurno`) y lo guarda. Si ha
+   * terminado la activación de
    * escuadras con personajes fuera de coherencia, avisa al
    * proveedor (`escuadraSinCoherencia`); si ha terminado una activación o el
    * turno, de a quién le toca
@@ -844,6 +846,10 @@ export class GestorMapa implements MapaEnJuego {
   #cambiar(mapa: Mapa) {
     const antes = this.#mapa
     this.#mapa = mapa
+    // con iniciativa, al empezar un turno el proveedor da su orden
+    const sinOrden = this.configuracion.ordenActivaciones === 'iniciativa' && mapa.jugadores && mapa.ordenDelTurno?.numero !== numeroDeTurno(mapa)
+    const huecos = sinOrden ? this.#proveedor.ordenDelTurno?.(this) : undefined
+    if (huecos) this.#mapa = mapa = { ...mapa, ordenDelTurno: { numero: numeroDeTurno(mapa), huecos } }
     this.#avisos.forEach((aviso) => aviso(mapa))
     const terminada = (id: string) => activacionDe(mapa, id)?.terminada && !activacionDe(antes, id)?.terminada
     for (const guia of this.guiasDeCoherencia().filter((g) => g.fuera.length && terminada(g.escuadra))) {

@@ -8,9 +8,12 @@ export type Configuracion = {
    * A quién le toca activar una escuadra: `alternas`, tras cada activación la
    * siguiente alianza (y dentro de ella, el siguiente de sus jugadores);
    * `personajes-primero`, la primera alianza hasta que no le quede nada que
-   * activar (rotando sus jugadores), luego la siguiente
+   * activar (rotando sus jugadores), luego la siguiente; `iniciativa`, el
+   * orden que da el proveedor al empezar cada turno
+   * (`ProveedorTurnos.ordenDelTurno`: cartas de iniciativa…) y, cuando se
+   * acaba, como `alternas`
    */
-  ordenActivaciones: 'alternas' | 'personajes-primero'
+  ordenActivaciones: 'alternas' | 'personajes-primero' | 'iniciativa'
   /** Si cada escuadra elige activarse en modo agresivo o sigiloso, o todas las activaciones son normales */
   modosActivacion: 'normal' | 'agresivo-sigiloso'
   /**
