@@ -120,7 +120,7 @@ export function trayectoria(m: Mapa, atacante: Personaje, objetivo: Personaje): 
 }
 
 /** Casillas de `a` a `b` según la medición del movimiento, en línea recta y sin obstáculos (por Pitágoras, redondeando hacia arriba) */
-function distanciaSegun(medicion: Configuracion['medicionMovimiento'], a: Casilla, b: Casilla) {
+export function distanciaSegun(medicion: Configuracion['medicionMovimiento'], a: Casilla, b: Casilla) {
   const [dx, dy] = [Math.abs(a.x - b.x), Math.abs(a.y - b.y)]
   if (medicion === 'ortogonal') return dx + dy
   if (medicion === 'diagonal') return Math.max(dx, dy)

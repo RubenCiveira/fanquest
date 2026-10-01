@@ -23,6 +23,7 @@ import { anadirPersonajesNoJugadores, huecoDePersonaje } from '../apariciones'
 import { conVidaReducida, medirAtaque, sinPersonaje } from '../ataques'
 import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
+import { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from '../desplazamientos'
 import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
@@ -38,6 +39,7 @@ import type { ClaseDePersonaje } from '../modelo/claseDePersonaje'
 import { esComando } from '../modelo/comando'
 import { OPUESTA } from '../modelo/direccion'
 import type { DescripcionMueble } from '../modelo/descripcionEstancia'
+import type { Desplazamiento, DesplazamientoPorRecorrido, ResultadoDesplazamiento } from '../modelo/desplazamiento'
 import type { DescripcionPersonajeNoJugador } from '../modelo/descripcionPersonaje'
 import type { Elemento, Objeto } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
@@ -472,9 +474,7 @@ export class GestorMapa implements MapaEnJuego {
     if (!encontrado?.personaje.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
     const { personaje, escuadra } = encontrado
     if (!opciones) return motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personaje.id) ?? `${personaje.nombre} no puede moverse ahora`
-    const clase = await this.#claseDePersonaje(escuadra.id, personajeId)
-    // llamado sobre la clase, para no perder su `this`
-    const preguntar = clase?.alEntrar && ((donde: Ubicacion) => clase.alEntrar?.(this.#enJuego(personaje), donde, this) ?? Promise.resolve<ResultadoAlEntrar>('seguir'))
+    const preguntar = await this.#alEntrarDe(escuadra.id, personaje)
     const resultado = await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => apuntarAccion(m, this.configuracion, escuadra.id, accion, personajeId), preguntar)
     if (resultado !== undefined) return resultado || undefined
     await this.#preguntarSiCompleta(escuadra.id)
@@ -567,6 +567,52 @@ export class GestorMapa implements MapaEnJuego {
     this.#cambiar(sinPersonaje(this.#mapa, personajeId))
   }
 
+  /**
+   * Desplaza a la fuerza al personaje (de escuadra o no jugador), en
+   * cualquier turno y sin gastar movimiento ni apuntar nada en su turno: hacia
+   * o lejos de una referencia (`planearDesplazamiento`) o por un recorrido
+   * concreto (`motivoParaNoRecorrer`). Salvo con `alEntrar: false`, pregunta a
+   * su clase al entrar en cada casilla como al moverse y se detiene donde
+   * diga; con `terminar-turno`, además se queda sin acciones. Devuelve por
+   * dónde ha ido y si llega a donde se pedía, o por qué no se ha podido
+   */
+  async desplazar(personajeId: string, peticion: Desplazamiento | DesplazamientoPorRecorrido): Promise<ResultadoDesplazamiento> {
+    const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
+    if (!personaje?.casilla) return { personaje: personajeId, motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
+    const noPuede = 'recorrido' in peticion && motivoParaNoRecorrer(this.#mapa, this.configuracion, personaje, peticion)
+    if (noPuede) return { personaje: personajeId, motivo: noPuede }
+    const plan = 'recorrido' in peticion ? { recorrido: peticion.recorrido, llega: true } : planearDesplazamiento(this.#mapa, this.configuracion, personaje, peticion)
+    if ('motivo' in plan) return { personaje: personajeId, motivo: plan.motivo }
+    const escuadra = this.#personajeDe(personajeId)?.escuadra
+    const preguntar = peticion.alEntrar !== false && escuadra ? await this.#alEntrarDe(escuadra.id, personaje) : undefined
+    const { hasta, resultado } = preguntar ? await this.#dondeSeDetiene(personaje, plan.recorrido, preguntar) : { hasta: plan.recorrido.length - 1, resultado: 'seguir' }
+    if (!todosLosPersonajes(this.#mapa).some((p) => p.id === personajeId && p.casilla)) return { personaje: personajeId, motivo: `${personaje.nombre} ya no está en el mapa` }
+    const recorrido = plan.recorrido.slice(0, hasta + 1)
+    const llevado = conPersonajeEn(this.#mapa, personajeId, recorrido.at(-1) ?? plan.recorrido[0])
+    this.#cambiar(resultado === 'terminar-turno' ? conAccionesAgotadas(llevado, personajeId) : llevado)
+    if (resultado === 'terminar-turno' && escuadra) await this.#preguntarSiCompleta(escuadra.id)
+    return { personaje: personajeId, recorrido, llega: plan.llega && recorrido.length === plan.recorrido.length }
+  }
+
+  /**
+   * Desplaza a la fuerza a cada personaje colocado de la escuadra con la misma
+   * petición (`desplazar`), uno tras otro para no estorbarse: hacia la
+   * referencia, primero los más cercanos a ella; lejos, primero los más
+   * lejanos. Devuelve cómo ha quedado cada uno, o el motivo si no hay escuadra
+   */
+  async desplazarEscuadra(escuadraId: string, d: Desplazamiento): Promise<ResultadoDesplazamiento[] | string> {
+    const escuadra = escuadrasDe(this.#mapa).find((e) => e.id === escuadraId)
+    if (!escuadra) return `No hay ninguna escuadra «${escuadraId}» en el mapa`
+    const distancia = (p: Personaje) => {
+      const casilla = enElMapa(this.#mapa, p)
+      return casilla ? distanciaA(this.configuracion.medicionMovimiento, casilla, casillasDeReferencia(this.#mapa, p, d.de)) : Number.POSITIVE_INFINITY
+    }
+    const enOrden = escuadra.personajes.filter((p) => p.casilla).sort((a, b) => (d.sentido === 'hacia' ? 1 : -1) * (distancia(a) - distancia(b)))
+    const resultados: ResultadoDesplazamiento[] = []
+    for (const { id } of enOrden) resultados.push(await this.desplazar(id, d))
+    return resultados
+  }
+
   /** Mueve manualmente un PNJ del jugador en turno, aplicando las mismas opciones y restricciones de movimiento */
   async moverPersonajeNoJugador(personajeId: string, recorrido: Casilla[], opciones: OpcionesMovimiento | undefined): Promise<string | undefined> {
     const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
@@ -613,6 +659,13 @@ export class GestorMapa implements MapaEnJuego {
     const hecho = { opcion: confirmado.opcion, tramos: confirmado.tramos.slice(0, hasta) }
     const movido = accionesConsumidas(hecho).reduce(apuntar, desplazar(this.#mapa, this.configuracion, personaje, recorrido.slice(0, hasta + 1), hecho))
     this.#cambiar(resultado === 'terminar-turno' ? conAccionesAgotadas(movido, personajeId) : movido)
+  }
+
+  /** Cómo preguntar a la clase del personaje de la escuadra al entrar en cada casilla (`alEntrar`), si su clase lo tiene */
+  async #alEntrarDe(escuadraId: string, personaje: Personaje): Promise<((donde: Ubicacion) => Promise<ResultadoAlEntrar>) | undefined> {
+    const clase = await this.#claseDePersonaje(escuadraId, personaje.id)
+    // llamado sobre la clase, para no perder su `this`
+    return clase?.alEntrar && ((donde: Ubicacion) => clase.alEntrar?.(this.#enJuego(personaje), donde, this) ?? Promise.resolve<ResultadoAlEntrar>('seguir'))
   }
 
   /**

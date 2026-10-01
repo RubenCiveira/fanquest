@@ -85,8 +85,8 @@ export function casillaDelMapa(m: Mapa, c: Casilla): { estancia: Estancia; casil
   }
 }
 
-/** Casilla del mapa en que está el personaje; nada si está en una zona de espera */
-export function enElMapa(m: Mapa, personaje: Personaje): Casilla | undefined {
+/** Casilla del mapa en que está el personaje (o una ubicación); nada si está en una zona de espera */
+export function enElMapa(m: Mapa, personaje: Pick<Personaje, 'estancia' | 'casilla'>): Casilla | undefined {
   const estancia = m.estancias.find((e) => e.id === personaje.estancia)
   if (!estancia || !personaje.casilla) return
   return { x: origenDe(estancia).x + personaje.casilla.x, y: origenDe(estancia).y + personaje.casilla.y }
@@ -286,6 +286,42 @@ export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: Medicion
       }
     }
   }
+}
+
+/**
+ * Casillas del mapa a las que se llega desde `desde` gastando como mucho
+ * `maximo` (como `costeDe`: según la medición y lo que le cuesta el terreno a
+ * esa forma de moverse, pasando por donde `sePuedePasar`), con la de salida;
+ * cada una con su camino más barato (desde `desde`) y lo que cuesta. De la más
+ * barata a la más cara
+ */
+export function alcanzables(m: Mapa, desde: Casilla, maximo: number, medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): { recorrido: Casilla[]; coste: number }[] {
+  const clave = ({ x, y }: Casilla) => `${x},${y}`
+  // sin arrastrar el error de coma flotante, como `costesDe` (y sin -0 en la de salida)
+  const redondeado = (largo: number) => Math.max(0, Math.ceil(largo - 1e-9))
+  const llegadas = new Map<string, { recorrido: Casilla[]; largo: number }>([[clave(desde), { recorrido: [desde], largo: 0 }]])
+  const cerradas = new Set<string>()
+  const abiertas = [clave(desde)]
+  const alcanzadas: { recorrido: Casilla[]; coste: number }[] = []
+  while (abiertas.length) {
+    abiertas.sort((a, b) => (llegadas.get(a)?.largo ?? 0) - (llegadas.get(b)?.largo ?? 0))
+    const k = abiertas.shift() ?? ''
+    const actual = llegadas.get(k)
+    const donde = actual?.recorrido.at(-1)
+    if (!actual || !donde) break
+    cerradas.add(k)
+    alcanzadas.push({ recorrido: actual.recorrido, coste: redondeado(actual.largo) })
+    for (const paso of pasosDe(medicion)) {
+      const c = { x: donde.x + paso.x, y: donde.y + paso.y }
+      const antes = llegadas.get(clave(c))
+      if (cerradas.has(clave(c)) || !sePuedePasar(m, donde, c, medicion, forma)) continue
+      const largo = actual.largo + (enDiagonal(donde, c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma)
+      if (redondeado(largo) > maximo || (antes && antes.largo <= largo)) continue
+      if (!antes) abiertas.push(clave(c))
+      llegadas.set(clave(c), { recorrido: [...actual.recorrido, c], largo })
+    }
+  }
+  return alcanzadas
 }
 
 /** Lo que el personaje ya ha movido en el turno en curso: la suma de sus movimientos */

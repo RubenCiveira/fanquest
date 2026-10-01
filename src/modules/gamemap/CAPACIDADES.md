@@ -324,8 +324,8 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
 - **Carga:** cada modelo se mueve con su opción `carga`. Para contar como
   carga, al menos uno tiene que llegar a contacto.
 - **Respuesta del defensor:** los modelos del defensor que no estén en
-  contacto avanzan 3″ hacia los que cargan. Es un movimiento fuera de su
-  activación y el motor no tiene **movimientos forzados** (ver huecos).
+  contacto avanzan 3″ hacia los que cargan: `desplazarEscuadra(defensor,
+  { sentido: 'hacia', de: { escuadra: atacante }, casillas: 3, hasta: 1 })`.
 - **Quién ataca:** los modelos a 2″ o menos del objetivo. Es `medirAtaque` con
   `distancia ≤ 2`, porque `cuerpoACuerpo` solo da contacto.
 - **Devolver el golpe:** lo resuelve el mismo `atacar`, preguntando al
@@ -333,9 +333,9 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
 - **Fatiga:** solo impactan los 6 después del primer combate de la ronda. Es
   un flag `fatigada` de la escuadra, que el proyecto quita en `finDeTurno`.
 - **Grimdark:** la unidad que causa menos heridas testea moral.
-- **Consolidación:** moverse 3″ si el rival desaparece, o retroceder 1″ el
-  atacante. También son movimientos forzados. Mientras no existan, se puede
-  usar la variante de OPR de no separar las unidades.
+- **Consolidación:** moverse 3″ si el rival desaparece
+  (`desplazarEscuadra` hacia los enemigos) o retroceder 1″ el atacante
+  (`{ sentido: 'lejos', de: { escuadra: defensor }, casillas: 1 }`).
 
 ### 3.5 Moral, aturdidos y rondas
 
@@ -421,7 +421,7 @@ elegir objetivo y acción con las mismas consultas.
 | Peanas grandes (vehículos, monstruos) | ❌ Un personaje ocupa una casilla |
 | Disparo de unidad, cobertura y PA | 🟡 Proyecto en `atacar`, con `medirAtaque` y `trayectoria` |
 | Cuerpo a cuerpo a 2″, devolver golpe y fatiga | 🟡 Proyecto |
-| Respuesta del defensor, consolidación y empujar | ❌ Faltan movimientos forzados |
+| Respuesta del defensor, consolidación y empujar | ✅ `desplazar` y `desplazarEscuadra` |
 | Coherencia de unidad | ❌ Diseñada en `Pendientes.md` |
 | Aturdido y moral | 🟡 Proyecto, con aturdido y fatiga como flags |
 | Quién empieza la ronda | ❌ Falta un orden de activación del proyecto |
@@ -438,7 +438,7 @@ un juego en el motor: son puntos de extensión.
 | --- | --- | --- | --- |
 | 1 | ✅ **Marcas de estado en todo lo vivo:** acción declarada, aturdido, fatiga, trampa encontrada… | Todos | Hecho: `flags` en estancias, escuadras, personajes, objetos, muebles y puertas, con `tieneFlag`, `marcarFlag` y `quitarFlag`. El estado ajeno al mapa (Nivel de Peligro, mazos, tamaño inicial de las unidades) no se integra: lo guarda el proyecto aparte |
 | 2 | ✅ **Aviso por casilla durante el movimiento y cortar el recorrido** | FAI (Dado de Trampa, áreas de influencia), OPR (terreno peligroso) | Hecho: `ClaseDePersonaje.alEntrar(personaje, donde, mapa)`, por cada casilla en que podría quedarse, responde `seguir`, `detenerse` o `terminar-turno`. Falta para los personajes no jugadores y al agrupar |
-| 3 | **Movimientos forzados** fuera de la activación y de las opciones de la clase | OPR (respuesta a la carga, consolidar, retroceder, empujar aturdidos), FetenQuest (empujar) | `MapaEnJuego.desplazar(personaje, recorrido, { distancia, tipo })` con las reglas del mapa (muros, terreno, otros personajes) sin gastar movimiento |
+| 3 | ✅ **Movimientos forzados** fuera de la activación y de las opciones de la clase | OPR (respuesta a la carga, consolidar, retroceder, empujar aturdidos), FetenQuest (empujar) | Hecho: `MapaEnJuego.desplazar` y `desplazarEscuadra`, hacia o lejos de una referencia (`casillas` que puede recorrer, `hasta` dónde) o por un recorrido, con las reglas del mapa y sin gastar movimiento; `planearDesplazamiento` para previsualizar |
 | 4 | **Coherencia de escuadra** | OPR | Lo de `Pendientes.md`: modo (con alguno, con todos, desde el centro) y distancia en la clase de escuadra, comprobado al terminar la activación |
 | 5 | **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Un `ordenDelTurno?(mapa)` opcional en `ProveedorTurnos` que dé los jugadores del turno que empieza; sin él, la rotación de hoy |
 | 6 | **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | `etiqueta?: string` en `Terreno`, para que la clase lo reconozca en `alEntrar` y en `trayectoria` |
@@ -449,14 +449,13 @@ un juego en el motor: son puntos de extensión.
 | 11 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
 | 12 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 
-Con 1 y 2 (hechos) y 3 se puede jugar FAI completo en solitario y OPR con una
+Con 1, 2 y 3 (hechos) se puede jugar FAI completo en solitario y OPR con una
 aproximación razonable. Con 4 y 5, OPR queda fiel a sus reglas. Del 6 al 12 son mejoras
 de fidelidad.
 
 **Orden recomendado:**
 
-1. **Movimientos forzados (3).**
-2. **Coherencia (4) y orden de activación (5)** antes de empezar OPR.
-3. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
+1. **Coherencia (4) y orden de activación (5)** antes de empezar OPR.
+2. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
    trampas, muebles y monstruos de prueba, y que sería el primer juego real
    del motor.

@@ -12,6 +12,8 @@ const mapaCon = (puerta?: Puerta): MapaEnJuego => ({
   marcarFlag: vi.fn(),
   dameLoQueEstaAlLado: () => [],
   quitarFlag: vi.fn(),
+  desplazar: vi.fn(),
+  desplazarEscuadra: vi.fn(),
   quitarElemento: vi.fn(),
   reducirVida: vi.fn(),
   eliminarPersonaje: vi.fn(),

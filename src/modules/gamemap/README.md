@@ -24,7 +24,8 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
 - Raíz: operaciones puras sobre el modelo (`estancias.ts`, `orientacion.ts`,
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
-  `jugadores.ts`, `agrupar.ts`, `ataques.ts`, `zonaDeControl.ts`, `muros.ts`), cada una con sus tests.
+  `jugadores.ts`, `agrupar.ts`, `ataques.ts`, `zonaDeControl.ts`, `muros.ts`,
+  `flags.ts`, `desplazamientos.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
@@ -101,6 +102,11 @@ mismo sitio.
   encima de nada.
 - **Enemigo**: personaje de una alianza hostil hacia la del que se mueve. Su
   casilla es impasable y cuenta para alejarse o cargar.
+- **Desplazamiento forzado**: mover a un personaje o a una escuadra fuera de
+  su movimiento (huir, consolidar, empujar…) con `desplazar` y
+  `desplazarEscuadra`: hacia o lejos de una referencia, con las casillas que
+  puede recorrer y hasta qué distancia, o por un recorrido. No gasta
+  movimiento ni se apunta en su turno.
 - **Personaje en juego**: lo que reciben las clases del proyecto: el estado
   del personaje con `estaTrabado()` (en la zona de control de un enemigo),
   `trabadoPor()` (esos enemigos) y `conApoyos()` (los aliados en su zona de

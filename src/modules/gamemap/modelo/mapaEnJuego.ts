@@ -1,5 +1,6 @@
 import type { Estancia } from './estancia'
 import type { DescripcionMueble } from './descripcionEstancia'
+import type { Desplazamiento, DesplazamientoPorRecorrido, ResultadoDesplazamiento } from './desplazamiento'
 import type { DescripcionPersonajeNoJugador } from './descripcionPersonaje'
 import type { Elemento } from './elemento'
 import type { Jugadores } from './jugadores'
@@ -50,6 +51,15 @@ export interface MapaEnJuego {
   reducirVida(personaje: string, puntos: number): string | undefined
   /** Quita al personaje del mapa (muere, huye…); si no está, el motivo */
   eliminarPersonaje(personaje: string): string | undefined
+  /**
+   * Desplaza a la fuerza al personaje (huir, consolidar, empujar…), sin gastar
+   * movimiento: hacia o lejos de una referencia, o por un recorrido. Pregunta
+   * a su clase al entrar en cada casilla (salvo `alEntrar: false`). Devuelve
+   * por dónde ha ido y si llega a donde se pedía, o por qué no se ha podido
+   */
+  desplazar(personaje: string, peticion: Desplazamiento | DesplazamientoPorRecorrido): Promise<ResultadoDesplazamiento>
+  /** Desplaza así a cada personaje colocado de la escuadra, en orden para no estorbarse; si no hay escuadra, el motivo */
+  desplazarEscuadra(escuadra: string, desplazamiento: Desplazamiento): Promise<ResultadoDesplazamiento[] | string>
   /**
    * Cambia las alianzas, los jugadores o sus posturas en mitad de la partida
    * (un evento vuelve enemigos a unos acólitos…). Si el reparto no vale, no

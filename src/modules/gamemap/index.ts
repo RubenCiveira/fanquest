@@ -11,6 +11,7 @@ export { esComando, type Comando } from './modelo/comando'
 export type { Configuracion } from './modelo/configuracion'
 export type { DescripcionElemento, DescripcionEstancia, DescripcionMueble, DescripcionMuro } from './modelo/descripcionEstancia'
 export type { DescripcionPersonaje, DescripcionPersonajeNoJugador } from './modelo/descripcionPersonaje'
+export type { Desplazamiento, DesplazamientoPorRecorrido, Referencia, ResultadoDesplazamiento } from './modelo/desplazamiento'
 export { OPUESTA, type Direccion } from './modelo/direccion'
 export type { Elemento, Mueble, Objeto } from './modelo/elemento'
 export type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
@@ -65,19 +66,21 @@ export {
   turnoDeEscuadra,
   turnoDePersonaje,
 } from './activaciones'
-export { conVidaReducida, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
+export { conVidaReducida, distanciaSegun, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
 export { anadirPersonajesNoJugadores, huecoDePersonaje, sitioParaPersonaje } from './apariciones'
 export { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores, postura } from './jugadores'
 export { apoyosDe, estaTrabado, trabadoPor } from './zonaDeControl'
 export { aristaEntre, alOtroLado, coberturaDeArista, cruce, motivoParaNoAnadirMuro, muroEnArista, puertaEnArista, tramosDe } from './muros'
 export { construirEstancia } from './construccion'
 export { conFlags, flagsDe } from './flags'
+export { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from './desplazamientos'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
 export { anidar, crearEstancia, estanciaEn, estanciasDe, motivoParaNoAnidar } from './estancias'
 export {
   accionesAdicionales,
   accionesConsumidas,
   alcance,
+  alcanzables,
   casillaDelMapa,
   casillasDeControl,
   casillasDeEnemigos,

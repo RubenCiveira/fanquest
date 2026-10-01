@@ -371,6 +371,8 @@ interface MapaEnJuego {
   anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[] // al azar donde quepan
   reducirVida(personaje: string, puntos: number): string | undefined // sin bajar de cero; si no lleva la cuenta, el motivo
   eliminarPersonaje(personaje: string): string | undefined // lo quita del mapa (muere, huye…)
+  desplazar(personaje: string, peticion: Desplazamiento | DesplazamientoPorRecorrido): Promise<ResultadoDesplazamiento> // movimiento forzado, sin gastar movimiento
+  desplazarEscuadra(escuadra: string, desplazamiento: Desplazamiento): Promise<ResultadoDesplazamiento[] | string>
   cambiarJugadores(jugadores: Jugadores): string | undefined // otro reparto de alianzas, jugadores o posturas; si no vale, el motivo
   terminarTurno(): string | undefined                  // pasa al turno siguiente si nadie tiene nada pendiente
 }
@@ -627,6 +629,69 @@ de una estancia sin `sin_trampas` pisa una trampa con un 30% de
 probabilidades (`PROBABILIDAD_DE_TRAMPA`): lo avisa en un diálogo y se
 detiene en esa casilla (`detenerse`). Cada llamada a `alEntrar` se ve en la
 consola, con lo que responde.
+
+## Desplazamientos forzados: desplazar y desplazarEscuadra
+
+Huir, consolidar, retroceder, empujar… mueven a un personaje fuera de su
+movimiento. El proyecto dice la intención y el motor busca el camino con las
+reglas del mapa:
+
+```ts
+type Referencia = { personaje: string } | { escuadra: string } | { ubicacion: Ubicacion } | { enemigos: true }
+
+type Desplazamiento = {
+  sentido: 'hacia' | 'lejos'
+  de: Referencia                  // una escuadra o los enemigos: el más cercano de ellos
+  casillas: number                // lo que puede recorrer como mucho (coste del camino, con el terreno)
+  hasta?: number                  // distancia en línea recta a la referencia en la que se para
+  forma?: { terreno?, cruzaMuros? } // como en OpcionMovimiento
+  zonaDeControl?: 'ignorar' | 'respetar' // sin decirlo, la ignora
+  alEntrar?: boolean              // si pregunta a su clase al entrar en cada casilla; sin decirlo, sí
+}
+
+type DesplazamientoPorRecorrido = { recorrido: Casilla[]; forma?; alEntrar? } // en casillas del mapa, desde la suya
+
+type ResultadoDesplazamiento = { personaje: string; recorrido: Casilla[]; llega: boolean } | { personaje: string; motivo: string }
+```
+
+```ts
+// huir a 5 casillas del bárbaro, moviéndose como mucho 6
+mapa.desplazar('orco', { sentido: 'lejos', de: { personaje: 'barbaro' }, casillas: 6, hasta: 5 })
+// consolidar 2 casillas hacia el enemigo más cercano
+mapa.desplazar('barbaro', { sentido: 'hacia', de: { enemigos: true }, casillas: 2 })
+// OPR: el defensor responde 3″ hasta el contacto con los que cargan
+mapa.desplazarEscuadra('defensores', { sentido: 'hacia', de: { escuadra: 'atacantes' }, casillas: 3, hasta: 1 })
+// empujar a una casilla concreta
+mapa.desplazar('orco', { recorrido: [donde, alLado] })
+```
+
+- `casillas` y `hasta` miden cosas distintas: `casillas`, lo que cuesta el
+  camino (como un movimiento, con el terreno y la medición); `hasta`, la
+  distancia en línea recta a la referencia (como un ataque).
+- De las casillas a las que llega, el motor se queda con la que mejor
+  cumple el sentido: hacia, la más cercana a la referencia sin pasar de
+  `hasta`; lejos, la más lejana hasta `hasta`. Si empatan, la más barata. Si
+  ninguna mejora, se queda donde está. Nunca termina encima de otro personaje
+  ni en terreno impasable; por encima de los no enemigos pasa según
+  `terrenoPersonajes`, y por encima de un enemigo, nunca.
+- `llega`: si ha quedado a `hasta` de la referencia (o al final del
+  recorrido) sin que lo detenga lo que pasa al entrar. Sin `hasta`, siempre
+  que no lo detengan. Con `llega: false` (una huida acorralada…), el
+  proyecto decide qué pasa.
+- Es forzado: vale en cualquier turno, no gasta movimiento ni acciones y no
+  se apunta en su turno. Si hace falta saberlo, el proyecto lo marca con un
+  flag.
+- Pregunta a la clase del personaje de escuadra al entrar en cada casilla
+  (`alEntrar`), como al moverse: si te empujan a una trampa, la pisas. Con
+  `terminar-turno`, además se queda sin acciones. Los personajes no
+  jugadores no tienen clase: no se pregunta.
+- `desplazarEscuadra` desplaza a cada personaje colocado con la misma
+  petición, uno tras otro para no estorbarse: hacia, primero los más
+  cercanos a la referencia; lejos, primero los más lejanos.
+- `planearDesplazamiento(mapa, reglas, personaje, desplazamiento)` da el
+  recorrido sin aplicarlo, para previsualizarlo o para la IA; con
+  `alcanzables` se tienen todas las casillas a las que llega, con su camino
+  y su coste.
 
 ## Ejemplo completo
 

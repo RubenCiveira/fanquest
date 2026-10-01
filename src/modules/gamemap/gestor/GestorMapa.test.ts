@@ -370,6 +370,93 @@ describe('gestor del mapa: al entrar en cada casilla', () => {
   })
 })
 
+describe('gestor del mapa: desplazamientos forzados', () => {
+  /** Sala amplia con el bárbaro en 1,1 (y el enano en 1,3; con el elfo, el elfo en 1,3 y el enano en 3,1) y un orco de la Oscuridad en 6,1 */
+  async function conOrco(conElfo = false) {
+    const inicial = await conInicial(amplia, conElfo)
+    inicial.gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: { x: 6, y: 1 } }])
+    return inicial
+  }
+  const delOrco = { personaje: 'orco' }
+
+  it('se aleja de quien se le pide y dice por dónde ha ido', async () => {
+    const { gestor } = await conOrco()
+    expect(await gestor.desplazar('barbaro', { sentido: 'lejos', de: delOrco, casillas: 1 })).toEqual({
+      personaje: 'barbaro',
+      recorrido: [
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+      ],
+      llega: true,
+    })
+  })
+
+  it('no gasta movimiento ni apunta nada en su turno', async () => {
+    const { gestor, barbaro } = await conOrco()
+    await gestor.desplazar('barbaro', { sentido: 'lejos', de: delOrco, casillas: 1 })
+    expect([barbaro().casilla, barbaro().turnos]).toEqual([{ x: 0, y: 1 }, []])
+  })
+
+  it('también desplaza a los personajes no jugadores', async () => {
+    const { gestor } = await conOrco()
+    await gestor.desplazar('orco', { sentido: 'hacia', de: { personaje: 'barbaro' }, casillas: 9, hasta: 1 })
+    expect(gestor.mapa.personajesNoJugadores?.[0].casilla).toEqual({ x: 2, y: 1 })
+  })
+
+  it('pregunta a su clase al entrar en cada casilla y se detiene donde diga, sin llegar', async () => {
+    const { gestor, p, barbaro } = await conOrco()
+    p.alEntrar.mockResolvedValueOnce('seguir').mockResolvedValueOnce('detenerse')
+    const resultado = await gestor.desplazar('barbaro', { sentido: 'hacia', de: delOrco, casillas: 9, hasta: 1 })
+    expect([barbaro().casilla, 'llega' in resultado && resultado.llega]).toEqual([{ x: 3, y: 1 }, false])
+  })
+
+  it('con `alEntrar: false`, no pregunta a su clase', async () => {
+    const { gestor, p } = await conOrco()
+    await gestor.desplazar('barbaro', { sentido: 'hacia', de: delOrco, casillas: 9, alEntrar: false })
+    expect(p.alEntrar).not.toHaveBeenCalled()
+  })
+
+  it('si al entrar termina su turno, se queda sin acciones', async () => {
+    const { gestor, p, barbaro } = await conOrco()
+    p.alEntrar.mockResolvedValueOnce('terminar-turno')
+    await gestor.desplazar('barbaro', { sentido: 'lejos', de: delOrco, casillas: 1 })
+    expect(turnoDePersonaje(barbaro(), 1).quedanAcciones).toBe(false)
+  })
+
+  it('por un recorrido concreto', async () => {
+    const { gestor, barbaro } = await conOrco()
+    await gestor.desplazar('barbaro', { recorrido: enLinea(barbaro().casilla, 2) })
+    expect(barbaro().casilla).toEqual({ x: 3, y: 1 })
+  })
+
+  it('si el recorrido no vale, dice por qué y no lo mueve', async () => {
+    const { gestor, barbaro } = await conOrco()
+    expect([await gestor.desplazar('barbaro', { recorrido: enLinea({ x: 2, y: 1 }, 2) }), barbaro().casilla]).toEqual([
+      { personaje: 'barbaro', motivo: 'El recorrido tiene que empezar en Bárbaro' },
+      { x: 1, y: 1 },
+    ])
+  })
+
+  /** Qué personajes de los rojos se desplazan, en orden */
+  const orden = (resultados: Awaited<ReturnType<GestorMapa['desplazarEscuadra']>>) => (typeof resultados === 'string' ? resultados : resultados.map((r) => r.personaje))
+
+  it('a una escuadra, hacia la referencia, primero el más cercano', async () => {
+    // el bárbaro, en 1,1, está más cerca del orco que el elfo, en 1,3
+    const { gestor } = await conOrco(true)
+    expect(orden(await gestor.desplazarEscuadra('rojos', { sentido: 'hacia', de: delOrco, casillas: 9, hasta: 1, alEntrar: false }))).toEqual(['barbaro', 'elfo'])
+  })
+
+  it('a una escuadra, lejos de la referencia, primero el más lejano', async () => {
+    const { gestor } = await conOrco(true)
+    expect(orden(await gestor.desplazarEscuadra('rojos', { sentido: 'lejos', de: delOrco, casillas: 1, alEntrar: false }))).toEqual(['elfo', 'barbaro'])
+  })
+
+  it('a una escuadra que no hay, el motivo', async () => {
+    const { gestor } = await conOrco()
+    expect(await gestor.desplazarEscuadra('nadie', { sentido: 'lejos', de: delOrco, casillas: 1 })).toBe('No hay ninguna escuadra «nadie» en el mapa')
+  })
+})
+
 describe('gestor del mapa: movimiento', () => {
   it('pregunta a la clase del personaje cómo puede moverse, con su estado y sin nada gastado', async () => {
     const { gestor, p, barbaro } = await conInicial(amplia)
