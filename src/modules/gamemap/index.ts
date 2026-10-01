@@ -1,6 +1,6 @@
 export type { Accion } from './modelo/accion'
 export type { AccionEjecutada } from './modelo/accionEjecutada'
-export type { Ataque, TipoAtaque, Trayectoria } from './modelo/ataque'
+export type { Ataque, AtaqueDeEscuadra, TipoAtaque, Trayectoria } from './modelo/ataque'
 export type { Aparicion, Zona } from './modelo/aparicion'
 export type { Alianza, Postura } from './modelo/alianza'
 export type { Activacion, ModoActivacion, ModoAgresivoSigiloso } from './modelo/activacion'

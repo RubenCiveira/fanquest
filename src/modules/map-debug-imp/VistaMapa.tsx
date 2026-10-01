@@ -18,6 +18,7 @@ import {
   planearMovimiento,
   ruta,
   type Accion,
+  type AtaqueDeEscuadra,
   type Activacion,
   type Casilla,
   type Configuracion,
@@ -166,12 +167,20 @@ const ICONO_ATAQUE: Record<TipoAtaque, string> = { 'cuerpo-a-cuerpo': '⚔️', 
  * del tipo de ataque (casillas del mapa); si no puede atacarlo, apagado y con
  * el `motivo`
  */
-function IconoAtaque({ desde, hasta, objetivo, tipo, motivo }: { desde: Casilla; hasta: Casilla; objetivo: Personaje; tipo: TipoAtaque; motivo?: string }) {
+function IconoAtaque({ desde, hasta, objetivo, tipo, motivo, lineas }: { desde: Casilla; hasta: Casilla; objetivo: Personaje; tipo: TipoAtaque; motivo?: string; lineas?: LineaDeDisparo[] }) {
   const centro = (c: Casilla) => ({ x: (c.x + 0.5) * LADO, y: (c.y + 0.5) * LADO })
   const [a, b] = [centro(desde), centro(hasta)]
   return (
     <g className={`vista-ataque ${tipo}${motivo ? ' invalido' : ''}`}>
-      <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+      {lineas?.length ? (
+        // ataque de escuadra: una línea por cada personaje de la escuadra que puede atacar al objetivo
+        lineas.map((linea, i) => {
+          const [de, hacia] = [centro(linea.desde), centro(linea.hasta)]
+          return <line key={i} x1={de.x} y1={de.y} x2={hacia.x} y2={hacia.y} />
+        })
+      ) : (
+        <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+      )}
       <circle cx={b.x} cy={b.y} r={RADIO_ICONO} />
       <text x={b.x} y={b.y + 4}>
         {ICONO_ATAQUE[tipo]}
@@ -324,8 +333,11 @@ type Arrastre = {
   /** El puntero está en una casilla a la que no llega: soltar ahí no hace nada */
   fuera?: boolean
   /** El puntero está sobre un enemigo: soltar ahí lo ataca */
-  ataque?: { objetivo: Personaje; tipo: TipoAtaque; motivo?: string }
+  ataque?: { objetivo: Personaje; tipo: TipoAtaque; motivo?: string; lineas?: LineaDeDisparo[] }
 }
+
+/** Línea de disparo de un ataque de escuadra (casillas del mapa): de cada atacante que puede atacar al objetivo */
+type LineaDeDisparo = { desde: Casilla; hasta: Casilla }
 
 const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
 
@@ -370,6 +382,8 @@ type Props = {
   onAtacar?: (personajeId: string, objetivoId: string) => void
   /** Por qué un personaje no puede atacar a ese enemigo (se pregunta al arrastrar su ficha por encima), o nada si puede */
   motivoParaNoAtacar?: (personajeId: string, objetivoId: string) => Promise<string | undefined>
+  /** Con ataque de escuadra, quiénes de la escuadra del personaje atacarían al enemigo (se pregunta al arrastrar su ficha sobre él): una línea de disparo por cada uno que puede */
+  planearAtaqueDeEscuadra?: (personajeId: string, objetivoId: string) => Promise<AtaqueDeEscuadra | string>
   /** Cómo se miden los movimientos al arrastrar (sin diagonales, si no se dice) */
   medicion?: MedicionMovimiento
   /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
@@ -652,6 +666,14 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     motivoParaNoAtacar?.(ficha.id, enemigo.id).then((motivo) =>
       setArrastre((a) => (a?.ataque?.objetivo.id === enemigo.id ? { ...a, ataque: { ...a.ataque, ...(motivo && { motivo }) } } : a)),
     )
+    props.planearAtaqueDeEscuadra?.(ficha.id, enemigo.id).then((plan) => {
+      if (typeof plan === 'string') return
+      const lineas = plan.ataques.flatMap(({ atacante, objetivo }) => {
+        const [desde, hasta] = [enElMapa(mapa, atacante), enElMapa(mapa, objetivo)]
+        return desde && hasta ? [{ desde, hasta }] : []
+      })
+      setArrastre((a) => (a?.ataque?.objetivo.id === enemigo.id ? { ...a, ataque: { ...a.ataque, lineas } } : a))
+    })
   }
 
   function soltar() {

@@ -1,6 +1,9 @@
 import type { AccionEjecutada } from './accionEjecutada'
 import type { ModoAgresivoSigiloso } from './activacion'
+import type { AtaqueDeEscuadra } from './ataque'
 import type { ClaseDePersonaje } from './claseDePersonaje'
+import type { MapaEnJuego } from './mapaEnJuego'
+import type { ResultadoAccion } from './resultadoAccion'
 import type { ResultadoActivacion } from './resultadoActivacion'
 
 /** Grupo de personajes según lo define el proyecto: quiénes lo componen y cómo se activa */
@@ -19,4 +22,13 @@ export interface ClaseDeEscuadra {
    * turno: si responde `completo`, el gestor termina su turno
    */
   activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
+  /**
+   * Con `modoAtaque: 'escuadra'`, resuelve el ataque de sus personajes contra
+   * la escuadra objetivo (un `Ataque` por atacante y los `objetivos`, de los
+   * más cercanos a los más lejanos, para repartir el daño con
+   * `mapa.reducirVida` y `mapa.eliminarPersonaje`). Resuelve con el estado
+   * de los atacantes, que el gestor apunta a todos. Si falla o se cancela, no
+   * se apunta. Sin él, sus personajes atacan uno a uno
+   */
+  atacarEscuadra?(ataque: AtaqueDeEscuadra, mapa: MapaEnJuego): Promise<ResultadoAccion>
 }

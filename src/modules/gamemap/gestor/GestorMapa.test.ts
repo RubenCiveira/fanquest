@@ -2,13 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { activacionDe, activacionDeNoJugador, numeroDeTurno, turnoDeEscuadra, turnoDePersonaje } from '../activaciones'
 import type { Accion } from '../modelo/accion'
 import type { AccionEjecutada } from '../modelo/accionEjecutada'
-import type { Ataque } from '../modelo/ataque'
+import type { Ataque, AtaqueDeEscuadra } from '../modelo/ataque'
 import type { ResultadoAccion } from '../modelo/resultadoAccion'
 import type { ResultadoAlEntrar } from '../modelo/resultadoAlEntrar'
 import type { Ubicacion } from '../modelo/ubicacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { Coherencia } from '../modelo/coherencia'
+import type { Configuracion } from '../modelo/configuracion'
 import type { HuecoDelTurno } from '../modelo/ordenDelTurno'
 import type { Escuadra } from '../modelo/escuadra'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
@@ -21,7 +22,7 @@ import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { MovimientoGastado } from '../modelo/movimientoGastado'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
-import { gastadoPor } from '../movimiento'
+import { gastadoPor, ruta } from '../movimiento'
 import { GestorMapa } from './GestorMapa'
 import type { Jugadores } from '../modelo/jugadores'
 
@@ -83,6 +84,11 @@ function proveedor(descripcion = sala, conElfo = false, coherencia?: Coherencia)
       cuerpoACuerpo: 'diagonal',
       coherencia: coherencia?.modo ?? 'ninguna',
       distanciaCoherencia: coherencia?.distancia ?? 0,
+      modoAtaque: 'uno-a-uno',
+      apoyoALaCarga: 0,
+      ajusteDelDefensor: 0,
+      consolidacionTrasCombate: 0,
+      retrocesoTrasCombate: 0,
       jugadores: REPARTO,
     } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
@@ -179,7 +185,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: REPARTO } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: REPARTO } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -816,6 +822,170 @@ describe('gestor del mapa: resultado de las acciones', () => {
   })
 })
 
+/**
+ * Con ataque de escuadra: los rojos (bárbaro en 1,1 y elfo en 1,3) resuelven
+ * sus ataques con `atacarEscuadra`, y los negros de la Oscuridad (orco-1 en
+ * 10,6 y orco-2 en 10,4) son enemigos suyos
+ */
+async function conNegros(rojosAtacanEnEscuadra = true, reglas: Partial<Configuracion> = {}) {
+  const base = proveedor(amplia, true)
+  const atacarEscuadra = vi.fn(async (_ataque: AtaqueDeEscuadra, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
+  const orco = (id: string) => ({ id, nombre: id, opcionesMovimiento: base.opcionesMovimiento, acciones: async () => [], atacar: base.atacar, motivoParaNoAtacar: base.motivoParaNoAtacar })
+  const clases = await base.listarEscuadras()
+  const negros: ClaseDeEscuadra = { id: 'negros', nombre: 'Negros', jugador: 'oscuridad', personajes: async () => [orco('orco-1'), orco('orco-2')], modoActivacion: async () => 'agresivo', activar: base.activar }
+  const p = {
+    ...base,
+    configuracion: { ...base.configuracion, modoAtaque: 'escuadra' as const, ...reglas },
+    listarEscuadras: vi.fn(async () => [...clases.map((c) => (c.id === 'rojos' && rojosAtacanEnEscuadra ? { ...c, atacarEscuadra } : c)), negros]),
+    atacarEscuadra,
+  }
+  const gestor = new GestorMapa(p)
+  await gestor.nuevaEstancia()
+  return { gestor, p }
+}
+
+describe('gestor del mapa: ataque de escuadra contra escuadra', () => {
+  /** Quién ataca a quién en el ataque de escuadra que resolvió la clase */
+  const quienAQuien = (p: Awaited<ReturnType<typeof conNegros>>['p']) => p.atacarEscuadra.mock.lastCall?.[0].ataques.map((a) => [a.atacante.id, a.objetivo.id])
+
+  it('atacan juntos todos los de la escuadra que pueden', async () => {
+    const { gestor, p } = await conNegros()
+    await gestor.atacar('barbaro', 'orco-1')
+    expect(quienAQuien(p)).toEqual([
+      ['barbaro', 'orco-1'],
+      ['elfo', 'orco-1'],
+    ])
+  })
+
+  it('solo se ataca al objetivo elegido: quien no puede atacarlo no ataca, aunque llegue a otro de su escuadra', async () => {
+    const { gestor, p } = await conNegros()
+    p.motivoParaNoAtacar.mockImplementation(({ atacante, objetivo }) => (atacante.id === 'elfo' && objetivo.id === 'orco-1' ? 'Demasiado lejos' : undefined))
+    await gestor.atacar('barbaro', 'orco-1')
+    expect(quienAQuien(p)).toEqual([['barbaro', 'orco-1']])
+  })
+
+  it('el que no puede atacar al objetivo no ataca, con su motivo', async () => {
+    const { gestor, p } = await conNegros()
+    p.motivoParaNoAtacar.mockImplementation(({ atacante }) => (atacante.id === 'elfo' ? 'Demasiado lejos' : undefined))
+    await gestor.atacar('barbaro', 'orco-1')
+    expect(p.atacarEscuadra.mock.lastCall?.[0].sinAtacar.map(({ atacante, motivo }) => [atacante.id, motivo])).toEqual([['elfo', 'Demasiado lejos']])
+  })
+
+  it('los que ya no tienen acciones no atacan', async () => {
+    const { gestor, p } = await conNegros()
+    gritar.exec.mockResolvedValueOnce({ quedanAcciones: false })
+    await gestor.ejecutarAccion('rojos', 'gritar', 'barbaro')
+    await gestor.atacar('elfo', 'orco-1')
+    expect(quienAQuien(p)).toEqual([['elfo', 'orco-1']])
+  })
+
+  it('los objetivos van de los más cercanos a los atacantes a los más lejanos', async () => {
+    const { gestor, p } = await conNegros()
+    await gestor.atacar('barbaro', 'orco-1')
+    expect(p.atacarEscuadra.mock.lastCall?.[0].objetivos.map((o) => o.id)).toEqual(['orco-2', 'orco-1'])
+  })
+
+  it('apunta «atacar» a cada atacante', async () => {
+    const { gestor } = await conNegros()
+    await gestor.atacar('barbaro', 'orco-1')
+    const rojos = gestor.mapa.escuadras?.[0]
+    expect(rojos && turnoDeEscuadra(rojos, 1).acciones).toEqual([
+      { accion: 'atacar', personaje: 'barbaro' },
+      { accion: 'atacar', personaje: 'elfo' },
+    ])
+  })
+
+  it('si nadie puede atacar, dice por qué y no ataca', async () => {
+    const { gestor, p } = await conNegros()
+    p.motivoParaNoAtacar.mockReturnValue('Demasiado lejos')
+    expect([await gestor.atacar('barbaro', 'orco-1'), p.atacarEscuadra.mock.calls.length]).toEqual(['Demasiado lejos', 0])
+  })
+
+  it('puede atacar aunque el arrastrado no llegue, si llega otro de su escuadra', async () => {
+    const { gestor, p } = await conNegros()
+    p.motivoParaNoAtacar.mockImplementation(({ atacante }) => (atacante.id === 'barbaro' ? 'Demasiado lejos' : undefined))
+    expect(await gestor.motivoParaNoAtacar('barbaro', 'orco-1')).toBeUndefined()
+  })
+
+  it('si la clase de la escuadra no resuelve ataques de escuadra, atacan uno a uno', async () => {
+    const { gestor, p } = await conNegros(false)
+    await gestor.atacar('barbaro', 'orco-1')
+    expect([p.atacar.mock.calls.length, p.atacarEscuadra.mock.calls.length]).toEqual([1, 0])
+  })
+})
+
+describe('gestor del mapa: cargas y consolidación', () => {
+  /** Los rojos solo pueden cargar, hasta 20 casillas */
+  const CARGAR: OpcionesMovimiento = {
+    base: { id: 'cargar', nombre: 'Cargar', tipo: 'carga', accion: { id: 'cargar', nombre: 'Cargar', icono: '🐂' }, tramos: [{ distancia: 20 }], terminarJuntoAEnemigo: true },
+    variaciones: [],
+  }
+  /** Con esas reglas, el bárbaro (en 1,1) carga hasta 9,4, en contacto con el orco-2 (en 10,4); el elfo sigue en 1,3 y el orco-1 en 10,6 */
+  async function trasCargar(reglas: Partial<Configuracion>, rojosAtacanEnEscuadra = true) {
+    const negros = await conNegros(rojosAtacanEnEscuadra, reglas)
+    negros.p.opcionesMovimiento.mockResolvedValue(CARGAR)
+    await negros.gestor.moverPersonaje('barbaro', ruta(negros.gestor.mapa, { x: 1, y: 1 }, { x: 9, y: 4 }) ?? [])
+    return negros
+  }
+  const casillaDe = (gestor: GestorMapa, id: string) => gestor.personaje(id)?.casilla ?? { x: Number.NaN, y: Number.NaN }
+  /** Casillas en recto, sin diagonales, entre dos personajes */
+  const entre = (gestor: GestorMapa, a: string, b: string) => {
+    const [ca, cb] = [casillaDe(gestor, a), casillaDe(gestor, b)]
+    return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y)
+  }
+
+  it('la carga llega al contacto', async () => {
+    const { gestor } = await trasCargar({})
+    expect(casillaDe(gestor, 'barbaro')).toEqual({ x: 9, y: 4 })
+  })
+
+  it('con apoyo a la carga, los demás de la escuadra se acercan a la cargada', async () => {
+    const { gestor } = await trasCargar({ apoyoALaCarga: 3 })
+    expect(entre(gestor, 'elfo', 'orco-2')).toBe(7)
+  })
+
+  it('sin apoyo a la carga, los demás no se mueven', async () => {
+    const { gestor } = await trasCargar({})
+    expect(casillaDe(gestor, 'elfo')).toEqual({ x: 1, y: 3 })
+  })
+
+  it('con ajuste del defensor, los de la escuadra cargada se acercan hasta el contacto', async () => {
+    const { gestor } = await trasCargar({ ajusteDelDefensor: 3 })
+    expect(entre(gestor, 'orco-1', 'barbaro')).toBe(1)
+  })
+
+  it('el apoyo y el ajuste no gastan movimiento', async () => {
+    const { gestor } = await trasCargar({ apoyoALaCarga: 3 })
+    expect(gestor.personaje('elfo')?.turnos).toEqual([])
+  })
+
+  it('tras un cuerpo a cuerpo sin destruir a la escuadra atacada, la atacante retrocede', async () => {
+    const { gestor } = await trasCargar({ retrocesoTrasCombate: 1 })
+    await gestor.atacar('barbaro', 'orco-2')
+    expect(entre(gestor, 'barbaro', 'orco-2')).toBe(2)
+  })
+
+  it('también atacando uno a uno', async () => {
+    const { gestor } = await trasCargar({ retrocesoTrasCombate: 1 }, false)
+    await gestor.atacar('barbaro', 'orco-2')
+    expect(entre(gestor, 'barbaro', 'orco-2')).toBe(2)
+  })
+
+  it('tras destruir en cuerpo a cuerpo a la escuadra atacada, la atacante avanza hacia el enemigo más cercano', async () => {
+    const { gestor, p } = await trasCargar({ consolidacionTrasCombate: 2 })
+    gestor.anadirPersonajes('estancia-1', [{ id: 'goblin', nombre: 'Goblin', jugador: 'oscuridad', casilla: { x: 5, y: 1 } }])
+    p.atacarEscuadra.mockImplementationOnce(async (_ataque, mapa) => (mapa.eliminarPersonaje('orco-1'), mapa.eliminarPersonaje('orco-2'), { quedanAcciones: false }))
+    await gestor.atacar('barbaro', 'orco-2')
+    expect(entre(gestor, 'barbaro', 'goblin')).toBe(5)
+  })
+
+  it('tras un ataque a distancia, nadie retrocede', async () => {
+    const { gestor } = await conNegros(true, { retrocesoTrasCombate: 1 })
+    await gestor.atacar('barbaro', 'orco-2')
+    expect(casillaDe(gestor, 'barbaro')).toEqual({ x: 1, y: 1 })
+  })
+})
+
 describe('gestor del mapa: ataques', () => {
   /** Estancia amplia con un orco de la Oscuridad (3 de vida) pegado a la izquierda del bárbaro */
   async function conOrco(conElfo = false) {
@@ -1257,7 +1427,7 @@ describe('gestor del mapa: puertas', () => {
   })
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: REPARTO } as const }
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: REPARTO } as const }
     const gestor = new GestorMapa(p, {
       estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
       escuadras: [

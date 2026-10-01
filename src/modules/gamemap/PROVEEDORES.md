@@ -78,6 +78,7 @@ movimientos con las acciones que consumieron.
 | `ClaseDePersonaje` | `opcionesMovimiento(personaje, gastado)` | Al empezar a arrastrar su ficha y al soltarla |
 | `ClaseDePersonaje` | `motivoParaNoAtacar(ataque, mapa)` | Al pasar su ficha arrastrada por encima de un enemigo y antes de atacar |
 | `ClaseDePersonaje` | `atacar(ataque, mapa)` | Al soltar su ficha arrastrada sobre la de un enemigo, si puede |
+| `ClaseDeEscuadra` | `atacarEscuadra?(ataque, mapa)` | Con `modoAtaque: 'escuadra'`, al soltar la ficha de uno de sus personajes sobre la de un enemigo, si alguno puede atacar |
 | `ClaseDePersonaje` | `alEntrar?(personaje, donde, mapa)` | Al soltar su ficha, por cada casilla del recorrido en que podría quedarse, en orden |
 | `Comando` | `exec()` | Al elegir una acción que es un comando |
 
@@ -93,6 +94,11 @@ configuracion: {
   cuerpoACuerpo: 'ortogonal' | 'diagonal',
   coherencia: 'ninguna' | 'alguno' | 'todos' | 'centro',
   distanciaCoherencia: number,
+  modoAtaque: 'uno-a-uno' | 'escuadra',
+  apoyoALaCarga: number,
+  ajusteDelDefensor: number,
+  consolidacionTrasCombate: number,
+  retrocesoTrasCombate: number,
   jugadores: {
     alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
     jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
@@ -196,6 +202,30 @@ configuracion: {
   de la escuadra del personaje elegido: en azul los enlaces a la distancia y
   en rojo discontinuo los que no, el círculo del centro y un aro rojo en los
   que quedan fuera; empieza en cadena a 3 casillas.
+- `modoAtaque`: cómo atacan los personajes de las escuadras. `uno-a-uno`,
+  cada uno a su objetivo (`ClaseDePersonaje.atacar`); `escuadra`, atacan
+  juntos los de la escuadra a la escuadra del objetivo y el daño se reparte
+  (ver «Ataque de escuadra contra escuadra»). El banco de pruebas empieza con
+  `uno-a-uno`.
+- Cargas y combate, en casillas (con 0, la regla no se aplica). Son
+  desplazamientos forzados (`desplazar`, `desplazarEscuadra`): no gastan
+  movimiento y preguntan a la clase al entrar en cada casilla.
+  - `apoyoALaCarga`: cuando un personaje termina un movimiento de tipo
+    `carga` en contacto con un enemigo, los demás de su escuadra se acercan
+    a la escuadra de ese enemigo (o a él, si no es de ninguna) hasta el
+    contacto. No está en One Page Rules: sirve para no tener que cargar uno a
+    uno.
+  - `ajusteDelDefensor`: tras esa carga (y tras el apoyo), los de la escuadra
+    cargada se acercan a los de la que carga hasta el contacto (One Page
+    Rules: 3″).
+  - `consolidacionTrasCombate`: tras un ataque cuerpo a cuerpo (uno a uno o
+    de escuadra, también de personajes no jugadores), si la escuadra atacada
+    queda sin nadie colocado, la del atacante avanza hacia el enemigo más
+    cercano hasta el contacto (One Page Rules: 3″).
+  - `retrocesoTrasCombate`: si no queda destruida, la del atacante se aleja
+    de ella (One Page Rules: 1″).
+
+  El banco de pruebas las ofrece en el formulario, todas apagadas al empezar.
 
 El gestor lee `configuracion` cada vez que la necesita: si el proveedor la
 expone con un getter, un cambio vale al momento (el banco de pruebas tiene un
@@ -332,6 +362,7 @@ interface ClaseDeEscuadra {
   personajes(): Promise<ClaseDePersonaje[]>
   modoActivacion(): Promise<'agresivo' | 'sigiloso'>
   activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
+  atacarEscuadra?(ataque: AtaqueDeEscuadra, mapa: MapaEnJuego): Promise<ResultadoAccion> // con `modoAtaque: 'escuadra'`
 }
 
 interface ClaseDePersonaje {
@@ -569,6 +600,48 @@ monstruo siempre falla contra un héroe (un diálogo: «¡ups, ha fallado!»); e
 los demás ataques pide
 el daño en un diálogo (`DialogoAtaque`), se lo quita al objetivo y, si se
 queda sin vida, lo elimina. Resuelve `{ quedanAcciones: false }`.
+
+### Ataque de escuadra contra escuadra
+
+Con `modoAtaque: 'escuadra'`, al soltar la ficha de un personaje de una
+escuadra sobre un enemigo atacan juntos los de su escuadra, si su clase de
+escuadra tiene `atacarEscuadra` (si no, atacan uno a uno):
+
+```ts
+type AtaqueDeEscuadra = {
+  ataques: Ataque[]               // uno por cada atacante que puede atacar al objetivo elegido
+  objetivos: PersonajeEnJuego[]   // los de la escuadra objetivo (o el objetivo solo), de los más cercanos a los atacantes a los más lejanos
+  sinAtacar: { atacante: PersonajeEnJuego; motivo: string }[] // los de la escuadra que no pueden atacar a nadie
+}
+```
+
+- Atacan al objetivo elegido (el personaje sobre el que se suelta la ficha)
+  los personajes colocados de la escuadra a los que aún les quedan acciones
+  (los que han resuelto `{ quedanAcciones: false }`, por ejemplo al abrir
+  una puerta, no) y cuya clase les deja atacarlo (`motivoParaNoAtacar`:
+  alcance, cobertura bloqueante, cuerpo a cuerpo…, por cada uno): la clase
+  decide también si ya han gastado su acción de otra forma (deslizar…). A
+  qué miembro de la escuadra objetivo se apunta (el más cercano, el más fácil
+  de impactar…) lo elige el jugador; quien no puede atacarlo no busca otro.
+- `gestor.planearAtaqueDeEscuadra(personaje, objetivo)` da el plan sin
+  atacar (o el motivo, si la escuadra no puede actuar), también con
+  `ataques` vacío si nadie puede: la vista dibuja con él una línea de
+  disparo hacia el objetivo desde cada personaje de la escuadra que puede
+  atacarlo; de los que no, ninguna.
+- `gestor.motivoParaNoAtacar` da motivo solo si nadie de la escuadra puede
+  atacar (el del personaje arrastrado, si lo tiene): basta con que pueda
+  otro.
+- Al atacar, `atacarEscuadra` reparte el daño entre los `objetivos` con
+  `mapa.reducirVida` y `mapa.eliminarPersonaje`, y resuelve con el estado de
+  los atacantes: el gestor apunta «atacar» a cada uno. Si falla o se
+  cancela, no se apunta.
+
+En el banco de pruebas, el daño se reparte en un diálogo (`DialogoReparto`):
+quién ataca a quién, quién no puede y por qué, y el daño de cada objetivo,
+con una propuesta (`repartoEnOrden`): un punto por atacante, en orden, a cada
+uno hasta su vida. Los monstruos contra los héroes fallan, como uno a uno.
+Un personaje de prueba que ya ha abierto una puerta o ha deslizado no ataca
+(«ya ha usado su acción este turno»).
 
 ## Movimiento: ClaseDePersonaje.opcionesMovimiento
 

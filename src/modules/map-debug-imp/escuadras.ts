@@ -1,5 +1,5 @@
 import { cargarHeroes, urlFichaVtt } from '../../lib/personajes'
-import type { AccionEjecutada, ClaseDeEscuadra, DescripcionPersonajeNoJugador, Escuadra, MapaEnJuego, PersonajeEnJuego, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
+import { jugadorDe, todosLosPersonajes, type AccionEjecutada, type AtaqueDeEscuadra, type ClaseDeEscuadra, type DescripcionPersonajeNoJugador, type Escuadra, type MapaEnJuego, type PersonajeEnJuego, type ProveedorPersonajes, type ResultadoAccion, type ResultadoActivacion } from '../gamemap'
 import { JUGADOR_MONSTRUOS } from './configuracion'
 import { PersonajeDePrueba, MOVER, type DialogosDePrueba } from './modelo/personaje'
 import type { PuertasDePrueba } from './modelo/puerta'
@@ -38,6 +38,7 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
           .map((h) => new PersonajeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe'), vida: h.cuerpo }, puertas, dialogos, azar)),
       )),
     modoActivacion: async () => 'sigiloso',
+    atacarEscuadra: (ataque, mapa) => atacarEscuadraDePrueba(ataque, mapa, dialogos),
     activar: async (acciones) => {
       const resultado = activacionDePrueba(acciones, ids)
       // banco de pruebas: se ve en la consola qué recibe y qué responde cada escuadra
@@ -49,7 +50,38 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
 
 /** Dos escuadras de prueba, la de Ana con el bárbaro y la de Bruno con el enano, más las escuadras de monstruos elegidas */
 /** Sin diálogos: los ataques no se resuelven y los avisos no se ven */
-const sinDialogos: DialogosDePrueba = { resolverAtaque: () => Promise.reject(new Error('Este banco de pruebas no resuelve ataques')), avisar: async () => {} }
+const sinDialogos: DialogosDePrueba = {
+  resolverAtaque: () => Promise.reject(new Error('Este banco de pruebas no resuelve ataques')),
+  repartirDano: () => Promise.reject(new Error('Este banco de pruebas no resuelve ataques')),
+  avisar: async () => {},
+}
+
+/**
+ * Ataque de escuadra contra escuadra del banco de pruebas: lo pinta en la
+ * consola; si atacan monstruos a quien no lo es, fallan (lo avisa en un
+ * diálogo); si no, se reparte el daño en un diálogo (`repartirDano`), se
+ * quita a cada objetivo y se elimina a quien se queda sin vida. Tras él, a
+ * los atacantes no les quedan acciones
+ */
+export async function atacarEscuadraDePrueba(ataque: AtaqueDeEscuadra, mapa: MapaEnJuego, dialogos: DialogosDePrueba): Promise<ResultadoAccion> {
+  const { ataques, objetivos, sinAtacar } = ataque
+  // banco de pruebas: se ve en la consola qué reúne el gestor en cada ataque de escuadra
+  console.log('[map-debug] ataque de escuadra', { ataques: ataques.map((a) => `${a.atacante.nombre} → ${a.objetivo.nombre} (${a.tipo}, a ${a.distancia})`), objetivos: objetivos.map((p) => p.nombre), sinAtacar })
+  const esMonstruo = (id: string) => jugadorDe(mapa.mapa, id)?.id === JUGADOR_MONSTRUOS
+  if (ataques.every((a) => esMonstruo(a.atacante.id)) && !objetivos.some((p) => esMonstruo(p.id))) {
+    const varios = ataques.length > 1
+    await dialogos.avisar({ titulo: 'Ataque', texto: `${ataques.map((a) => a.atacante.nombre).join(', ')} ${varios ? 'atacan' : 'ataca'}: ¡ups, ${varios ? 'han' : 'ha'} fallado!` })
+    return { quedanAcciones: false }
+  }
+  const reparto = await dialogos.repartirDano(ataque)
+  for (const { id } of objetivos.filter((p) => (reparto[p.id] ?? 0) > 0)) {
+    const motivo = mapa.reducirVida(id, reparto[id])
+    if (motivo) throw new Error(motivo)
+    const vida = todosLosPersonajes(mapa.mapa).find((p) => p.id === id)?.vida
+    if (vida !== undefined && vida <= 0) mapa.eliminarPersonaje(id)
+  }
+  return { quedanAcciones: false }
+}
 
 export const escuadrasDePrueba = (
   puertas: PuertasDePrueba,
@@ -70,6 +102,7 @@ export const escuadrasDePrueba = (
         buscaTrampas: false,
         personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas, dialogos, azar))),
         modoActivacion: async () => 'sigiloso',
+        atacarEscuadra: (ataque, mapa) => atacarEscuadraDePrueba(ataque, mapa, dialogos),
         activar: async (acciones) => activacionDePrueba(acciones, personajes.map((p) => p.id)),
       }
     }),

@@ -54,6 +54,37 @@ export type Configuracion = {
   coherencia: 'ninguna' | Coherencia['modo']
   /** Distancia de coherencia, en línea recta según `medicionMovimiento` (por Pitágoras, con el centro) */
   distanciaCoherencia: number
+  /**
+   * Cómo atacan los personajes de las escuadras: `uno-a-uno`, cada uno a su
+   * objetivo; `escuadra`, al atacar a un enemigo atacan juntos a su escuadra
+   * todos los de la escuadra atacante que aún puedan, y el daño se reparte
+   * entre la escuadra objetivo (`ClaseDeEscuadra.atacarEscuadra`)
+   */
+  modoAtaque: 'uno-a-uno' | 'escuadra'
+  /**
+   * Casillas que se acercan los demás de la escuadra que carga a la escuadra
+   * cargada cuando uno de ellos termina una carga en contacto con un enemigo,
+   * hasta el contacto (no está en One Page Rules). Con 0, no se acercan
+   */
+  apoyoALaCarga: number
+  /**
+   * Casillas que se acercan, tras esa carga, los de la escuadra cargada a los
+   * de la que carga, hasta el contacto (One Page Rules: 3″). Con 0, no se
+   * acercan
+   */
+  ajusteDelDefensor: number
+  /**
+   * Tras un ataque cuerpo a cuerpo, si la escuadra atacada queda destruida,
+   * casillas que avanza la atacante hacia el enemigo más cercano (One Page
+   * Rules: 3″). Con 0, no avanza
+   */
+  consolidacionTrasCombate: number
+  /**
+   * Tras un ataque cuerpo a cuerpo, si la escuadra atacada no queda
+   * destruida, casillas que retrocede la atacante (One Page Rules: 1″). Con
+   * 0, no retrocede
+   */
+  retrocesoTrasCombate: number
   /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
   jugadores: Jugadores
 }

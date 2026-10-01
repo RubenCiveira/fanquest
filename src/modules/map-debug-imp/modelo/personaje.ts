@@ -4,6 +4,7 @@ import {
   todosLosPersonajes,
   turnoDePersonaje,
   type Ataque,
+  type AtaqueDeEscuadra,
   type ClaseDePersonaje,
   type Comando,
   type MapaEnJuego,
@@ -27,8 +28,11 @@ export const MOVER = { id: 'mover', nombre: 'Mover', icono: '🥾' }
 /** Cómo se decide el daño de un ataque (el diálogo del banco de pruebas); se rechaza si se cancela */
 export type ResolverAtaque = (ataque: Ataque) => Promise<number>
 
-/** Diálogos del banco de pruebas que usa un personaje: decidir el daño de un ataque y avisar de algo (se resuelve al cerrarlo) */
-export type DialogosDePrueba = { resolverAtaque: ResolverAtaque; avisar: (aviso: { titulo: string; texto: string }) => Promise<void> }
+/** Cómo se reparte el daño de un ataque de escuadra (el diálogo del banco de pruebas): el daño a cada objetivo, por su id; se rechaza si se cancela */
+export type RepartirDano = (ataque: AtaqueDeEscuadra) => Promise<Record<string, number>>
+
+/** Diálogos del banco de pruebas que usa un personaje: decidir el daño de un ataque, repartir el de un ataque de escuadra y avisar de algo (se resuelve al cerrarlo) */
+export type DialogosDePrueba = { resolverAtaque: ResolverAtaque; repartirDano: RepartirDano; avisar: (aviso: { titulo: string; texto: string }) => Promise<void> }
 
 /**
  * Hasta cuántas casillas ataca cada personaje de prueba (`Ataque.distancia`,
@@ -144,11 +148,14 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   }
 
   /**
-   * Trabado en cuerpo a cuerpo, solo ataca a uno de los que lo traban (si no
-   * le llega, tiene que posicionarse en contacto); y no ataca más allá de su
-   * alcance ni si la trayectoria cruza terreno bloqueante
+   * No ataca si ya ha usado su acción del turno (otra acción, como abrir una
+   * puerta, o deslizar). Trabado en cuerpo a cuerpo, solo ataca a uno de los
+   * que lo traban (si no le llega, tiene que posicionarse en contacto); y no
+   * ataca más allá de su alcance ni si la trayectoria cruza terreno bloqueante
    */
-  motivoParaNoAtacar({ atacante, objetivo, distancia, trayectoria }: Ataque): string | undefined {
+  motivoParaNoAtacar({ atacante, objetivo, distancia, trayectoria }: Ataque, mapa: MapaEnJuego): string | undefined {
+    const { acciones, movimientos } = turnoDePersonaje(atacante, numeroDeTurno(mapa.mapa))
+    if (acciones.length || movimientos.some((m) => m.acciones.includes(DESLIZAR.id))) return `${this.nombre} ya ha usado su acción este turno`
     const loTraban = atacante.trabadoPor()
     if (loTraban.length && !loTraban.some((p) => p.id === objetivo.id)) {
       return `${this.nombre} está trabado: solo puede atacar a ${loTraban.map((p) => p.nombre).join(' o ')}`

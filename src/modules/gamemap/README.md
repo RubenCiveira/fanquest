@@ -133,7 +133,9 @@ mismo sitio.
   cargando, nadie entra en la zona de control de un enemigo) y
   `cuerpoACuerpo` (contacto solo en recto o también en diagonal) y
   `coherencia` con `distanciaCoherencia` (si las escuadras se mantienen
-  juntas y cómo).
+  juntas y cómo), `modoAtaque` (uno a uno o escuadra contra escuadra) y las
+  distancias tras una carga y tras el combate (`apoyoALaCarga`,
+  `ajusteDelDefensor`, `consolidacionTrasCombate`, `retrocesoTrasCombate`).
 - **Turno y activación**: la activación es de la escuadra y en ella pueden
   actuar todos sus personajes. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las

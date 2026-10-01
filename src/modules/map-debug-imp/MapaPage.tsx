@@ -224,6 +224,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
           const noJugador = personajesNoJugadoresDe(mapa).find((p) => p.id === personaje)
           return gestor.motivoParaNoAtacar(personaje, objetivo, noJugador && claseDeNoJugador(noJugador))
         }}
+        planearAtaqueDeEscuadra={configuracion.modoAtaque === 'escuadra' ? (personaje, objetivo) => gestor.planearAtaqueDeEscuadra(personaje, objetivo) : undefined}
         medicion={configuracion.medicionMovimiento}
         terrenoPersonajes={configuracion.terrenoPersonajes}
         distanciaControl={configuracion.distanciaControl}

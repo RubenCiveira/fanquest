@@ -31,6 +31,11 @@ export const CONFIGURACION_INICIAL: Configuracion = {
   cuerpoACuerpo: 'ortogonal',
   coherencia: 'alguno',
   distanciaCoherencia: 3,
+  modoAtaque: 'uno-a-uno',
+  apoyoALaCarga: 0,
+  ajusteDelDefensor: 0,
+  consolidacionTrasCombate: 0,
+  retrocesoTrasCombate: 0,
   jugadores: JUGADORES_DE_PRUEBA,
 }
 
@@ -56,6 +61,11 @@ export const OPCIONES_CONFIGURACION: { [K in Ajuste]: { etiqueta: string; valore
     valores: { ninguna: 'Sin coherencia', alguno: 'En cadena (cerca de alguno)', todos: 'Cerca de todos', centro: 'Cerca del centro (círculo)' },
   },
   distanciaCoherencia: { etiqueta: 'Distancia de coherencia', valores: { 1: '1 casilla', 2: '2 casillas', 3: '3 casillas', 4: '4 casillas' } },
+  modoAtaque: { etiqueta: 'Ataque de las escuadras', valores: { 'uno-a-uno': 'Uno a uno', escuadra: 'Escuadra contra escuadra (se reparte el daño)' } },
+  apoyoALaCarga: { etiqueta: 'Tras cargar, el resto de la escuadra se acerca', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas', 3: '3 casillas' } },
+  ajusteDelDefensor: { etiqueta: 'Tras una carga, la escuadra cargada se acerca', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas', 3: '3 casillas' } },
+  consolidacionTrasCombate: { etiqueta: 'Tras destruir en cuerpo a cuerpo, se avanza', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas', 3: '3 casillas' } },
+  retrocesoTrasCombate: { etiqueta: 'Tras un cuerpo a cuerpo sin destruir, se retrocede', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas' } },
 }
 
 const CLAVE = 'fetenquest.map-debug.configuracion.v3'

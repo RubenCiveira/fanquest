@@ -48,7 +48,7 @@ cinco proveedores y dos tipos de clase (ver `PROVEEDORES.md`).
 | Control | Zona de control de N casillas que no atraviesa muros. Calcula trabado, quién traba y apoyos | `distanciaControl`, `PersonajeEnJuego.estaTrabado()`, `trabadoPor()`, `conApoyos()` |
 | Ataques | Tipo de ataque (cuerpo a cuerpo según `cuerpoACuerpo`, o a distancia), distancia, coste para llegar y trayectoria (aliados, enemigos, coberturas, objetos y muros que cruza) | `medirAtaque`, `trayectoria` |
 | Ataques | La clase del atacante decide si puede atacar y resuelve el ataque como promesa. También para PNJ, pasando su clase | `motivoParaNoAtacar`, `atacar`, `atacarNoJugador` |
-| Ataques | Ataque uno a uno: cada personaje ataca a un objetivo y se apunta su acción. El ataque de escuadra contra escuadra no existe aún (ver 1.1) | `atacar(personaje, objetivo)` |
+| Ataques | Ataque uno a uno o de escuadra contra escuadra (`modoAtaque`, ver 1.1) | `atacar(personaje, objetivo)`, `planearAtaqueDeEscuadra`, `ClaseDeEscuadra.atacarEscuadra` |
 | Acciones | Acciones propias como comandos con acceso al mapa en juego (abrir puertas, coger, revisar, marcar flags…) | `Accion`, `Comando`, `MapaEnJuego` |
 | Estado | Mapa inmutable y serializable a JSON. Un gestor creado con un mapa guardado continúa la partida | `Mapa`, `GestorMapa.suscribir` |
 
@@ -74,10 +74,13 @@ Hay dos formas de que una escuadra ataque, según el juego:
   defensor (o la IA). Todos los atacantes gastan su acción. Es como disparan
   y luchan las unidades de OPR.
 
-El motor no ofrece todavía el segundo modo. Hoy el proyecto lo monta dentro
-de `atacar` del personaje que se arrastra (ver 3.3), pero el gestor solo
-apunta la acción de ese personaje y no ayuda a reunir a los atacantes ni a
-repartir el daño (ver el hueco 6).
+Se elige con `modoAtaque` en la configuración. Con `escuadra`, el gestor
+reúne a los atacantes (los que aún tienen acciones y cuya clase les deja
+atacar al objetivo elegido; a qué miembro de la escuadra objetivo se apunta
+lo elige el jugador),
+ordena a los defensores de los más cercanos a los más lejanos, llama a
+`ClaseDeEscuadra.atacarEscuadra`, que reparte el daño, y apunta la acción a
+todos (ver `PROVEEDORES.md`).
 
 ## 2. FetenQuest: Aventuras Infinitas en solitario
 
@@ -99,6 +102,7 @@ juego que mejor encaja.
 | `ordenActivaciones` | `personajes-primero` o `iniciativa` | Los héroes juegan primero y el MB, al final de la ronda; con las cartas de iniciativa, en el orden que salga |
 | `modosActivacion` | `normal` | |
 | `coherencia` | `ninguna` | Cada héroe es su propia escuadra |
+| `modoAtaque` | `uno-a-uno` | Cada héroe y cada monstruo ataca a su objetivo |
 | `jugadores` | Alianza `heroes` (un jugador humano con todos los héroes, o uno por héroe) y alianza `mazmorra` (jugador `malvado-brujo` de tipo `ia`), hostiles entre sí | |
 
 ### 2.2 Héroes
@@ -293,6 +297,8 @@ medición `euclidea`: la mesa es una única estancia `exterior` de 48×48 o
 | `ordenActivaciones` | `alternas` | Un jugador y otro, una unidad cada vez |
 | `modosActivacion` | `normal` | |
 | `coherencia` y `distanciaCoherencia` | `alguno` y `1` | La cadena de 1″ entre los modelos de cada unidad |
+| `modoAtaque` | `escuadra` | La unidad dispara y lucha junta y reparte las heridas |
+| `ajusteDelDefensor`, `consolidacionTrasCombate` y `retrocesoTrasCombate` | `3`, `3` y `1` | Los movimientos tras la carga y tras el combate |
 
 ### 3.2 Unidades
 
@@ -328,24 +334,27 @@ medición `euclidea`: la mesa es una única estancia `exterior` de 48×48 o
 
 ### 3.3 Disparo
 
-Cuando el jugador arrastra un modelo sobre un enemigo, el motor llama a
-`atacar` de ese modelo, pero OPR dispara **con toda la unidad**: es el ataque
-de escuadra contra escuadra (1.1). Mientras el motor no lo ofrezca (hueco 6),
-lo resuelve el proyecto así:
+OPR dispara **con toda la unidad**: es el ataque de escuadra contra escuadra
+(1.1), con `modoAtaque: 'escuadra'`:
 
-1. `atacar` reúne los modelos de su escuadra que pueden disparar a la unidad
-   objetivo: los que tienen alcance (`medirAtaque(...).distancia`) y línea de
-   visión (`trayectoria` sin cobertura bloqueante ni muros; los modelos de su
-   propia unidad no tapan).
-2. Suma los Ataques de sus armas y tira Calidad para impactar.
+1. Al soltar un modelo sobre un enemigo, el gestor reúne a los de su unidad
+   que pueden dispararle: los que aún tienen acciones y cuya clase les deja
+   (`motivoParaNoAtacar`: alcance con `ataque.distancia`, línea de visión
+   con la `trayectoria` sin cobertura bloqueante ni muros). Mientras se
+   arrastra, la vista dibuja una línea de disparo hacia él desde cada uno.
+   A qué modelo de la unidad enemiga se apunta (el más cercano, el más fácil
+   de impactar…) lo elige el jugador: es una simplificación de OPR, que mide
+   cada tirador hasta el modelo más cercano de la unidad.
+2. `ClaseDeEscuadra.atacarEscuadra` suma los Ataques de sus armas y tira
+   Calidad para impactar.
 3. El defensor tira Defensa con +1 si la mayoría de su unidad está en
    cobertura o tras ella (`coberturaEn` y `trayectoria(...).coberturas`). PA(X)
    resta.
-4. Retira bajas con `eliminarPersonaje` en el orden que elija el defensor (con
-   `confirmar` o un diálogo del proyecto), o con `reducirVida` si es
-   Resistente.
-5. Devuelve `ResultadoAccion` sin acciones restantes a ese modelo. La clase de
-   escuadra marca que la unidad ya ha disparado.
+4. Retira bajas con `eliminarPersonaje` en el orden que elija el defensor
+   (el gestor da los `objetivos` de los más cercanos a los más lejanos), o
+   con `reducirVida` si es Resistente.
+5. Resuelve `{ quedanAcciones: false }`: el gestor apunta el disparo a todos
+   los que han disparado.
 
 **Explosión(X)**, **Indirecto** y **Bloqueo** se calculan con las mismas
 consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
@@ -355,8 +364,10 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
 - **Carga:** cada modelo se mueve con su opción `carga`. Para contar como
   carga, al menos uno tiene que llegar a contacto.
 - **Respuesta del defensor:** los modelos del defensor que no estén en
-  contacto avanzan 3″ hacia los que cargan: `desplazarEscuadra(defensor,
-  { sentido: 'hacia', de: { escuadra: atacante }, casillas: 3, hasta: 1 })`.
+  contacto avanzan 3″ hacia los que cargan: `ajusteDelDefensor: 3` en la
+  configuración. Para que no haya que cargar modelo a modelo, `apoyoALaCarga`
+  (que no está en OPR) acerca a los demás de la unidad que carga cuando uno
+  contacta.
 - **Quién ataca:** los modelos a 2″ o menos del objetivo, todos juntos y
   repartiendo las heridas entre la unidad enemiga, como en el disparo (1.1). Es
   `medirAtaque` con `distancia ≤ 2`, porque `cuerpoACuerpo` solo da contacto.
@@ -366,8 +377,8 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
   un flag `fatigada` de la escuadra, que el proyecto quita en `finDeTurno`.
 - **Grimdark:** la unidad que causa menos heridas testea moral.
 - **Consolidación:** moverse 3″ si el rival desaparece
-  (`desplazarEscuadra` hacia los enemigos) o retroceder 1″ el atacante
-  (`{ sentido: 'lejos', de: { escuadra: defensor }, casillas: 1 }`).
+  (`consolidacionTrasCombate: 3`, hacia el enemigo más cercano) o retroceder
+  1″ el atacante (`retrocesoTrasCombate: 1`).
 
 ### 3.5 Moral, aturdidos y rondas
 
@@ -453,9 +464,9 @@ elegir objetivo y acción con las mismas consultas.
 | Terreno peligroso | ❌ Falta terreno con efecto |
 | Elevación, saltos y caídas | ❌ El mapa es plano |
 | Peanas grandes (vehículos, monstruos) | ❌ Un personaje ocupa una casilla |
-| Disparo de unidad, cobertura y PA | 🟡 Proyecto en `atacar`, con `medirAtaque` y `trayectoria`. ❌ Falta el ataque de escuadra contra escuadra (hueco 6) |
+| Disparo de unidad, cobertura y PA | ✅ `modoAtaque: 'escuadra'` y `atacarEscuadra`; dados, cobertura y PA, del proyecto |
 | Cuerpo a cuerpo a 2″, devolver golpe y fatiga | 🟡 Proyecto |
-| Respuesta del defensor, consolidación y empujar | ✅ `desplazar` y `desplazarEscuadra` |
+| Respuesta del defensor, consolidación y empujar | ✅ `ajusteDelDefensor`, `consolidacionTrasCombate` y `retrocesoTrasCombate` en la configuración; empujar, con `desplazar` |
 | Coherencia de unidad | 🟡 `coherencia`: la cadena de 1″ o la distancia con todos, una de las dos |
 | Aturdido y moral | 🟡 Proyecto, con aturdido y fatiga como flags |
 | Quién empieza la ronda | 🟡 `iniciativa` y `ordenDelTurno`; quién terminó primero lo apunta el proyecto |
@@ -475,7 +486,7 @@ un juego en el motor: son puntos de extensión.
 | 3 | ✅ **Movimientos forzados** fuera de la activación y de las opciones de la clase | OPR (respuesta a la carga, consolidar, retroceder, empujar aturdidos), FetenQuest (empujar) | Hecho: `MapaEnJuego.desplazar` y `desplazarEscuadra`, hacia o lejos de una referencia (`casillas` que puede recorrer, `hasta` dónde) o por un recorrido, con las reglas del mapa y sin gastar movimiento; `planearDesplazamiento` para previsualizar |
 | 4 | ✅ **Coherencia de escuadra** | OPR | Hecho: `coherencia` y `distanciaCoherencia` en la configuración (en cadena, con todos o desde el centro), comprobada al terminar la activación (`escuadraSinCoherencia`) y con guía para dibujarla. Falta combinar dos reglas (1″ en cadena y 6″ o 9″ con todos) |
 | 5 | ✅ **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Hecho: `ordenActivaciones: 'iniciativa'` en la configuración y `ProveedorTurnos.ordenDelTurno(mapa)`, que al empezar cada turno da los huecos (jugador y cuántas activaciones seguidas; sin cupo, todas); lo que queda después va como `alternas` |
-| 6 | **Ataque de escuadra contra escuadra** (1.1) | OPR (disparo y cuerpo a cuerpo de unidad) | Un modo de ataque `uno-a-uno` (el de hoy) o `escuadra`, en la configuración como `coherencia` (o por clase de escuadra si un juego mezcla los dos). Con `escuadra`, al soltar un personaje sobre un enemigo el gestor reúne a los de su escuadra con acciones disponibles a los que su clase deja atacar a algún personaje de la escuadra objetivo, llama a un `atacarEscuadra(ataques, mapa)` de la clase de escuadra con un `Ataque` por atacante y apunta la acción a todos. El reparto del daño es de la clase, con una ayuda del gestor que proponga el orden (los más cercanos primero) y deje elegir al defensor |
+| 6 | ✅ **Ataque de escuadra contra escuadra** (1.1) | OPR (disparo y cuerpo a cuerpo de unidad) | Hecho: `modoAtaque` (`uno-a-uno` o `escuadra`) en la configuración y `ClaseDeEscuadra.atacarEscuadra(ataque, mapa)`: el gestor reúne a los de la escuadra con acciones a los que su clase deja atacar al objetivo elegido, ordena a los defensores (los más cercanos primero) y apunta la acción a todos; `planearAtaqueDeEscuadra` para dibujar las líneas de disparo. Falta mezclar los dos modos por escuadra |
 | 7 | **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | `etiqueta?: string` en `Terreno`, para que la clase lo reconozca en `alEntrar` y en `trayectoria` |
 | 8 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
 | 9 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
@@ -484,13 +495,11 @@ un juego en el motor: son puntos de extensión.
 | 12 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
 | 13 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 
-Con 1 a 5 (hechos) se puede jugar FAI completo en solitario y OPR con una
-aproximación razonable. Con 6, OPR queda fiel a sus reglas. Del 7 al 13 son
-mejoras de fidelidad.
+Con 1 a 6 (hechos) se puede jugar FAI completo en solitario y OPR fiel a sus
+reglas. Del 7 al 13 son mejoras de fidelidad.
 
 **Orden recomendado:**
 
-1. **Ataque de escuadra contra escuadra (6)** antes de empezar OPR.
-2. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
+1. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
    trampas, muebles y monstruos de prueba, y que sería el primer juego real
    del motor.

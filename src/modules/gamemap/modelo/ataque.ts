@@ -34,3 +34,17 @@ export type Trayectoria = {
  * la línea del ataque (`trayectoria`)
  */
 export type Ataque = { atacante: PersonajeEnJuego; objetivo: PersonajeEnJuego; tipo: TipoAtaque; distancia: number; recorrido?: number; trayectoria: Trayectoria }
+
+/**
+ * Ataque de escuadra contra escuadra (`modoAtaque: 'escuadra'`): un `Ataque`
+ * al objetivo elegido por cada personaje de la escuadra atacante que puede
+ * atacarlo (a qué miembro se apunta lo elige el jugador); los personajes
+ * colocados de la escuadra objetivo (o el objetivo solo, si no es de ninguna),
+ * de los más cercanos a los atacantes a los más lejanos, para repartir el
+ * daño; y los de la escuadra atacante que no pueden atacar, con el motivo
+ */
+export type AtaqueDeEscuadra = {
+  ataques: Ataque[]
+  objetivos: PersonajeEnJuego[]
+  sinAtacar: { atacante: PersonajeEnJuego; motivo: string }[]
+}

@@ -190,7 +190,7 @@ describe('cruzar puertas', () => {
     expect(ruta(salaConSalida(true), { x: 1, y: 1 }, { x: 0, y: 4 })?.slice(0, 3)).toEqual(porLaPuerta.slice(0, 3))
   })
 
-  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: SIN_JUGADORES } as const
+  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: SIN_JUGADORES } as const
   const moverPorLaPuerta = () => moverPersonaje(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
 
   it('al mover a la otra estancia, el personaje pasa a ella con su casilla en ella', () => {
@@ -262,7 +262,7 @@ describe('medición de los movimientos', () => {
   })
 
   it('el movimiento apunta lo que cuesta según la medición', () => {
-    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: SIN_JUGADORES } as const
+    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: SIN_JUGADORES } as const
     const m = moverPersonaje(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
     expect(gastadoPor(m, m.escuadras?.[0].personajes[0] ?? barbaro).casillas).toBe(5)
   })

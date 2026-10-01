@@ -8,8 +8,30 @@ import { PuertasDePrueba } from './puerta'
 /** El personaje en juego, sin trabar y sin apoyos */
 const enJuego = <P extends Personaje>(p: P): P & PersonajeEnJuego => ({ ...p, estaTrabado: () => false, trabadoPor: () => [], conApoyos: () => [] })
 
+/** Mapa en juego vacío en el turno 1 */
+const turno1: MapaEnJuego = {
+  mapa: { estancias: [], turno: 1 },
+  personaje: () => undefined,
+  personajesEn: () => [],
+  puertaEn: () => undefined,
+  tieneFlag: () => false,
+  marcarFlag: vi.fn(),
+  quitarFlag: vi.fn(),
+  dameLoQueEstaAlLado: () => [],
+  quitarElemento: vi.fn(),
+  abrirPuerta: vi.fn(),
+  anadirPersonajes: vi.fn(),
+  anadirMuebles: vi.fn(),
+  reducirVida: vi.fn(),
+  eliminarPersonaje: vi.fn(),
+  desplazar: vi.fn(),
+  desplazarEscuadra: vi.fn(),
+  cambiarJugadores: vi.fn(),
+  terminarTurno: vi.fn(),
+}
+
 /** Diálogos del banco de pruebas: el daño que se decide y el aviso, que se cierra al momento */
-const dialogos = (dano = 1) => ({ resolverAtaque: vi.fn(async () => dano), avisar: vi.fn(async (_aviso: { titulo: string; texto: string }) => {}) })
+const dialogos = (dano = 1) => ({ resolverAtaque: vi.fn(async () => dano), repartirDano: vi.fn(async () => ({})), avisar: vi.fn(async (_aviso: { titulo: string; texto: string }) => {}) })
 
 describe('personaje de prueba', () => {
   it('sin moverse, tiene todo su movimiento', () => {
@@ -320,25 +342,25 @@ describe('alcance de los ataques de prueba', () => {
   const clase = (id: string, nombre: string) => new PersonajeDePrueba({ id, nombre }, new PuertasDePrueba(), dialogos())
 
   it('el bárbaro ataca a menos de 2 casillas', () => {
-    expect([clase('barbaro', 'Bárbaro').motivoParaNoAtacar(ataque(1)), clase('barbaro', 'Bárbaro').motivoParaNoAtacar(ataque(2))]).toEqual([
+    expect([clase('barbaro', 'Bárbaro').motivoParaNoAtacar(ataque(1), turno1), clase('barbaro', 'Bárbaro').motivoParaNoAtacar(ataque(2), turno1)]).toEqual([
       undefined,
       'Bárbaro solo ataca hasta 1 casilla y Orco está a 2',
     ])
   })
 
   it('el enano llega hasta 5', () => {
-    expect([clase('enano', 'Enano').motivoParaNoAtacar(ataque(5)), clase('enano', 'Enano').motivoParaNoAtacar(ataque(6))]).toEqual([
+    expect([clase('enano', 'Enano').motivoParaNoAtacar(ataque(5), turno1), clase('enano', 'Enano').motivoParaNoAtacar(ataque(6), turno1)]).toEqual([
       undefined,
       'Enano solo ataca hasta 5 casillas y Orco está a 6',
     ])
   })
 
   it('los demás, solo a 1', () => {
-    expect(clase('asesino-a-sueldo-1', 'Asesino').motivoParaNoAtacar(ataque(2))).toBe('Asesino solo ataca hasta 1 casilla y Orco está a 2')
+    expect(clase('asesino-a-sueldo-1', 'Asesino').motivoParaNoAtacar(ataque(2), turno1)).toBe('Asesino solo ataca hasta 1 casilla y Orco está a 2')
   })
 
   it('con terreno bloqueante en medio, nadie ataca', () => {
-    expect(clase('enano', 'Enano').motivoParaNoAtacar(ataque(3, 1))).toBe('Hay terreno bloqueante entre Enano y Orco')
+    expect(clase('enano', 'Enano').motivoParaNoAtacar(ataque(3, 1), turno1)).toBe('Hay terreno bloqueante entre Enano y Orco')
   })
 })
 
@@ -358,15 +380,28 @@ describe('atacar trabado', () => {
   const barbaro = () => new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, new PuertasDePrueba(), dialogos())
 
   it('trabado, puede atacar a quien lo traba', () => {
-    expect(barbaro().motivoParaNoAtacar(ataqueA(orco))).toBeUndefined()
+    expect(barbaro().motivoParaNoAtacar(ataqueA(orco), turno1)).toBeUndefined()
   })
 
   it('trabado, si no llega a quien lo traba, tiene que posicionarse en contacto', () => {
-    expect(barbaro().motivoParaNoAtacar({ ...ataqueA(orco), tipo: 'distancia', distancia: 2 })).toBe('Bárbaro tiene que posicionarse en contacto con Orco para atacarle')
+    expect(barbaro().motivoParaNoAtacar({ ...ataqueA(orco), tipo: 'distancia', distancia: 2 }, turno1)).toBe('Bárbaro tiene que posicionarse en contacto con Orco para atacarle')
+  })
+
+  it('si ya ha deslizado, ya ha usado su acción', () => {
+    const deslizo = { numero: 1, acciones: [], movimientos: [{ opcion: 'mover-y-deslizar', casillas: 8, acciones: ['mover', 'deslizar'] }] }
+    const ataque = ataqueA(orco)
+    expect(barbaro().motivoParaNoAtacar({ ...ataque, atacante: { ...ataque.atacante, turnos: [deslizo] } }, turno1)).toBe('Bárbaro ya ha usado su acción este turno')
+  })
+
+  it('si ya ha hecho otra acción (abrir una puerta…), ya ha usado su acción', () => {
+    const ataque = ataqueA(orco)
+    expect(barbaro().motivoParaNoAtacar({ ...ataque, atacante: { ...ataque.atacante, turnos: [{ numero: 1, acciones: ['abrir-puerta'], movimientos: [] }] } }, turno1)).toBe(
+      'Bárbaro ya ha usado su acción este turno',
+    )
   })
 
   it('trabado, no puede atacar a otro', () => {
-    expect(barbaro().motivoParaNoAtacar(ataqueA(goblin))).toBe('Bárbaro está trabado: solo puede atacar a Orco')
+    expect(barbaro().motivoParaNoAtacar(ataqueA(goblin), turno1)).toBe('Bárbaro está trabado: solo puede atacar a Orco')
   })
 })
 

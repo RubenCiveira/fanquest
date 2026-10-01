@@ -5,6 +5,7 @@ import {
   escuadrasDe,
   personajesNoJugadoresDe,
   type Ataque,
+  type AtaqueDeEscuadra,
   type Configuracion,
   type DescripcionEstancia,
   type DescripcionPersonajeNoJugador,
@@ -19,6 +20,7 @@ import {
 import { AvisoFinTurno, AvisoTrampas, AvisoTurno } from './AvisoTurno'
 import { cargarConfiguracion, guardarConfiguracion, JUGADOR_MONSTRUOS } from './configuracion'
 import { DialogoAtaque } from './DialogoAtaque'
+import { DialogoReparto } from './DialogoReparto'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba, sinCoherenciaDePrueba } from './escuadras'
 import { iniciativaDePrueba } from './iniciativa'
@@ -53,6 +55,7 @@ export function useProveedorDebug(inicial?: Mapa) {
   const [turno, setTurno] = useState<{ jugador: Jugador; modo?: ModoActivacion }>()
   const [finTurno, setFinTurno] = useState<MapaEnJuego>()
   const [ataque, setAtaque] = useState<{ ataque: Ataque; responder: (dano: number) => void; cancelar: () => void }>()
+  const [reparto, setReparto] = useState<{ ataque: AtaqueDeEscuadra; responder: (reparto: Record<string, number>) => void; cancelar: () => void }>()
   const [aviso, setAviso] = useState<{ titulo: string; texto: string; cerrar: () => void }>()
   const [configuracion, setConfiguracion] = useState(cargarConfiguracion)
   // la que lee el gestor: la del proveedor no cambia al volver a pintar
@@ -86,6 +89,14 @@ export function useProveedorDebug(inicial?: Mapa) {
             ataque,
             responder: (dano) => (setAtaque(undefined), resolve(dano)),
             cancelar: () => (setAtaque(undefined), reject(new DOMException('Ataque cancelado', 'AbortError'))),
+          }),
+        ),
+      repartirDano: (ataque) =>
+        new Promise((resolve, reject) =>
+          setReparto({
+            ataque,
+            responder: (r) => (setReparto(undefined), resolve(r)),
+            cancelar: () => (setReparto(undefined), reject(new DOMException('Ataque cancelado', 'AbortError'))),
           }),
         ),
       avisar: (aviso) => new Promise((resolve) => setAviso({ ...aviso, cerrar: () => (setAviso(undefined), resolve()) })),
@@ -137,6 +148,7 @@ export function useProveedorDebug(inicial?: Mapa) {
       {turno && <AvisoTurno key={turno.jugador.id} jugador={turno.jugador} modo={turno.modo} onCerrar={() => setTurno(undefined)} />}
       {aviso && <AvisoTrampas titulo={aviso.titulo} texto={aviso.texto} onCerrar={aviso.cerrar} />}
       {ataque && <DialogoAtaque ataque={ataque.ataque} onAtacar={ataque.responder} onCancelar={ataque.cancelar} />}
+      {reparto && <DialogoReparto ataque={reparto.ataque} onRepartir={reparto.responder} onCancelar={reparto.cancelar} />}
       {finTurno && <AvisoFinTurno onTerminar={() => (setFinTurno(undefined), finTurno.terminarTurno())} />}
       {confirmacion && (
         // al confirmar, el diálogo también se cierra: la segunda respuesta ya no cuenta

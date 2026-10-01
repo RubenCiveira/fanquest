@@ -9,6 +9,7 @@ import {
   conPersonaje,
   escuadrasDe,
   escuadraSinAcciones,
+  sinAcciones,
   jugadorEnTurno,
   todosLosPersonajes,
   motivoParaNoActivar,
@@ -17,10 +18,11 @@ import {
   terminarActivacion,
   terminarTurno,
   turnoDeEscuadra,
+  turnoDePersonaje,
 } from '../activaciones'
 import { aAgrupar, recorridoParaAgrupar } from '../agrupar'
 import { anadirPersonajesNoJugadores, huecoDePersonaje } from '../apariciones'
-import { conVidaReducida, medirAtaque, sinPersonaje } from '../ataques'
+import { conVidaReducida, distanciaSegun, medirAtaque, sinPersonaje } from '../ataques'
 import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from '../desplazamientos'
@@ -28,11 +30,11 @@ import { guiaDeCoherencia } from '../coherencia'
 import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
-import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enElMapa, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enContacto, enElMapa, enemigosDe, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import { apoyosDe, estaTrabado, trabadoPor } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
-import type { Ataque } from '../modelo/ataque'
+import type { Ataque, AtaqueDeEscuadra } from '../modelo/ataque'
 import type { ModoActivacion } from '../modelo/activacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
@@ -41,7 +43,7 @@ import type { GuiaDeCoherencia } from '../modelo/coherencia'
 import { esComando } from '../modelo/comando'
 import { OPUESTA } from '../modelo/direccion'
 import type { DescripcionMueble } from '../modelo/descripcionEstancia'
-import type { Desplazamiento, DesplazamientoPorRecorrido, ResultadoDesplazamiento } from '../modelo/desplazamiento'
+import type { Desplazamiento, DesplazamientoPorRecorrido, Referencia, ResultadoDesplazamiento } from '../modelo/desplazamiento'
 import type { DescripcionPersonajeNoJugador } from '../modelo/descripcionPersonaje'
 import type { Elemento, Objeto } from '../modelo/elemento'
 import type { Escuadra } from '../modelo/escuadra'
@@ -479,6 +481,7 @@ export class GestorMapa implements MapaEnJuego {
     const preguntar = await this.#alEntrarDe(escuadra.id, personaje)
     const resultado = await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => apuntarAccion(m, this.configuracion, escuadra.id, accion, personajeId), preguntar)
     if (resultado !== undefined) return resultado || undefined
+    await this.#trasMoverse(personajeId, opciones)
     await this.#preguntarSiCompleta(escuadra.id)
   }
 
@@ -496,14 +499,18 @@ export class GestorMapa implements MapaEnJuego {
     const { personaje, escuadra } = encontrado
     const motivo = motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personajeId)
     if (motivo) return motivo
+    const deEscuadra = await this.#claseDeEscuadraQueAtaca(escuadra.id)
+    if (deEscuadra) return this.#atacarEscuadra(deEscuadra, escuadra.id, personajeId, objetivoId)
     const ataque = this.#ataque(personaje, objetivoId)
     if (typeof ataque === 'string') return ataque
     const clase = await this.#claseDePersonaje(escuadra.id, personajeId)
     if (!clase) return `${personaje.nombre} no tiene clase que resuelva su ataque`
     const noPuede = clase.motivoParaNoAtacar(ataque, this)
     if (noPuede) return noPuede
+    const atacados = this.#atacados(objetivoId)
     const resultado = await clase.atacar(ataque, this)
     this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadra.id, ATACAR.id, personajeId, resultado))
+    if (ataque.tipo === 'cuerpo-a-cuerpo') await this.#trasCombate(personajeId, atacados)
     await this.#preguntarSiCompleta(escuadra.id)
   }
 
@@ -520,6 +527,9 @@ export class GestorMapa implements MapaEnJuego {
     if (!personaje?.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
     const motivo = deEscuadra ? motivoParaNoActuar(this.#mapa, this.configuracion, deEscuadra.escuadra.id, personajeId) : this.motivoParaNoActuarNoJugador(personajeId)
     if (motivo) return motivo
+    if (deEscuadra && (await this.#claseDeEscuadraQueAtaca(deEscuadra.escuadra.id))) {
+      return this.#motivoDelPlan(await this.planearAtaqueDeEscuadra(personajeId, objetivoId), personajeId)
+    }
     const ataque = this.#ataque(personaje, objetivoId)
     if (typeof ataque === 'string') return ataque
     const suya = clase ?? (deEscuadra && (await this.#claseDePersonaje(deEscuadra.escuadra.id, personajeId)))
@@ -543,9 +553,78 @@ export class GestorMapa implements MapaEnJuego {
     if (typeof ataque === 'string') return ataque
     const noPuede = clase.motivoParaNoAtacar(ataque, this)
     if (noPuede) return noPuede
+    const atacados = this.#atacados(objetivoId)
     const { quedanAcciones } = await clase.atacar(ataque, this)
     const atacado = this.#apuntarAccionNoJugador(this.#mapa, personaje, ATACAR.id)
     this.#cambiar(quedanAcciones ? atacado : this.#apuntarAccionNoJugador(atacado, personaje, TERMINAR_TURNO.id))
+    if (ataque.tipo === 'cuerpo-a-cuerpo') await this.#trasCombate(personajeId, atacados)
+  }
+
+  /**
+   * Con `modoAtaque: 'escuadra'`, cómo atacaría la escuadra del personaje a
+   * la del objetivo (o al objetivo solo, si no es de ninguna): un ataque al
+   * objetivo elegido por cada personaje colocado de la escuadra al que aún le
+   * quedan acciones y cuya clase le deja atacarlo (`motivoParaNoAtacar`); a
+   * qué miembro de la escuadra objetivo se apunta lo elige el jugador; los personajes de la
+   * escuadra objetivo, de los más cercanos a los atacantes a los más lejanos;
+   * y los que no pueden atacar, con el motivo (si nadie puede, sin ataques).
+   * Si la escuadra no puede actuar ahora o no están colocados, el motivo
+   */
+  async planearAtaqueDeEscuadra(personajeId: string, objetivoId: string): Promise<AtaqueDeEscuadra | string> {
+    const encontrado = this.#personajeDe(personajeId)
+    if (!encontrado?.personaje.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
+    const { escuadra } = encontrado
+    const noActua = motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id)
+    if (noActua) return noActua
+    const objetivo = todosLosPersonajes(this.#mapa).find((p) => p.id === objetivoId)
+    if (!objetivo?.casilla) return `No hay ningún personaje «${objetivoId}» colocado en el mapa`
+    const grupo = (this.#personajeDe(objetivoId)?.escuadra.personajes ?? [objetivo]).filter((p) => p.casilla)
+    const distancia = (a: Personaje, b: Personaje) => {
+      const [desde, hasta] = [enElMapa(this.#mapa, a), enElMapa(this.#mapa, b)]
+      return desde && hasta ? distanciaSegun(this.configuracion.medicionMovimiento, desde, hasta) : Number.POSITIVE_INFINITY
+    }
+    const ataques: Ataque[] = []
+    const sinAtacar: AtaqueDeEscuadra['sinAtacar'] = []
+    for (const atacante of escuadra.personajes.filter((p) => p.casilla && !sinAcciones(this.#mapa, p))) {
+      const clase = await this.#claseDePersonaje(escuadra.id, atacante.id)
+      const ataque = this.#ataque(atacante, objetivo.id)
+      const motivo = typeof ataque === 'string' ? ataque : clase ? clase.motivoParaNoAtacar(ataque, this) : `${atacante.nombre} no tiene clase que resuelva su ataque`
+      if (motivo || typeof ataque === 'string') sinAtacar.push({ atacante: this.#enJuego(atacante), motivo: motivo ?? '' })
+      else ataques.push(ataque)
+    }
+    const desde = ataques.length ? ataques.map((a) => a.atacante) : escuadra.personajes
+    const cercania = (p: Personaje) => Math.min(...desde.map((a) => distancia(a, p)))
+    return { ataques, objetivos: [...grupo].sort((a, b) => cercania(a) - cercania(b)).map((p) => this.#enJuego(p)), sinAtacar }
+  }
+
+  /** Por qué no puede atacar la escuadra del personaje según el plan (`planearAtaqueDeEscuadra`): el motivo si lo es, o si nadie puede atacar (el del personaje, si lo tiene) */
+  #motivoDelPlan(plan: AtaqueDeEscuadra | string, personajeId: string): string | undefined {
+    if (typeof plan === 'string') return plan
+    if (plan.ataques.length) return
+    return plan.sinAtacar.find((s) => s.atacante.id === personajeId)?.motivo ?? plan.sinAtacar[0]?.motivo ?? 'No queda nadie en la escuadra que pueda atacar'
+  }
+
+  /** La clase de la escuadra, si con `modoAtaque: 'escuadra'` resuelve los ataques de sus personajes (`atacarEscuadra`) */
+  async #claseDeEscuadraQueAtaca(escuadraId: string): Promise<ClaseDeEscuadra | undefined> {
+    if (this.configuracion.modoAtaque !== 'escuadra') return
+    const clase = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
+    return clase?.atacarEscuadra ? clase : undefined
+  }
+
+  /**
+   * La escuadra ataca a la del objetivo (`planearAtaqueDeEscuadra`): su clase
+   * lo resuelve (`atacarEscuadra`) y el gestor apunta «atacar» a cada
+   * atacante, con el estado que resuelve. Si falla o se cancela, no se apunta
+   */
+  async #atacarEscuadra(clase: ClaseDeEscuadra, escuadraId: string, personajeId: string, objetivoId: string): Promise<string | undefined> {
+    const plan = await this.planearAtaqueDeEscuadra(personajeId, objetivoId)
+    const motivo = this.#motivoDelPlan(plan, personajeId)
+    if (motivo || typeof plan === 'string') return motivo
+    const atacados = plan.objetivos.map((p) => p.id)
+    const resultado = await clase.atacarEscuadra?.(plan, this)
+    for (const { atacante } of plan.ataques) this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadraId, ATACAR.id, atacante.id, resultado))
+    if (plan.ataques.some((a) => a.tipo === 'cuerpo-a-cuerpo')) await this.#trasCombate(personajeId, atacados)
+    await this.#preguntarSiCompleta(escuadraId)
   }
 
   /** El ataque del personaje a ese objetivo (tipo, distancias y trayectoria: `medirAtaque`), o por qué no puede: no está colocado o no es su enemigo */
@@ -622,7 +701,67 @@ export class GestorMapa implements MapaEnJuego {
     const motivo = this.motivoParaNoActuarNoJugador(personajeId)
     if (motivo) return motivo
     if (!opciones) return `${personaje.nombre} no puede moverse ahora`
-    return (await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => this.#apuntarAccionNoJugador(m, personaje, accion))) || undefined
+    const resultado = await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => this.#apuntarAccionNoJugador(m, personaje, accion))
+    if (resultado !== undefined) return resultado || undefined
+    await this.#trasMoverse(personajeId, opciones)
+  }
+
+  /** Lo que mueve una carga, si el último movimiento del personaje lo ha sido (`#trasCargar`) */
+  async #trasMoverse(personajeId: string, opciones: OpcionesMovimiento) {
+    const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
+    const ultimo = personaje && turnoDePersonaje(personaje, numeroDeTurno(this.#mapa)).movimientos.at(-1)
+    const opcion = [opciones.base, ...opciones.variaciones].find((o) => o.id === ultimo?.opcion)
+    if (personaje && opcion?.tipo === 'carga') await this.#trasCargar(personaje)
+  }
+
+  /** Cómo nombrar como referencia de un desplazamiento la escuadra del personaje o, si no es de ninguna, a él */
+  #suGrupo(personajeId: string): Referencia {
+    const escuadra = this.#personajeDe(personajeId)?.escuadra
+    return escuadra ? { escuadra: escuadra.id } : { personaje: personajeId }
+  }
+
+  /** Desplaza a la escuadra del personaje o, si no es de ninguna, a él */
+  #desplazarSuGrupo(personajeId: string, d: Desplazamiento) {
+    const escuadra = this.#personajeDe(personajeId)?.escuadra
+    return escuadra ? this.desplazarEscuadra(escuadra.id, d) : this.desplazar(personajeId, d)
+  }
+
+  /**
+   * Tras una carga que deja al personaje en contacto con un enemigo: los
+   * demás de su escuadra se acercan a la del enemigo (`apoyoALaCarga`) y,
+   * después, los de la del enemigo a la suya (`ajusteDelDefensor`), hasta el
+   * contacto. Son desplazamientos forzados: no gastan movimiento
+   */
+  async #trasCargar(personaje: Personaje) {
+    const { apoyoALaCarga, ajusteDelDefensor, cuerpoACuerpo } = this.configuracion
+    const donde = enElMapa(this.#mapa, personaje)
+    const cargado = donde && enemigosDe(this.#mapa, personaje.id).find((e) => {
+      const suya = enElMapa(this.#mapa, e)
+      return suya && enContacto(donde, suya, cuerpoACuerpo)
+    })
+    if (!cargado) return
+    if (apoyoALaCarga) await this.#desplazarSuGrupo(personaje.id, { sentido: 'hacia', de: this.#suGrupo(cargado.id), casillas: apoyoALaCarga, hasta: 1 })
+    if (ajusteDelDefensor) await this.#desplazarSuGrupo(cargado.id, { sentido: 'hacia', de: this.#suGrupo(personaje.id), casillas: ajusteDelDefensor, hasta: 1 })
+  }
+
+  /**
+   * Tras un ataque cuerpo a cuerpo del personaje contra los de `atacados`
+   * (ids de su escuadra, o él solo): si ninguno queda colocado, la escuadra
+   * del atacante avanza hacia el enemigo más cercano
+   * (`consolidacionTrasCombate`), hasta el contacto; si no, retrocede
+   * (`retrocesoTrasCombate`). Son desplazamientos forzados
+   */
+  async #trasCombate(atacanteId: string, atacados: string[]) {
+    const { consolidacionTrasCombate: avance, retrocesoTrasCombate: retroceso } = this.configuracion
+    const quedan = todosLosPersonajes(this.#mapa).filter((p) => atacados.includes(p.id) && p.casilla)
+    if (!quedan.length && avance) await this.#desplazarSuGrupo(atacanteId, { sentido: 'hacia', de: { enemigos: true }, casillas: avance, hasta: 1 })
+    if (quedan.length && retroceso) await this.#desplazarSuGrupo(atacanteId, { sentido: 'lejos', de: this.#suGrupo(quedan[0].id), casillas: retroceso })
+  }
+
+  /** Los personajes colocados del grupo del objetivo (su escuadra, o él solo), por sus ids: los atacados en un cuerpo a cuerpo */
+  #atacados(objetivoId: string): string[] {
+    const escuadra = this.#personajeDe(objetivoId)?.escuadra
+    return escuadra ? escuadra.personajes.filter((p) => p.casilla).map((p) => p.id) : [objetivoId]
   }
 
   /**
