@@ -20,7 +20,7 @@ import { AvisoFinTurno, AvisoTrampas, AvisoTurno } from './AvisoTurno'
 import { cargarConfiguracion, guardarConfiguracion, JUGADOR_MONSTRUOS } from './configuracion'
 import { DialogoAtaque } from './DialogoAtaque'
 import { DialogoEstancia } from './DialogoEstancia'
-import { escuadrasDePrueba } from './escuadras'
+import { escuadrasDePrueba, sinCoherenciaDePrueba } from './escuadras'
 import { PersonajeDePrueba, type DialogosDePrueba } from './modelo/personaje'
 import { PuertasDePrueba } from './modelo/puerta'
 
@@ -107,6 +107,7 @@ export function useProveedorDebug(inicial?: Mapa) {
             : {}),
         }),
       finDeTurno: (mapa) => setFinTurno(mapa),
+      escuadraSinCoherencia: (escuadra, fuera, mapa) => void sinCoherenciaDePrueba(escuadra, fuera, mapa, dialogos),
       describirEstancia: (mapa, entrada) =>
         new Promise((resolve, reject) =>
           setPeticion({

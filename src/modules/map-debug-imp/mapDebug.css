@@ -177,6 +177,39 @@
   fill: var(--vitela);
 }
 
+/* guía de la coherencia de las escuadras: azul lo que está a la distancia, rojo lo que no; el círculo del centro y un aro en los que quedan fuera */
+.vista-coherencia {
+  pointer-events: none;
+}
+
+.vista-coherencia line {
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+.vista-coherencia line.en-coherencia {
+  stroke: #2f5d9e;
+}
+
+.vista-coherencia line.fuera {
+  stroke: var(--rubrica);
+  stroke-dasharray: 5 4;
+}
+
+.vista-coherencia-area {
+  fill: rgb(47 93 158 / 0.08);
+  stroke: #2f5d9e;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+
+.vista-coherencia-fuera {
+  fill: none;
+  stroke: var(--rubrica);
+  stroke-width: 3;
+}
+
 /* al arrastrar sobre un enemigo: línea hasta él e icono del ataque */
 .vista-ataque {
   pointer-events: none;

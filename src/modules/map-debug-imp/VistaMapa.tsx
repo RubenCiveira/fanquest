@@ -23,6 +23,7 @@ import {
   type Configuracion,
   type Estancia,
   type Escuadra,
+  type GuiaDeCoherencia,
   type Jugador,
   type Personaje,
   type Mapa,
@@ -126,6 +127,34 @@ function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida }, x, y, activacion,
         {vida !== undefined && ` (${vida} de vida)`}
       </title>
     </>
+  )
+}
+
+/** Cómo se lee cada modo de coherencia en la guía */
+const MODO_COHERENCIA: Record<GuiaDeCoherencia['coherencia']['modo'], string> = { alguno: 'en cadena', todos: 'con todos', centro: 'del centro' }
+
+/**
+ * Guía de la coherencia de una escuadra (casillas del mapa): azules los
+ * enlaces entre los que están a la distancia y rojos los que no; con el
+ * centro, el círculo de la distancia; y un aro rojo en los que quedan fuera
+ */
+function GuiaCoherencia({ guia, mapa }: { guia: GuiaDeCoherencia; mapa: Mapa }) {
+  const centro = (c: { x: number; y: number }) => ({ x: (c.x + 0.5) * LADO, y: (c.y + 0.5) * LADO })
+  const fuera = escuadrasDe(mapa)
+    .find((e) => e.id === guia.escuadra)
+    ?.personajes.flatMap((p) => (guia.fuera.includes(p.id) ? (enElMapa(mapa, p) ?? []) : []))
+  const { modo, distancia } = guia.coherencia
+  const medio = guia.centro && centro(guia.centro)
+  return (
+    <g className="vista-coherencia">
+      {medio && <circle className="vista-coherencia-area" cx={medio.x} cy={medio.y} r={distancia * LADO} />}
+      {guia.enlaces.map(({ de, a, desde, hasta, enCoherencia }) => {
+        const [i, f] = [centro(desde), centro(hasta)]
+        return <line key={`${de}-${a}`} className={enCoherencia ? 'en-coherencia' : 'fuera'} x1={i.x} y1={i.y} x2={f.x} y2={f.y} />
+      })}
+      {fuera?.map((c) => <circle key={`${c.x},${c.y}`} className="vista-coherencia-fuera" cx={centro(c).x} cy={centro(c).y} r={LADO * 0.55} />)}
+      <title>{`${guia.escuadra}: coherencia a ${distancia} ${MODO_COHERENCIA[modo]}${guia.fuera.length ? `; fuera: ${guia.fuera.join(', ')}` : ''}`}</title>
+    </g>
   )
 }
 
@@ -355,6 +384,8 @@ type Props = {
   jugadorEnTurno?: Jugador
   /** Modo inicial o actual de un personaje no jugador */
   modoNoJugador?: (personajeId: string) => ModoActivacion | undefined
+  /** Guías de coherencia de las escuadras: se dibuja sobre el mapa la de la escuadra del personaje elegido (`elemento`) */
+  guiasDeCoherencia?: GuiaDeCoherencia[]
 }
 
 /** Personaje colocado en una estancia, con su escuadra */
@@ -692,6 +723,9 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
             {...props}
           />
         ))}
+      {props.guiasDeCoherencia
+        ?.filter((guia) => colocados.some(({ personaje, escuadra }) => personaje.id === props.elemento && escuadra.id === guia.escuadra))
+        .map((guia) => <GuiaCoherencia key={guia.escuadra} guia={guia} mapa={mapa} />)}
       {arrastre?.ataque && <IconoAtaque desde={arrastre.recorrido[0]} hasta={arrastre.objetivo} {...arrastre.ataque} />}
       {arrastre && !arrastre.ataque && (
         <Flecha

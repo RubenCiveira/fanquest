@@ -1,5 +1,6 @@
 import type { Jugadores } from './jugadores'
 import type { TipoTerreno } from './terreno'
+import type { Coherencia } from './coherencia'
 
 /** Reglas de activación y de movimiento que fija el proyecto */
 export type Configuracion = {
@@ -40,6 +41,16 @@ export type Configuracion = {
    * terminar junto a un enemigo (cargar, posicionarse)
    */
   cuerpoACuerpo: 'ortogonal' | 'diagonal'
+  /**
+   * Si los personajes de cada escuadra tienen que mantenerse juntos y cómo
+   * (`Coherencia`): a `distanciaCoherencia` o menos de alguno de los demás, en
+   * cadena (`alguno`), de todos (`todos`) o del centro de un círculo puesto
+   * donde deja dentro a más (`centro`). Se comprueba al terminar la activación de cada escuadra
+   * (`ProveedorTurnos.escuadraSinCoherencia`). Con `ninguna`, no hay coherencia
+   */
+  coherencia: 'ninguna' | Coherencia['modo']
+  /** Distancia de coherencia, en línea recta según `medicionMovimiento` (por Pitágoras, con el centro) */
+  distanciaCoherencia: number
   /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
   jugadores: Jugadores
 }

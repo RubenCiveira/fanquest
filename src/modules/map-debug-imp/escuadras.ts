@@ -1,5 +1,5 @@
 import { cargarHeroes, urlFichaVtt } from '../../lib/personajes'
-import type { AccionEjecutada, ClaseDeEscuadra, DescripcionPersonajeNoJugador, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
+import type { AccionEjecutada, ClaseDeEscuadra, DescripcionPersonajeNoJugador, Escuadra, MapaEnJuego, PersonajeEnJuego, ProveedorPersonajes, ResultadoActivacion } from '../gamemap'
 import { JUGADOR_MONSTRUOS } from './configuracion'
 import { PersonajeDePrueba, MOVER, type DialogosDePrueba } from './modelo/personaje'
 import type { PuertasDePrueba } from './modelo/puerta'
@@ -75,3 +75,17 @@ export const escuadrasDePrueba = (
     }),
   ],
 })
+
+/**
+ * Lo que hace el banco de pruebas con los personajes que quedan fuera de la
+ * coherencia de su escuadra al terminar su activación: los quita del mapa como
+ * si hubieran muerto y lo avisa en un diálogo
+ */
+export function sinCoherenciaDePrueba(escuadra: Escuadra, fuera: PersonajeEnJuego[], mapa: MapaEnJuego, dialogos: DialogosDePrueba) {
+  for (const { id } of fuera) mapa.eliminarPersonaje(id)
+  const varios = fuera.length > 1
+  return dialogos.avisar({
+    titulo: 'Fuera de coherencia',
+    texto: `${fuera.map((p) => p.nombre).join(' y ')} ${varios ? 'han quedado' : 'ha quedado'} fuera de la coherencia de ${escuadra.nombre} y ${varios ? 'desaparecen' : 'desaparece'}.`,
+  })
+}

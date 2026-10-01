@@ -24,6 +24,7 @@ import { conVidaReducida, medirAtaque, sinPersonaje } from '../ataques'
 import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from '../desplazamientos'
+import { guiaDeCoherencia } from '../coherencia'
 import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
@@ -36,6 +37,7 @@ import type { ModoActivacion } from '../modelo/activacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { ClaseDePersonaje } from '../modelo/claseDePersonaje'
+import type { GuiaDeCoherencia } from '../modelo/coherencia'
 import { esComando } from '../modelo/comando'
 import { OPUESTA } from '../modelo/direccion'
 import type { DescripcionMueble } from '../modelo/descripcionEstancia'
@@ -820,11 +822,35 @@ export class GestorMapa implements MapaEnJuego {
     return `estancia-${n}`
   }
 
-  /** Guarda el mapa y avisa del cambio; si ha terminado una activación o el turno, avisa al proveedor de a quién le toca */
+  /**
+   * Las guías de la coherencia de la configuración (`Configuracion.coherencia`)
+   * de las escuadras con más de un personaje colocado, con quiénes quedan
+   * fuera ahora: para dibujarlas. Sin coherencia, ninguna
+   */
+  guiasDeCoherencia(): GuiaDeCoherencia[] {
+    const { coherencia: modo, distanciaCoherencia: distancia, medicionMovimiento } = this.configuracion
+    if (modo === 'ninguna') return []
+    return escuadrasDe(this.#mapa)
+      .filter((e) => e.personajes.filter((p) => p.casilla).length > 1)
+      .map((e) => guiaDeCoherencia(this.#mapa, medicionMovimiento, e, { modo, distancia }))
+  }
+
+  /**
+   * Guarda el mapa y avisa del cambio. Si ha terminado la activación de
+   * escuadras con personajes fuera de coherencia, avisa al
+   * proveedor (`escuadraSinCoherencia`); si ha terminado una activación o el
+   * turno, de a quién le toca
+   */
   #cambiar(mapa: Mapa) {
     const antes = this.#mapa
     this.#mapa = mapa
     this.#avisos.forEach((aviso) => aviso(mapa))
+    const terminada = (id: string) => activacionDe(mapa, id)?.terminada && !activacionDe(antes, id)?.terminada
+    for (const guia of this.guiasDeCoherencia().filter((g) => g.fuera.length && terminada(g.escuadra))) {
+      const escuadra = escuadrasDe(mapa).find((e) => e.id === guia.escuadra)
+      const fuera = guia.fuera.flatMap((id) => this.personaje(id) ?? [])
+      if (escuadra) this.#proveedor.escuadraSinCoherencia?.(escuadra, fuera, this)
+    }
     const finDeActivacion = (mapa.rotacion?.length ?? 0) > (antes.rotacion?.length ?? 0)
     const relevo = finDeActivacion || numeroDeTurno(mapa) > numeroDeTurno(antes)
     const turno = relevo && this.jugadorEnTurno

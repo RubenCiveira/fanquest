@@ -68,6 +68,7 @@ movimientos con las acciones que consumieron.
 | `ProveedorEstancias` | `estanciaCreada(estancia, mapa)` | Cuando la estancia ya está creada y en su sitio |
 | `ProveedorTurnos` | `turnoDe(jugador, mapa)` | Tras cada activación que termina y al empezar un turno, si a alguien le toca |
 | `ProveedorTurnos` | `finDeTurno(mapa)` | Cuando termina la última activación pendiente del turno |
+| `ProveedorTurnos` | `escuadraSinCoherencia?(escuadra, fuera, mapa)` | Cuando termina la activación de una escuadra y, con la coherencia de la configuración, le quedan personajes fuera |
 | `ProveedorPersonajes` | `listarEscuadras()` | La primera vez que necesita las clases (una sola vez por gestor) |
 | `ClaseDeEscuadra` | `personajes()` | Al crear la estancia inicial y al buscar la clase de un personaje |
 | `ClaseDeEscuadra` | `modoActivacion()` | Al crear la estancia inicial, con modo agresivo o sigiloso |
@@ -89,6 +90,8 @@ configuracion: {
   terrenoPersonajes: 'normal' | 'dificil' | 'muy-dificil' | 'impasable',
   distanciaControl: number,
   cuerpoACuerpo: 'ortogonal' | 'diagonal',
+  coherencia: 'ninguna' | 'alguno' | 'todos' | 'centro',
+  distanciaCoherencia: number,
   jugadores: {
     alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
     jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
@@ -153,6 +156,34 @@ configuracion: {
   pruebas empieza con `ortogonal`. Con 0 no hay zona de control. La
   flecha del arrastre y «Agrupar aquí» buscan rutas que la rodeen; si el
   recorrido entra en ella, se rechaza diciéndolo.
+- `coherencia` y `distanciaCoherencia`: si los personajes colocados de cada
+  escuadra tienen que mantenerse juntos, a `distanciaCoherencia` o menos (en
+  línea recta, según `medicionMovimiento`):
+  - `alguno`: de alguno de los demás, en cadena. Quedan fuera los que no
+    están en la cadena más grande (con empate, la del primero de la
+    escuadra).
+  - `todos`: de todos los demás. Quedan fuera los que hay que quitar, uno a
+    uno (el que está lejos de más; con empate, el último), para que los demás
+    lo estén.
+  - `centro`: del centro de un círculo, por Pitágoras. El gestor pone el
+    círculo donde deja dentro a más personajes (con empate, donde está el
+    último que se movió) y, si así siguen dentro, en el medio de ellos: si
+    se dispersan, rodea al grupo más numeroso. Quedan fuera los demás.
+
+  En ningún modo se queda la escuadra sin nadie: siempre queda alguno
+  dentro.
+  - `ninguna`: sin coherencia.
+
+  Vale para todas las escuadras con más de un personaje colocado y solo se
+  comprueba al terminar su activación (mientras se activa, puede romperla y
+  recomponerla): el proveedor recibe los que quedan fuera
+  (`ProveedorTurnos.escuadraSinCoherencia`). `gestor.guiasDeCoherencia()` da,
+  para dibujarla, la guía de cada escuadra (`guiaDeCoherencia`, pura): el
+  centro, las parejas que se miran con sus casillas y si están a la
+  distancia, y los que quedan fuera ahora. El banco de pruebas pinta solo la
+  de la escuadra del personaje elegido: en azul los enlaces a la distancia y
+  en rojo discontinuo los que no, el círculo del centro y un aro rojo en los
+  que quedan fuera; empieza en cadena a 3 casillas.
 
 El gestor lee `configuracion` cada vez que la necesita: si el proveedor la
 expone con un getter, un cambio vale al momento (el banco de pruebas tiene un
@@ -172,6 +203,7 @@ usa al soltar una ficha en un tramo que consume una acción adicional
 ```ts
 turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
 finDeTurno(mapa: MapaEnJuego): void
+escuadraSinCoherencia?(escuadra: Escuadra, fuera: PersonajeEnJuego[], mapa: MapaEnJuego): void
 ```
 
 Tras cada activación que termina (y al pasar a un turno nuevo), el gestor
@@ -180,6 +212,12 @@ avisarle o, si es la IA, jugar por ella. El banco de pruebas abre un diálogo
 «Le toca a …». Si al terminar una activación ya nadie tiene nada pendiente,
 llama a `finDeTurno`: el proyecto decide cuándo pasar al siguiente
 (`mapa.terminarTurno()`).
+
+`escuadraSinCoherencia` es opcional: cuando termina la activación de una
+escuadra y, con la coherencia de la configuración (`coherencia`), algunos de
+sus personajes quedan fuera, el gestor avisa de cuáles, antes de decir a quién
+le toca. El proyecto decide qué les pasa: el banco de pruebas los quita del
+mapa como si hubieran muerto y lo avisa en un diálogo.
 
 ## ProveedorEstancias
 

@@ -25,7 +25,7 @@ implementar los proveedores que necesita el gestor: [PROVEEDORES.md](./PROVEEDOR
   `elementos.ts`, `construccion.ts`, `puertas.ts`, `activaciones.ts`,
   `acciones.ts`, `movimiento.ts`, `terrenos.ts`, `apariciones.ts`,
   `jugadores.ts`, `agrupar.ts`, `ataques.ts`, `zonaDeControl.ts`, `muros.ts`,
-  `flags.ts`, `desplazamientos.ts`), cada una con sus tests.
+  `flags.ts`, `desplazamientos.ts`, `coherencia.ts`), cada una con sus tests.
 - `gestor/`: `GestorMapa`, que guarda el estado del mapa, y los puertos que
   implementa el proyecto. `ProveedorMapa` los reúne todos
   (`ProveedorConfiguracion`, `ProveedorConfirmacion`, `ProveedorEstancias`,
@@ -102,6 +102,12 @@ mismo sitio.
   encima de nada.
 - **Enemigo**: personaje de una alianza hostil hacia la del que se mueve. Su
   casilla es impasable y cuenta para alejarse o cargar.
+- **Coherencia de escuadra**: si la configuración la pide (`coherencia`), los
+  personajes de cada escuadra tienen que mantenerse a `distanciaCoherencia`
+  de alguno (en cadena), de todos o del centro de un círculo (que el gestor
+  pone donde deja dentro a más). Nunca se queda la escuadra sin nadie. Al
+  terminar su activación, el proveedor recibe los que quedan fuera;
+  `guiasDeCoherencia` da lo que hay que dibujar.
 - **Desplazamiento forzado**: mover a un personaje o a una escuadra fuera de
   su movimiento (huir, consolidar, empujar…) con `desplazar` y
   `desplazarEscuadra`: hacia o lejos de una referencia, con las casillas que

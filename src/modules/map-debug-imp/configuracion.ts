@@ -21,7 +21,7 @@ export const JUGADORES_DE_PRUEBA: Jugadores = {
   ],
 }
 
-/** Reglas del ejemplo si no se han cambiado: activaciones alternas, modo agresivo o sigiloso, movimiento sin diagonales y por encima de los demás personajes, zona de control de una casilla y cuerpo a cuerpo solo en recto */
+/** Reglas del ejemplo si no se han cambiado: activaciones alternas, modo agresivo o sigiloso, movimiento sin diagonales y por encima de los demás personajes, zona de control de una casilla, cuerpo a cuerpo solo en recto y escuadras en cadena a 3 casillas */
 export const CONFIGURACION_INICIAL: Configuracion = {
   ordenActivaciones: 'alternas',
   modosActivacion: 'agresivo-sigiloso',
@@ -29,6 +29,8 @@ export const CONFIGURACION_INICIAL: Configuracion = {
   terrenoPersonajes: 'normal',
   distanciaControl: 1,
   cuerpoACuerpo: 'ortogonal',
+  coherencia: 'alguno',
+  distanciaCoherencia: 3,
   jugadores: JUGADORES_DE_PRUEBA,
 }
 
@@ -49,6 +51,11 @@ export const OPCIONES_CONFIGURACION: { [K in Ajuste]: { etiqueta: string; valore
   },
   distanciaControl: { etiqueta: 'Zona de control', valores: { 0: 'Sin zona de control', 1: '1 casilla alrededor', 2: '2 casillas alrededor' } },
   cuerpoACuerpo: { etiqueta: 'Cuerpo a cuerpo', valores: { ortogonal: 'Solo en recto (en diagonal hay que posicionarse)', diagonal: 'También en diagonal' } },
+  coherencia: {
+    etiqueta: 'Coherencia de escuadra',
+    valores: { ninguna: 'Sin coherencia', alguno: 'En cadena (cerca de alguno)', todos: 'Cerca de todos', centro: 'Cerca del centro (círculo)' },
+  },
+  distanciaCoherencia: { etiqueta: 'Distancia de coherencia', valores: { 1: '1 casilla', 2: '2 casillas', 3: '3 casillas', 4: '4 casillas' } },
 }
 
 const CLAVE = 'fetenquest.map-debug.configuracion.v3'

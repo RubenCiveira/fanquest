@@ -119,7 +119,7 @@ describe('casillas con personajes', () => {
   })
 
   it('al moverse, lo gastado cuenta el paso por encima del otro personaje', () => {
-    const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'dificil', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: SIN_JUGADORES } as const
+    const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'dificil', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: SIN_JUGADORES } as const
     const movido = moverPersonaje(conEnano, config, 'grupo', enElPasillo, hastaElFondo, { opcion: seis.base, tramos: [0, 0, 0, 0] })
     expect(gastadoPor(movido, movido.escuadras?.[0].personajes[0] ?? enElPasillo).casillas).toBe(5)
   })

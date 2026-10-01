@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { activacionDePrueba, escuadrasDePrueba } from './escuadras'
+import { describe, expect, it, vi } from 'vitest'
+import type { Escuadra, MapaEnJuego } from '../gamemap'
+import { activacionDePrueba, escuadrasDePrueba, sinCoherenciaDePrueba } from './escuadras'
 import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA } from './modelo/personaje'
 import { PuertasDePrueba } from './modelo/puerta'
 
@@ -88,5 +89,24 @@ describe('escuadras de prueba', () => {
       ['escuadra-enano', true],
       ['escuadra-monstruos-1', false],
     ])
+  })
+})
+
+describe('fuera de coherencia en el banco de pruebas', () => {
+  const escuadra: Escuadra = { id: 'escuadra-monstruos-1', nombre: 'Escuadra de monstruos 1', jugador: 'oscuridad', personajes: [], turnos: [] }
+  const fuera = [enJuego, { ...enJuego, id: 'enano', nombre: 'Enano' }]
+  const mapa = () => ({ eliminarPersonaje: vi.fn() }) as unknown as MapaEnJuego
+  const dialogos = () => ({ resolverAtaque: vi.fn(), avisar: vi.fn(async (_aviso: { titulo: string; texto: string }) => {}) })
+
+  it('los que quedan fuera desaparecen como si hubieran muerto', async () => {
+    const m = mapa()
+    await sinCoherenciaDePrueba(escuadra, fuera, m, dialogos())
+    expect(vi.mocked(m.eliminarPersonaje).mock.calls).toEqual([['barbaro'], ['enano']])
+  })
+
+  it('lo avisa en un diálogo', async () => {
+    const avisos = dialogos()
+    await sinCoherenciaDePrueba(escuadra, fuera, mapa(), avisos)
+    expect(avisos.avisar.mock.lastCall?.[0].texto).toBe('Bárbaro y Enano han quedado fuera de la coherencia de Escuadra de monstruos 1 y desaparecen.')
   })
 })

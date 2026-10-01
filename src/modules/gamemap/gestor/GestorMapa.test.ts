@@ -8,6 +8,8 @@ import type { ResultadoAlEntrar } from '../modelo/resultadoAlEntrar'
 import type { Ubicacion } from '../modelo/ubicacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
+import type { Coherencia } from '../modelo/coherencia'
+import type { Escuadra } from '../modelo/escuadra'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
 import type { Direccion } from '../modelo/direccion'
 import type { Estancia } from '../modelo/estancia'
@@ -56,10 +58,11 @@ const gritar = { id: 'gritar', nombre: 'Gritar', icono: '📣', exec: vi.fn(asyn
 
 /**
  * Proveedor de prueba: los rojos (el bárbaro, que puede gritar, con 4 de
- * vida) empiezan agresivos y los azules (el enano, sin acciones) sigilosos.
+ * vida) empiezan agresivos y los azules (el enano, sin acciones) sigilosos;
+ * con la `coherencia` de escuadra que se diga (sin ella, ninguna).
  * Todos atacan con `atacar`, que no hace nada si no se cambia
  */
-function proveedor(descripcion = sala, conElfo = false) {
+function proveedor(descripcion = sala, conElfo = false, coherencia?: Coherencia) {
   const acciones = vi.fn(async (_personaje: PersonajeEnJuego, _mapa: MapaEnJuego): Promise<Accion[]> => [gritar])
   const opcionesMovimiento = vi.fn(async (_personaje: PersonajeEnJuego, _gastado: MovimientoGastado) => opciones)
   const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
@@ -70,12 +73,23 @@ function proveedor(descripcion = sala, conElfo = false) {
   const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   return {
-    configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: REPARTO } as const,
+    configuracion: {
+      ordenActivaciones: 'alternas',
+      modosActivacion: 'agresivo-sigiloso',
+      medicionMovimiento: 'ortogonal',
+      terrenoPersonajes: 'normal',
+      distanciaControl: 0,
+      cuerpoACuerpo: 'diagonal',
+      coherencia: coherencia?.modo ?? 'ninguna',
+      distanciaCoherencia: coherencia?.distancia ?? 0,
+      jugadores: REPARTO,
+    } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
     describirEstancia: vi.fn(async (_mapa?: Mapa, _entrada?: Direccion) => descripcion),
     estanciaCreada: vi.fn((_estancia: Estancia, _mapa: MapaEnJuego) => {}),
     turnoDe: vi.fn((_jugador: Jugador, _mapa: MapaEnJuego) => {}),
     finDeTurno: vi.fn((_mapa: MapaEnJuego) => {}),
+    escuadraSinCoherencia: vi.fn((_escuadra: Escuadra, _fuera: PersonajeEnJuego[], _mapa: MapaEnJuego) => {}),
     listarEscuadras: vi.fn(async (): Promise<ClaseDeEscuadra[]> => [
       { id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: async () => (conElfo ? [barbaro, elfo] : [barbaro]), modoActivacion: async () => 'agresivo', activar },
       { id: 'azules', nombre: 'Azules', jugador: 'j1', personajes: async () => [enano], modoActivacion: async () => 'sigiloso', activar },
@@ -90,8 +104,8 @@ function proveedor(descripcion = sala, conElfo = false) {
 }
 
 /** Gestor con la estancia inicial creada, el proveedor y el estado del bárbaro */
-async function conInicial(descripcion = sala, conElfo = false) {
-  const p = proveedor(descripcion, conElfo)
+async function conInicial(descripcion = sala, conElfo = false, coherencia?: Coherencia) {
+  const p = proveedor(descripcion, conElfo, coherencia)
   const gestor = new GestorMapa(p)
   await gestor.nuevaEstancia()
   const barbaro = () => gestor.mapa.escuadras?.[0].personajes[0] ?? { id: '', nombre: '', estancia: '', turnos: [] }
@@ -164,7 +178,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: REPARTO } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: REPARTO } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -367,6 +381,49 @@ describe('gestor del mapa: al entrar en cada casilla', () => {
     await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 1))
     const rojos = gestor.mapa.escuadras?.[0]
     expect([rojos?.personajes.map((h) => h.id), rojos && turnoDeEscuadra(rojos, 1).acciones]).toEqual([['elfo'], []])
+  })
+})
+
+describe('gestor del mapa: coherencia de escuadra', () => {
+  // con el elfo, el bárbaro está en 1,1 y el elfo en 1,3: a 2 casillas
+  const aUna: Coherencia = { modo: 'alguno', distancia: 1 }
+  /** Escuadras y personajes de los que se ha avisado que quedan fuera de coherencia */
+  const avisados = (p: ReturnType<typeof proveedor>) => p.escuadraSinCoherencia.mock.calls.map(([escuadra, fuera]) => [escuadra.id, fuera.map((h) => h.id)])
+
+  it('da la guía de las escuadras con más de un personaje colocado, con los que quedan fuera', async () => {
+    const { gestor } = await conInicial(amplia, true, aUna)
+    expect(gestor.guiasDeCoherencia().map((g) => [g.escuadra, g.fuera])).toEqual([['rojos', ['elfo']]])
+  })
+
+  it('sin coherencia, no hay guía', async () => {
+    const { gestor } = await conInicial(amplia, true)
+    expect(gestor.guiasDeCoherencia()).toEqual([])
+  })
+
+  it('al terminar su activación, avisa al proveedor de los que quedan fuera', async () => {
+    const { gestor, p } = await conInicial(amplia, true, aUna)
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    expect(avisados(p)).toEqual([['rojos', ['elfo']]])
+  })
+
+  it('mientras se activa, no avisa', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia, true, aUna)
+    await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 1))
+    expect(p.escuadraSinCoherencia).not.toHaveBeenCalled()
+  })
+
+  it('también avisa con un gestor recién creado con el mapa guardado, sin esperar a las clases', async () => {
+    const { gestor, p } = await conInicial(amplia, true, aUna)
+    const otro = new GestorMapa(p, gestor.mapa)
+    otro.activarEscuadra('rojos', 'agresivo')
+    otro.terminarActivacion('rojos')
+    expect(avisados(p)).toEqual([['rojos', ['elfo']]])
+  })
+
+  it('si todos están en coherencia, no avisa', async () => {
+    const { gestor, p } = await conInicial(amplia, true, { modo: 'alguno', distancia: 2 })
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    expect(p.escuadraSinCoherencia).not.toHaveBeenCalled()
   })
 })
 
@@ -1169,7 +1226,7 @@ describe('gestor del mapa: puertas', () => {
   })
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: REPARTO } as const }
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, jugadores: REPARTO } as const }
     const gestor = new GestorMapa(p, {
       estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
       escuadras: [

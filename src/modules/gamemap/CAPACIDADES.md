@@ -48,6 +48,7 @@ cinco proveedores y dos tipos de clase (ver `PROVEEDORES.md`).
 | Control | Zona de control de N casillas que no atraviesa muros. Calcula trabado, quién traba y apoyos | `distanciaControl`, `PersonajeEnJuego.estaTrabado()`, `trabadoPor()`, `conApoyos()` |
 | Ataques | Tipo de ataque (cuerpo a cuerpo según `cuerpoACuerpo`, o a distancia), distancia, coste para llegar y trayectoria (aliados, enemigos, coberturas, objetos y muros que cruza) | `medirAtaque`, `trayectoria` |
 | Ataques | La clase del atacante decide si puede atacar y resuelve el ataque como promesa. También para PNJ, pasando su clase | `motivoParaNoAtacar`, `atacar`, `atacarNoJugador` |
+| Ataques | Ataque uno a uno: cada personaje ataca a un objetivo y se apunta su acción. El ataque de escuadra contra escuadra no existe aún (ver 1.1) | `atacar(personaje, objetivo)` |
 | Acciones | Acciones propias como comandos con acceso al mapa en juego (abrir puertas, coger, revisar, marcar flags…) | `Accion`, `Comando`, `MapaEnJuego` |
 | Estado | Mapa inmutable y serializable a JSON. Un gestor creado con un mapa guardado continúa la partida | `Mapa`, `GestorMapa.suscribir` |
 
@@ -55,6 +56,28 @@ cinco proveedores y dos tipos de clase (ver `PROVEEDORES.md`).
 recibe una función `azar` para colocar cosas), no conoce estadísticas, armas
 ni daño, no decide por la IA y no pinta (la vista es de `map-debug-imp` o del
 proyecto).
+
+### 1.1 Cómo atacan las escuadras
+
+Hay dos formas de que una escuadra ataque, según el juego:
+
+- **Uno a uno:** cada personaje que aún tenga acciones elige su objetivo y
+  ataca por su cuenta. El daño va solo a ese objetivo y la acción se apunta
+  solo a ese atacante. Es lo que hace hoy el motor: al soltar un personaje
+  sobre un enemigo, `atacar(personaje, objetivo)` llama a la clase del
+  atacante. Lo usan los héroes y los monstruos de FAI.
+- **Escuadra contra escuadra:** al atacar a un personaje enemigo, atacan
+  juntos a su escuadra **todos los personajes de la escuadra atacante que aún
+  tengan acciones disponibles** y puedan atacarla (alcance y línea de visión,
+  según `motivoParaNoAtacar`). Los impactos se suman y **el daño se reparte
+  entre los personajes de la escuadra objetivo**, en el orden que decida el
+  defensor (o la IA). Todos los atacantes gastan su acción. Es como disparan
+  y luchan las unidades de OPR.
+
+El motor no ofrece todavía el segundo modo. Hoy el proyecto lo monta dentro
+de `atacar` del personaje que se arrastra (ver 3.3), pero el gestor solo
+apunta la acción de ese personaje y no ayuda a reunir a los atacantes ni a
+repartir el daño (ver el hueco 6).
 
 ## 2. FetenQuest: Aventuras Infinitas en solitario
 
@@ -75,6 +98,7 @@ juego que mejor encaja.
 | `distanciaControl` | `1` | Con las «Nuevas reglas de movimiento», salir de una casilla del área de influencia enemiga hace perder el resto del movimiento |
 | `ordenActivaciones` | `personajes-primero` | Los héroes juegan primero y el MB, al final de la ronda |
 | `modosActivacion` | `normal` | |
+| `coherencia` | `ninguna` | Cada héroe es su propia escuadra |
 | `jugadores` | Alianza `heroes` (un jugador humano con todos los héroes, o uno por héroe) y alianza `mazmorra` (jugador `malvado-brujo` de tipo `ia`), hostiles entre sí | |
 
 ### 2.2 Héroes
@@ -103,7 +127,8 @@ juego que mejor encaja.
     acción. Con un 1, la acción termina sin moverse.
   - **Obstaculizado:** un movimiento `destrabarse` de 1 casilla.
   - Volador o sin penalización por terreno: `terreno` en la opción.
-- **Atacar:** `motivoParaNoAtacar` pide arma a distancia y que no haya
+- **Atacar:** uno a uno (1.1), cada héroe a su objetivo.
+  `motivoParaNoAtacar` pide arma a distancia y que no haya
   enemigos adyacentes para disparar. Comprueba la línea de visión con
   `ataque.trayectoria`: un muro o una puerta cerrada la cortan, igual que los
   personajes no más pequeños que el atacante (el proyecto mira los de
@@ -267,6 +292,7 @@ medición `euclidea`: la mesa es una única estancia `exterior` de 48×48 o
 | `terrenoPersonajes` | `impasable` | Los modelos no atraviesan otros modelos, ni propios |
 | `ordenActivaciones` | `alternas` | Un jugador y otro, una unidad cada vez |
 | `modosActivacion` | `normal` | |
+| `coherencia` y `distanciaCoherencia` | `alguno` y `1` | La cadena de 1″ entre los modelos de cada unidad |
 
 ### 3.2 Unidades
 
@@ -295,12 +321,17 @@ medición `euclidea`: la mesa es una única estancia `exterior` de 48×48 o
 - **Emboscada:** el modelo empieza sin `casilla`, en la zona de espera, y
   entra al inicio de una ronda posterior con `colocarPersonaje`, a más de 9″
   de enemigos (lo valida el proyecto).
-- **Coherencia de unidad:** está diseñada en `Pendientes.md` pero no existe.
+- **Coherencia de unidad:** `coherencia: 'alguno'` y `distanciaCoherencia: 1`
+  en la configuración (la cadena de 1″). La de 6″ o 9″ con todos sería otra
+  regla: solo cabe una. Al terminar la activación, el proveedor recibe los que
+  quedan fuera.
 
 ### 3.3 Disparo
 
 Cuando el jugador arrastra un modelo sobre un enemigo, el motor llama a
-`atacar` de ese modelo, pero OPR dispara **con toda la unidad**:
+`atacar` de ese modelo, pero OPR dispara **con toda la unidad**: es el ataque
+de escuadra contra escuadra (1.1). Mientras el motor no lo ofrezca (hueco 6),
+lo resuelve el proyecto así:
 
 1. `atacar` reúne los modelos de su escuadra que pueden disparar a la unidad
    objetivo: los que tienen alcance (`medirAtaque(...).distancia`) y línea de
@@ -326,8 +357,9 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
 - **Respuesta del defensor:** los modelos del defensor que no estén en
   contacto avanzan 3″ hacia los que cargan: `desplazarEscuadra(defensor,
   { sentido: 'hacia', de: { escuadra: atacante }, casillas: 3, hasta: 1 })`.
-- **Quién ataca:** los modelos a 2″ o menos del objetivo. Es `medirAtaque` con
-  `distancia ≤ 2`, porque `cuerpoACuerpo` solo da contacto.
+- **Quién ataca:** los modelos a 2″ o menos del objetivo, todos juntos y
+  repartiendo las heridas entre la unidad enemiga, como en el disparo (1.1). Es
+  `medirAtaque` con `distancia ≤ 2`, porque `cuerpoACuerpo` solo da contacto.
 - **Devolver el golpe:** lo resuelve el mismo `atacar`, preguntando al
   defensor (o decidiendo por la IA).
 - **Fatiga:** solo impactan los 6 después del primer combate de la ronda. Es
@@ -419,10 +451,10 @@ elegir objetivo y acción con las mismas consultas.
 | Terreno peligroso | ❌ Falta terreno con efecto |
 | Elevación, saltos y caídas | ❌ El mapa es plano |
 | Peanas grandes (vehículos, monstruos) | ❌ Un personaje ocupa una casilla |
-| Disparo de unidad, cobertura y PA | 🟡 Proyecto en `atacar`, con `medirAtaque` y `trayectoria` |
+| Disparo de unidad, cobertura y PA | 🟡 Proyecto en `atacar`, con `medirAtaque` y `trayectoria`. ❌ Falta el ataque de escuadra contra escuadra (hueco 6) |
 | Cuerpo a cuerpo a 2″, devolver golpe y fatiga | 🟡 Proyecto |
 | Respuesta del defensor, consolidación y empujar | ✅ `desplazar` y `desplazarEscuadra` |
-| Coherencia de unidad | ❌ Diseñada en `Pendientes.md` |
+| Coherencia de unidad | 🟡 `coherencia`: la cadena de 1″ o la distancia con todos, una de las dos |
 | Aturdido y moral | 🟡 Proyecto, con aturdido y fatiga como flags |
 | Quién empieza la ronda | ❌ Falta un orden de activación del proyecto |
 | Despliegue alterno en zonas y emboscada | 🟡 La zona de espera y `colocarPersonaje` existen; faltan zonas y validación |
@@ -439,23 +471,25 @@ un juego en el motor: son puntos de extensión.
 | 1 | ✅ **Marcas de estado en todo lo vivo:** acción declarada, aturdido, fatiga, trampa encontrada… | Todos | Hecho: `flags` en estancias, escuadras, personajes, objetos, muebles y puertas, con `tieneFlag`, `marcarFlag` y `quitarFlag`. El estado ajeno al mapa (Nivel de Peligro, mazos, tamaño inicial de las unidades) no se integra: lo guarda el proyecto aparte |
 | 2 | ✅ **Aviso por casilla durante el movimiento y cortar el recorrido** | FAI (Dado de Trampa, áreas de influencia), OPR (terreno peligroso) | Hecho: `ClaseDePersonaje.alEntrar(personaje, donde, mapa)`, por cada casilla en que podría quedarse, responde `seguir`, `detenerse` o `terminar-turno`. Falta para los personajes no jugadores y al agrupar |
 | 3 | ✅ **Movimientos forzados** fuera de la activación y de las opciones de la clase | OPR (respuesta a la carga, consolidar, retroceder, empujar aturdidos), FetenQuest (empujar) | Hecho: `MapaEnJuego.desplazar` y `desplazarEscuadra`, hacia o lejos de una referencia (`casillas` que puede recorrer, `hasta` dónde) o por un recorrido, con las reglas del mapa y sin gastar movimiento; `planearDesplazamiento` para previsualizar |
-| 4 | **Coherencia de escuadra** | OPR | Lo de `Pendientes.md`: modo (con alguno, con todos, desde el centro) y distancia en la clase de escuadra, comprobado al terminar la activación |
+| 4 | ✅ **Coherencia de escuadra** | OPR | Hecho: `coherencia` y `distanciaCoherencia` en la configuración (en cadena, con todos o desde el centro), comprobada al terminar la activación (`escuadraSinCoherencia`) y con guía para dibujarla. Falta combinar dos reglas (1″ en cadena y 6″ o 9″ con todos) |
 | 5 | **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Un `ordenDelTurno?(mapa)` opcional en `ProveedorTurnos` que dé los jugadores del turno que empieza; sin él, la rotación de hoy |
-| 6 | **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | `etiqueta?: string` en `Terreno`, para que la clase lo reconozca en `alEntrar` y en `trayectoria` |
-| 7 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
-| 8 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
-| 9 | **Despliegue** | OPR, y FAI con el damero | Zonas de despliegue por alianza en la estancia inicial y validación en `colocarPersonaje` con un `motivoParaNoColocar` del proveedor |
-| 10 | **Encaramiento** | FetenQuest (área de ataque, espalda, campo de visión) | `orientacion?: Direccion` en `Personaje` y un comando para girar. La clase decide qué hace con ella |
-| 11 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
-| 12 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
+| 6 | **Ataque de escuadra contra escuadra** (1.1) | OPR (disparo y cuerpo a cuerpo de unidad) | Un modo de ataque `uno-a-uno` (el de hoy) o `escuadra`, en la configuración como `coherencia` (o por clase de escuadra si un juego mezcla los dos). Con `escuadra`, al soltar un personaje sobre un enemigo el gestor reúne a los de su escuadra con acciones disponibles a los que su clase deja atacar a algún personaje de la escuadra objetivo, llama a un `atacarEscuadra(ataques, mapa)` de la clase de escuadra con un `Ataque` por atacante y apunta la acción a todos. El reparto del daño es de la clase, con una ayuda del gestor que proponga el orden (los más cercanos primero) y deje elegir al defensor |
+| 7 | **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | `etiqueta?: string` en `Terreno`, para que la clase lo reconozca en `alEntrar` y en `trayectoria` |
+| 8 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
+| 9 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
+| 10 | **Despliegue** | OPR, y FAI con el damero | Zonas de despliegue por alianza en la estancia inicial y validación en `colocarPersonaje` con un `motivoParaNoColocar` del proveedor |
+| 11 | **Encaramiento** | FetenQuest (área de ataque, espalda, campo de visión) | `orientacion?: Direccion` en `Personaje` y un comando para girar. La clase decide qué hace con ella |
+| 12 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
+| 13 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 
-Con 1, 2 y 3 (hechos) se puede jugar FAI completo en solitario y OPR con una
-aproximación razonable. Con 4 y 5, OPR queda fiel a sus reglas. Del 6 al 12 son mejoras
-de fidelidad.
+Con 1 a 4 (hechos) se puede jugar FAI completo en solitario y OPR con una
+aproximación razonable. Con 5 y 6, OPR queda fiel a sus reglas. Del 7 al 13 son
+mejoras de fidelidad.
 
 **Orden recomendado:**
 
-1. **Coherencia (4) y orden de activación (5)** antes de empezar OPR.
+1. **Orden de activación (5)** y **ataque de escuadra contra escuadra (6)**
+   antes de empezar OPR.
 2. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
    trampas, muebles y monstruos de prueba, y que sería el primer juego real
    del motor.

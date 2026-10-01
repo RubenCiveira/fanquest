@@ -228,6 +228,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         motivoParaNoActuar={(personaje) => (esNoJugador(personaje) ? gestor.motivoParaNoActuarNoJugador(personaje) : gestor.motivoParaNoActuar(personaje))}
         modoNoJugador={(personaje) => gestor.modoActivacionNoJugador(personaje)}
         jugadorEnTurno={enTurno}
+        guiasDeCoherencia={gestor.guiasDeCoherencia()}
       />
 
       {avisoTrampas && <AvisoTrampas {...avisoTrampas} onCerrar={() => setAvisoTrampas(undefined)} />}

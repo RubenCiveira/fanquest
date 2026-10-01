@@ -1,5 +1,7 @@
 import type { Jugador } from '../modelo/jugador'
+import type { Escuadra } from '../modelo/escuadra'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
+import type { PersonajeEnJuego } from '../modelo/personajeEnJuego'
 
 /** Lo que implementa el proyecto para enterarse de a quién le toca */
 export interface ProveedorTurnos {
@@ -11,4 +13,11 @@ export interface ProveedorTurnos {
   turnoDe(jugador: Jugador, mapa: MapaEnJuego): void
   /** Cuando nadie tiene más activaciones pendientes, antes de empezar el siguiente turno */
   finDeTurno(mapa: MapaEnJuego): void
+  /**
+   * Cuando termina la activación de una escuadra y, con la coherencia de la
+   * configuración (`Configuracion.coherencia`), algunos de sus personajes quedan fuera:
+   * cuáles. El proyecto decide qué les pasa (se eliminan, huyen…). Sin él, no
+   * se avisa
+   */
+  escuadraSinCoherencia?(escuadra: Escuadra, fuera: PersonajeEnJuego[], mapa: MapaEnJuego): void
 }
