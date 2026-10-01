@@ -20,11 +20,11 @@ export const activacionDePrueba = (acciones: AccionEjecutada[], personajes: stri
 /**
  * Clase de una escuadra de prueba con los personajes de FetenQuest de esos ids
  * (`PersonajeDePrueba`, con su ficha VTT vista desde arriba y su cuerpo como
- * vida, que abren las puertas de `puertas` y usan los diálogos de
- * `dialogos`); empieza en modo sigiloso y su turno termina según
+ * vida, que abren las puertas de `puertas`, usan los diálogos de
+ * `dialogos` y tiran los dados con `azar`); empieza en modo sigiloso y su turno termina según
  * `activacionDePrueba`
  */
-function escuadra(id: string, nombre: string, jugador: string, ids: string[], puertas: PuertasDePrueba, dialogos: DialogosDePrueba): ClaseDeEscuadra {
+function escuadra(id: string, nombre: string, jugador: string, ids: string[], puertas: PuertasDePrueba, dialogos: DialogosDePrueba, azar: () => number): ClaseDeEscuadra {
   // las mismas clases de personaje cada vez
   let suyos: Promise<PersonajeDePrueba[]> | undefined
   return {
@@ -35,7 +35,7 @@ function escuadra(id: string, nombre: string, jugador: string, ids: string[], pu
       (suyos ??= cargarHeroes().then((todos) =>
         todos
           .filter((h) => ids.includes(h.id))
-          .map((h) => new PersonajeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe'), vida: h.cuerpo }, puertas, dialogos)),
+          .map((h) => new PersonajeDePrueba({ id: h.id, nombre: h.nombre, imagenVtt: urlFichaVtt('heroes', h.id, 'hombre', 'vtt-heroe'), vida: h.cuerpo }, puertas, dialogos, azar)),
       )),
     modoActivacion: async () => 'sigiloso',
     activar: async (acciones) => {
@@ -55,10 +55,11 @@ export const escuadrasDePrueba = (
   puertas: PuertasDePrueba,
   escuadrasMonstruos: () => DescripcionPersonajeNoJugador[][] = () => [],
   dialogos: DialogosDePrueba = sinDialogos,
+  azar: () => number = Math.random,
 ): ProveedorPersonajes => ({
   listarEscuadras: async () => [
-    escuadra('escuadra-barbaro', 'Escuadra del bárbaro', 'ana', ['barbaro'], puertas, dialogos),
-    escuadra('escuadra-enano', 'Escuadra del enano', 'bruno', ['enano'], puertas, dialogos),
+    escuadra('escuadra-barbaro', 'Escuadra del bárbaro', 'ana', ['barbaro'], puertas, dialogos, azar),
+    escuadra('escuadra-enano', 'Escuadra del enano', 'bruno', ['enano'], puertas, dialogos, azar),
     ...escuadrasMonstruos().map((personajes, i): ClaseDeEscuadra => {
       let suyos: PersonajeDePrueba[] | undefined
       return {
@@ -67,7 +68,7 @@ export const escuadrasDePrueba = (
         jugador: JUGADOR_MONSTRUOS,
         // los monstruos del dueño de la mazmorra, como los solitarios, no buscan trampas
         buscaTrampas: false,
-        personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas, dialogos))),
+        personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas, dialogos, azar))),
         modoActivacion: async () => 'sigiloso',
         activar: async (acciones) => activacionDePrueba(acciones, personajes.map((p) => p.id)),
       }

@@ -4,6 +4,7 @@ import {
   activacionDeNoJugador,
   activacionesDeJugador,
   activar,
+  conAccionesAgotadas,
   conActivacionDeJugador,
   conPersonaje,
   escuadrasDe,
@@ -25,7 +26,7 @@ import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elemen
 import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
-import { accionesAdicionales, accionesConsumidas, casillasDeEnemigos, conPersonajes, desplazar, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
+import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enElMapa, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import { apoyosDe, estaTrabado, trabadoPor } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
@@ -49,6 +50,7 @@ import type { MapaEnJuego } from '../modelo/mapaEnJuego'
 import type { OpcionesMovimiento } from '../modelo/opcionesMovimiento'
 import type { PersonajeEnJuego } from '../modelo/personajeEnJuego'
 import type { PersonajeNoJugador } from '../modelo/personajeNoJugador'
+import type { ResultadoAlEntrar } from '../modelo/resultadoAlEntrar'
 import type { Puerta } from '../modelo/puerta'
 import type { TipoConFlags } from '../modelo/tipoConFlags'
 import type { Ubicacion } from '../modelo/ubicacion'
@@ -470,7 +472,10 @@ export class GestorMapa implements MapaEnJuego {
     if (!encontrado?.personaje.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
     const { personaje, escuadra } = encontrado
     if (!opciones) return motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personaje.id) ?? `${personaje.nombre} no puede moverse ahora`
-    const resultado = await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => apuntarAccion(m, this.configuracion, escuadra.id, accion, personajeId))
+    const clase = await this.#claseDePersonaje(escuadra.id, personajeId)
+    // llamado sobre la clase, para no perder su `this`
+    const preguntar = clase?.alEntrar && ((donde: Ubicacion) => clase.alEntrar?.(this.#enJuego(personaje), donde, this) ?? Promise.resolve<ResultadoAlEntrar>('seguir'))
+    const resultado = await this.#recorrer(personajeId, recorrido, opciones, (m, accion) => apuntarAccion(m, this.configuracion, escuadra.id, accion, personajeId), preguntar)
     if (resultado !== undefined) return resultado || undefined
     await this.#preguntarSiCompleta(escuadra.id)
   }
@@ -577,10 +582,19 @@ export class GestorMapa implements MapaEnJuego {
    * primera de sus `opciones` que lo permita y apunta, con `apuntar`, cada
    * acción que consume. Si consume acciones adicionales (deslizar…), antes pide
    * confirmación al proveedor y, como mientras tanto el mapa ha podido cambiar,
-   * vuelve a leer al personaje y a evaluar el recorrido. Devuelve el motivo si
-   * no puede moverse, `false` si no se confirma y nada si se ha movido
+   * vuelve a leer al personaje y a evaluar el recorrido. Con `alEntrar` (la de
+   * su clase), pregunta casilla a casilla si se detiene (`#dondeSeDetiene`) y
+   * lo mueve solo hasta ahí. Devuelve el motivo si no puede moverse, `false`
+   * si no se confirma y nada si se ha movido (o si, mientras se resolvía al
+   * entrar, ha dejado de estar colocado)
    */
-  async #recorrer(personajeId: string, recorrido: Casilla[], opciones: OpcionesMovimiento, apuntar: (m: Mapa, accion: string) => Mapa): Promise<string | false | undefined> {
+  async #recorrer(
+    personajeId: string,
+    recorrido: Casilla[],
+    opciones: OpcionesMovimiento,
+    apuntar: (m: Mapa, accion: string) => Mapa,
+    alEntrar?: (donde: Ubicacion) => Promise<ResultadoAlEntrar>,
+  ): Promise<string | false | undefined> {
     const evaluar = () => {
       const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
       if (!personaje?.casilla) return { motivo: `No hay ningún personaje «${personajeId}» colocado en el mapa` }
@@ -593,8 +607,27 @@ export class GestorMapa implements MapaEnJuego {
     if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return false
     const confirmado = adicionales.length ? evaluar() : evaluado
     if ('motivo' in confirmado) return confirmado.motivo
-    const movido = desplazar(this.#mapa, this.configuracion, confirmado.personaje, recorrido, confirmado)
-    this.#cambiar(accionesConsumidas(confirmado).reduce(apuntar, movido))
+    const { hasta, resultado } = alEntrar ? await this.#dondeSeDetiene(confirmado.personaje, recorrido, alEntrar) : { hasta: recorrido.length - 1, resultado: 'seguir' }
+    const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
+    if (!personaje?.casilla) return
+    const hecho = { opcion: confirmado.opcion, tramos: confirmado.tramos.slice(0, hasta) }
+    const movido = accionesConsumidas(hecho).reduce(apuntar, desplazar(this.#mapa, this.configuracion, personaje, recorrido.slice(0, hasta + 1), hecho))
+    this.#cambiar(resultado === 'terminar-turno' ? conAccionesAgotadas(movido, personajeId) : movido)
+  }
+
+  /**
+   * Hasta qué paso del recorrido llega el personaje: pregunta a `alEntrar`
+   * por cada casilla en que podría quedarse (sin otro personaje), en orden,
+   * hasta que se detiene; si no se detiene en ninguna, hasta el final
+   */
+  async #dondeSeDetiene(personaje: Personaje, recorrido: Casilla[], alEntrar: (donde: Ubicacion) => Promise<ResultadoAlEntrar>): Promise<{ hasta: number; resultado: ResultadoAlEntrar }> {
+    const ocupadas = todosLosPersonajes(this.#mapa).flatMap((p) => (p.id === personaje.id ? [] : (enElMapa(this.#mapa, p) ?? [])))
+    for (const [i, c] of recorrido.entries()) {
+      const donde = i > 0 && !ocupadas.some(({ x, y }) => x === c.x && y === c.y) && casillaDelMapa(this.#mapa, c)
+      const resultado = donde ? await alEntrar({ estancia: donde.estancia.id, casilla: donde.casilla }) : 'seguir'
+      if (resultado !== 'seguir') return { hasta: i, resultado }
+    }
+    return { hasta: recorrido.length - 1, resultado: 'seguir' }
   }
 
   /**

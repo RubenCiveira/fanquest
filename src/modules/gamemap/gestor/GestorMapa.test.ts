@@ -4,6 +4,8 @@ import type { Accion } from '../modelo/accion'
 import type { AccionEjecutada } from '../modelo/accionEjecutada'
 import type { Ataque } from '../modelo/ataque'
 import type { ResultadoAccion } from '../modelo/resultadoAccion'
+import type { ResultadoAlEntrar } from '../modelo/resultadoAlEntrar'
+import type { Ubicacion } from '../modelo/ubicacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
 import type { DescripcionEstancia } from '../modelo/descripcionEstancia'
@@ -63,7 +65,8 @@ function proveedor(descripcion = sala, conElfo = false) {
   const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
   const atacar = vi.fn(async (_ataque: Ataque, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
   const motivoParaNoAtacar = vi.fn((_ataque: Ataque, _mapa: MapaEnJuego): string | undefined => undefined)
-  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', vida: 4, opcionesMovimiento, acciones, atacar, motivoParaNoAtacar }
+  const alEntrar = vi.fn(async (_personaje: PersonajeEnJuego, _donde: Ubicacion, _mapa: MapaEnJuego): Promise<ResultadoAlEntrar> => 'seguir')
+  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', vida: 4, opcionesMovimiento, acciones, atacar, motivoParaNoAtacar, alEntrar }
   const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   return {
@@ -82,6 +85,7 @@ function proveedor(descripcion = sala, conElfo = false) {
     activar,
     atacar,
     motivoParaNoAtacar,
+    alEntrar,
   }
 }
 
@@ -310,6 +314,59 @@ describe('gestor del mapa: activaciones y acciones', () => {
     await gestor.accionesDisponibles('rojos', 'barbaro')
     await gestor.accionesDisponibles('azules', 'enano')
     expect(p.listarEscuadras).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('gestor del mapa: al entrar en cada casilla', () => {
+  /** Casilla a `pasos` a la derecha */
+  const aLaDerecha = (desde: Casilla | undefined, pasos: number) => ({ x: (desde?.x ?? 0) + pasos, y: desde?.y ?? 0 })
+
+  it('pregunta a la clase por cada casilla del recorrido, en orden, en su estancia', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia)
+    const desde = barbaro().casilla
+    await gestor.moverPersonaje('barbaro', enLinea(desde, 2))
+    expect(p.alEntrar.mock.calls.map(([, donde]) => donde)).toEqual([
+      { estancia: 'estancia-1', casilla: aLaDerecha(desde, 1) },
+      { estancia: 'estancia-1', casilla: aLaDerecha(desde, 2) },
+    ])
+  })
+
+  it('al detenerse, se mueve solo hasta esa casilla y no pregunta por las demás', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia)
+    const desde = barbaro().casilla
+    p.alEntrar.mockResolvedValueOnce('detenerse')
+    await gestor.moverPersonaje('barbaro', enLinea(desde, 2))
+    expect([barbaro().casilla, p.alEntrar.mock.calls.length]).toEqual([aLaDerecha(desde, 1), 1])
+  })
+
+  it('al detenerse antes de deslizar, solo gasta lo que ha recorrido', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia)
+    p.alEntrar.mockResolvedValueOnce('seguir').mockResolvedValueOnce('detenerse')
+    await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 3))
+    expect(turnoDePersonaje(barbaro(), 1).movimientos).toEqual([{ opcion: 'mover-y-deslizar', casillas: 2, acciones: ['mover'] }])
+  })
+
+  it('con terminar el turno, ya no le quedan acciones y su activación termina', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia)
+    p.alEntrar.mockResolvedValueOnce('terminar-turno')
+    await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 2))
+    expect([turnoDePersonaje(barbaro(), 1).quedanAcciones, activacionDe(gestor.mapa, 'rojos')?.terminada]).toEqual([false, true])
+  })
+
+  it('no pregunta por las casillas de otros personajes, donde no puede quedarse', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia, true)
+    const desde = barbaro().casilla
+    // con el elfo, el enano empieza dos casillas a la derecha del bárbaro
+    await gestor.moverPersonaje('barbaro', enLinea(desde, 3))
+    expect(p.alEntrar.mock.calls.map(([, donde]) => donde.casilla)).toEqual([aLaDerecha(desde, 1), aLaDerecha(desde, 3)])
+  })
+
+  it('si lo que pasa al entrar lo quita del mapa, no apunta el movimiento', async () => {
+    const { gestor, p, barbaro } = await conInicial(amplia, true)
+    p.alEntrar.mockImplementationOnce(async (_personaje, _donde, mapa) => (mapa.eliminarPersonaje('barbaro'), 'detenerse'))
+    await gestor.moverPersonaje('barbaro', enLinea(barbaro().casilla, 1))
+    const rojos = gestor.mapa.escuadras?.[0]
+    expect([rojos?.personajes.map((h) => h.id), rojos && turnoDeEscuadra(rojos, 1).acciones]).toEqual([['elfo'], []])
   })
 })
 

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Personaje, PersonajeEnJuego, MapaEnJuego, Puerta } from '../../gamemap'
 import { esComando } from '../../gamemap'
-import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba } from './personaje'
-import { JUGADORES_DE_PRUEBA } from '../configuracion'
+import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba, PROBABILIDAD_DE_TRAMPA } from './personaje'
+import { JUGADOR_MONSTRUOS, JUGADORES_DE_PRUEBA } from '../configuracion'
 import { PuertasDePrueba } from './puerta'
 
 /** El personaje en juego, sin trabar y sin apoyos */
@@ -364,3 +364,60 @@ describe('atacar trabado', () => {
   })
 })
 
+
+describe('trampas del personaje de prueba', () => {
+  const heroe = enJuego<Personaje>({ id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', casilla: { x: 0, y: 0 }, turnos: [] })
+  const donde = { estancia: 'estancia-1', casilla: { x: 1, y: 0 } }
+  // el personaje de prueba pinta cada llamada en la consola
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+  /** Mapa en juego con esas flags (`tipo:id:flag`) */
+  const mapaCon = (flags: string[] = [], estado: MapaEnJuego['mapa'] = { estancias: [], turno: 1 }): MapaEnJuego => ({
+    mapa: estado,
+    puertaEn: () => undefined,
+    tieneFlag: (tipo, id, flag) => flags.includes(`${tipo}:${id}:${flag}`),
+    marcarFlag: vi.fn(),
+    quitarFlag: vi.fn(),
+    dameLoQueEstaAlLado: () => [],
+    quitarElemento: vi.fn(),
+    reducirVida: vi.fn(),
+    eliminarPersonaje: vi.fn(),
+    abrirPuerta: vi.fn(),
+    anadirPersonajes: vi.fn(),
+    anadirMuebles: vi.fn(),
+    cambiarJugadores: vi.fn(),
+    terminarTurno: vi.fn(),
+    personaje: () => undefined,
+    personajesEn: () => [],
+  })
+  /** El bárbaro, con el azar que salga (de 0 a 1: pisa una trampa por debajo de `PROBABILIDAD_DE_TRAMPA`) */
+  const conAzar = (azar: number, avisos = dialogos()) => new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, new PuertasDePrueba(), avisos, () => azar)
+
+  it('por debajo de la probabilidad, pisa una trampa y se detiene', async () => {
+    expect(await conAzar(PROBABILIDAD_DE_TRAMPA - 0.01).alEntrar(heroe, donde, mapaCon())).toBe('detenerse')
+  })
+
+  it('al pisar una trampa, lo avisa en un diálogo', async () => {
+    const avisos = dialogos()
+    await conAzar(0, avisos).alEntrar(heroe, donde, mapaCon())
+    expect(avisos.avisar.mock.lastCall?.[0].titulo).toBe('¡Trampa!')
+  })
+
+  it('desde la probabilidad, sigue moviéndose', async () => {
+    expect(await conAzar(PROBABILIDAD_DE_TRAMPA).alEntrar(heroe, donde, mapaCon())).toBe('seguir')
+  })
+
+  it('en una estancia en la que se han buscado trampas no las pisa', async () => {
+    expect(await conAzar(0).alEntrar(heroe, donde, mapaCon(['estancia:estancia-1:sin_trampas']))).toBe('seguir')
+  })
+
+  it('los monstruos no pisan trampas', async () => {
+    const orco = enJuego({ ...heroe, id: 'orco', nombre: 'Orco', jugador: JUGADOR_MONSTRUOS })
+    const estado = { estancias: [], turno: 1, personajesNoJugadores: [orco], jugadores: JUGADORES_DE_PRUEBA }
+    expect(await conAzar(0).alEntrar(orco, donde, mapaCon([], estado))).toBe('seguir')
+  })
+
+  it('cada llamada se ve en la consola, con lo que responde', async () => {
+    await conAzar(0).alEntrar(heroe, donde, mapaCon())
+    expect(log.mock.lastCall).toEqual(['[map-debug] alEntrar: Bárbaro en 1,0 de «estancia-1»', { sinPeligro: false, resultado: 'detenerse' }])
+  })
+})

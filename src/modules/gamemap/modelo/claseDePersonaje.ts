@@ -5,6 +5,8 @@ import type { MapaEnJuego } from './mapaEnJuego'
 import type { MovimientoGastado } from './movimientoGastado'
 import type { OpcionesMovimiento } from './opcionesMovimiento'
 import type { ResultadoAccion } from './resultadoAccion'
+import type { ResultadoAlEntrar } from './resultadoAlEntrar'
+import type { Ubicacion } from './ubicacion'
 
 /**
  * Lo que puede hacer un personaje, según lo define el proyecto. El gestor le
@@ -45,4 +47,15 @@ export interface ClaseDePersonaje {
    * o se cancela, el ataque no se apunta
    */
   atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion>
+  /**
+   * Avisa de que va a entrar en esa casilla de su recorrido (`donde`: la
+   * estancia y la casilla en ella), para que el proyecto resuelva lo que pase
+   * al pisarla (una trampa, un área de influencia…). Se llama al mover su
+   * ficha, ya validado el recorrido y antes de moverlo (el personaje aún está
+   * donde empezó), casilla a casilla y en orden, solo en las que podría
+   * quedarse (las de otros personajes se saltan). Con `detenerse`, se mueve
+   * solo hasta ahí y no se pregunta por las demás; con `terminar-turno`,
+   * además ya no le quedan acciones en el turno. Sin el método, siempre sigue
+   */
+  alEntrar?(personaje: PersonajeEnJuego, donde: Ubicacion, mapa: MapaEnJuego): Promise<ResultadoAlEntrar>
 }

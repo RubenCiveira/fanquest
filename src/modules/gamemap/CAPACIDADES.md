@@ -163,9 +163,9 @@ se puede todavía (ver huecos).
   trampas (`buscaTrampas: false`).
 - **Dado de Trampa al moverse:** el héroe que entra en una casilla de una
   sección sin `sin_trampas` tira una vez por turno. Con un 1 se detiene allí,
-  roba carta de trampa y termina su turno. Hace falta que el motor avise de
-  cada casilla en la que entra y que deje cortar el recorrido (ver huecos).
-  Mientras tanto se puede aproximar tirando al terminar el movimiento.
+  roba carta de trampa y termina su turno. Es `ClaseDePersonaje.alEntrar`
+  respondiendo `terminar-turno`. El banco de pruebas lo simplifica: un 30%
+  de pisar una trampa en cada casilla, que solo detiene el movimiento.
 
 ### 2.5 El Malvado Brujo automático
 
@@ -208,8 +208,8 @@ recibe y el proyecto juega por él con estas piezas:
   interiores para edificios.
 - Los **elementos escenográficos con interior jugable** son salas con puerta.
 - Los elementos **sin interior** tienen un **Área de Influencia** (3 a 6
-  casillas) que, al pisarla, se resuelve como abrir una puerta. Necesita el
-  mismo aviso al entrar en casillas que el Dado de Trampa.
+  casillas) que, al pisarla, se resuelve como abrir una puerta. Se hace con
+  `alEntrar`, como el Dado de Trampa, respondiendo `detenerse`.
 - La **Tirada de Sigilo** (al mover o actuar fuera de esas áreas) y los
   **monstruos errantes** en cada turno del MB (1-2 en 1D6) son del proyecto.
   Los errantes aparecen donde ningún héroe los ve (`trayectoria`) con
@@ -227,11 +227,11 @@ recibe y el proyecto juega por él con estas piezas:
 | Movimiento fijo o 2D6, correr, obstaculizado | ✅ Opciones de movimiento, tramos y `destrabarse` |
 | Ataques, línea de visión y cobertura | ✅ `medirAtaque` y `trayectoria`. ❌ Sin encaramiento |
 | Buscar trampas y revisar muebles | ✅ |
-| Dado de Trampa al entrar en una sección | ❌ Falta un aviso por casilla y cortar el recorrido |
+| Dado de Trampa al entrar en una sección | ✅ `alEntrar` (en el banco de pruebas) |
 | Puertas secretas | ❌ Falta añadir puertas a estancias ya construidas |
 | IA del MB | 🟡 Proyecto, con todas las consultas que necesita |
 | Cartas de iniciativa y «turno escoba» | ❌ Falta un orden de activación del proyecto |
-| Áreas de influencia de elementos escenográficos | ❌ El mismo aviso por casilla |
+| Áreas de influencia de elementos escenográficos | 🟡 Proyecto, con `alEntrar` |
 
 ## 3. One Page Rules: Grimdark Future y Firefight
 
@@ -437,7 +437,7 @@ un juego en el motor: son puntos de extensión.
 | # | Hueco | Juegos | Propuesta |
 | --- | --- | --- | --- |
 | 1 | ✅ **Marcas de estado en todo lo vivo:** acción declarada, aturdido, fatiga, trampa encontrada… | Todos | Hecho: `flags` en estancias, escuadras, personajes, objetos, muebles y puertas, con `tieneFlag`, `marcarFlag` y `quitarFlag`. El estado ajeno al mapa (Nivel de Peligro, mazos, tamaño inicial de las unidades) no se integra: lo guarda el proyecto aparte |
-| 2 | **Aviso por casilla durante el movimiento y cortar el recorrido** | FAI (Dado de Trampa, áreas de influencia), OPR (terreno peligroso) | Un `alEntrar(personaje, casilla, mapa)` opcional en la clase de personaje que devuelva si se detiene. El gestor recorre el camino casilla a casilla y para donde se le diga |
+| 2 | ✅ **Aviso por casilla durante el movimiento y cortar el recorrido** | FAI (Dado de Trampa, áreas de influencia), OPR (terreno peligroso) | Hecho: `ClaseDePersonaje.alEntrar(personaje, donde, mapa)`, por cada casilla en que podría quedarse, responde `seguir`, `detenerse` o `terminar-turno`. Falta para los personajes no jugadores y al agrupar |
 | 3 | **Movimientos forzados** fuera de la activación y de las opciones de la clase | OPR (respuesta a la carga, consolidar, retroceder, empujar aturdidos), FetenQuest (empujar) | `MapaEnJuego.desplazar(personaje, recorrido, { distancia, tipo })` con las reglas del mapa (muros, terreno, otros personajes) sin gastar movimiento |
 | 4 | **Coherencia de escuadra** | OPR | Lo de `Pendientes.md`: modo (con alguno, con todos, desde el centro) y distancia en la clase de escuadra, comprobado al terminar la activación |
 | 5 | **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Un `ordenDelTurno?(mapa)` opcional en `ProveedorTurnos` que dé los jugadores del turno que empieza; sin él, la rotación de hoy |
@@ -449,15 +449,14 @@ un juego en el motor: son puntos de extensión.
 | 11 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
 | 12 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 
-Con 1 (hecho), 2 y 3 se puede jugar FAI completo en solitario y OPR con una
+Con 1 y 2 (hechos) y 3 se puede jugar FAI completo en solitario y OPR con una
 aproximación razonable. Con 4 y 5, OPR queda fiel a sus reglas. Del 6 al 12 son mejoras
 de fidelidad.
 
 **Orden recomendado:**
 
-1. **Aviso por casilla (2):** desbloquea trampas, áreas y terreno peligroso.
-2. **Movimientos forzados (3).**
-3. **Coherencia (4) y orden de activación (5)** antes de empezar OPR.
-4. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
+1. **Movimientos forzados (3).**
+2. **Coherencia (4) y orden de activación (5)** antes de empezar OPR.
+3. Un **prototipo de FAI** sobre `map-debug-imp`, que ya tiene puertas,
    trampas, muebles y monstruos de prueba, y que sería el primer juego real
    del motor.

@@ -11,7 +11,10 @@ import {
   type OpcionesMovimiento,
   type OpcionMovimiento,
   type Personaje,
+  type PersonajeEnJuego,
   type ResultadoAccion,
+  type ResultadoAlEntrar,
+  type Ubicacion,
 } from '../../gamemap'
 import { JUGADOR_MONSTRUOS } from '../configuracion'
 import { CogerObjeto } from './cogerObjeto'
@@ -51,6 +54,9 @@ export const VOLAR: OpcionMovimiento = {
   terreno: { dificil: 1, 'muy-dificil': 1, impasable: 1 },
   cruzaMuros: true,
 }
+
+/** Probabilidad de pisar una trampa al entrar en cada casilla de una estancia en la que no se han buscado trampas */
+export const PROBABILIDAD_DE_TRAMPA = 0.3
 
 /** Un personaje de prueba hace una acción por turno (moverse no cuenta): tras ella, ya no le quedan */
 const TRAS_SU_ACCION: ResultadoAccion = { quedanAcciones: false }
@@ -104,7 +110,8 @@ export function movimientoDePrueba({ casillas, acciones }: MovimientoGastado): O
  * casilla (abrir la puerta que pisa…), revisar cada mueble sin revisar y coger
  * cada objeto que tiene al lado, y ataca hasta su alcance si no hay terreno
  * bloqueante en medio; si ya no le queda su acción, al intentarlo lo avisa en
- * un diálogo y no la hace
+ * un diálogo y no la hace. Al moverse, si no es un monstruo, puede pisar una
+ * trampa (`alEntrar`)
  */
 export class PersonajeDePrueba implements ClaseDePersonaje {
   readonly id: string
@@ -113,14 +120,22 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   readonly vida?: number
   #puertas: PuertasDePrueba
   #dialogos: DialogosDePrueba
+  /** De dónde salen las tiradas de dado (entre 0 y 1) */
+  #azar: () => number
 
-  constructor({ id, nombre, imagenVtt, vida }: Pick<ClaseDePersonaje, 'id' | 'nombre' | 'imagenVtt' | 'vida'>, puertas: PuertasDePrueba, dialogos: DialogosDePrueba) {
+  constructor(
+    { id, nombre, imagenVtt, vida }: Pick<ClaseDePersonaje, 'id' | 'nombre' | 'imagenVtt' | 'vida'>,
+    puertas: PuertasDePrueba,
+    dialogos: DialogosDePrueba,
+    azar: () => number = Math.random,
+  ) {
     this.id = id
     this.nombre = nombre
     this.imagenVtt = imagenVtt
     this.vida = vida
     this.#puertas = puertas
     this.#dialogos = dialogos
+    this.#azar = azar
   }
 
   /** Casillas hasta las que ataca (`ALCANCE_DE_PRUEBA`) */
@@ -209,6 +224,22 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     const vida = todosLosPersonajes(mapa.mapa).find((p) => p.id === objetivo.id)?.vida
     if (vida !== undefined && vida <= 0) mapa.eliminarPersonaje(objetivo.id)
     return TRAS_SU_ACCION
+  }
+
+  /**
+   * Trampas de prueba: un héroe que entra en una casilla de una estancia en la
+   * que nadie ha buscado trampas (sin `sin_trampas`) pisa una trampa con
+   * `PROBABILIDAD_DE_TRAMPA`: lo avisa en un diálogo y se detiene en esa
+   * casilla. Los monstruos no pisan trampas. Cada llamada se ve en la consola
+   */
+  async alEntrar(personaje: PersonajeEnJuego, donde: Ubicacion, mapa: MapaEnJuego): Promise<ResultadoAlEntrar> {
+    const sinPeligro = jugadorDe(mapa.mapa, personaje.id)?.id === JUGADOR_MONSTRUOS || mapa.tieneFlag('estancia', donde.estancia, 'sin_trampas')
+    const pisaTrampa = !sinPeligro && this.#azar() < PROBABILIDAD_DE_TRAMPA
+    if (pisaTrampa) await this.#dialogos.avisar({ titulo: '¡Trampa!', texto: `${personaje.nombre} ha pisado una trampa: se detiene aquí.` })
+    const resultado: ResultadoAlEntrar = pisaTrampa ? 'detenerse' : 'seguir'
+    // banco de pruebas: se ve en la consola cada vez que el gestor pregunta al entrar en una casilla
+    console.log(`[map-debug] alEntrar: ${personaje.nombre} en ${donde.casilla.x},${donde.casilla.y} de «${donde.estancia}»`, { sinPeligro, resultado })
+    return resultado
   }
 
   /**

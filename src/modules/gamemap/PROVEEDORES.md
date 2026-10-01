@@ -76,6 +76,7 @@ movimientos con las acciones que consumieron.
 | `ClaseDePersonaje` | `opcionesMovimiento(personaje, gastado)` | Al empezar a arrastrar su ficha y al soltarla |
 | `ClaseDePersonaje` | `motivoParaNoAtacar(ataque, mapa)` | Al pasar su ficha arrastrada por encima de un enemigo y antes de atacar |
 | `ClaseDePersonaje` | `atacar(ataque, mapa)` | Al soltar su ficha arrastrada sobre la de un enemigo, si puede |
+| `ClaseDePersonaje` | `alEntrar?(personaje, donde, mapa)` | Al soltar su ficha, por cada casilla del recorrido en que podría quedarse, en orden |
 | `Comando` | `exec()` | Al elegir una acción que es un comando |
 
 ## ProveedorConfiguracion
@@ -291,6 +292,7 @@ interface ClaseDePersonaje {
   acciones(personaje: PersonajeEnJuego, mapa: MapaEnJuego): Promise<Accion[]>
   motivoParaNoAtacar(ataque: Ataque, mapa: MapaEnJuego): string | undefined
   atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion>
+  alEntrar?(personaje: PersonajeEnJuego, donde: Ubicacion, mapa: MapaEnJuego): Promise<'seguir' | 'detenerse' | 'terminar-turno'>
 }
 ```
 
@@ -587,6 +589,44 @@ type TramoMovimiento = { distancia: number; accion?: Accion } // `accion`: la ad
   alianzas hostiles hacia la suya): solo una carga entra en la zona de control
   y, con `terminarJuntoAEnemigo`, solo vale si termina junto a uno. Por
   encima de un enemigo no se pasa.
+
+## Al entrar en cada casilla: ClaseDePersonaje.alEntrar
+
+```ts
+alEntrar?(personaje: PersonajeEnJuego, donde: Ubicacion, mapa: MapaEnJuego): Promise<'seguir' | 'detenerse' | 'terminar-turno'>
+```
+
+Opcional. Al soltar la ficha de un personaje de escuadra, con el recorrido ya
+validado (y confirmado, si desliza) y antes de moverlo, el gestor pregunta a
+su clase por cada casilla del recorrido, en orden: `donde` es la estancia y
+la casilla en ella. Es el sitio para lo que pasa al pisar una casilla (una
+trampa, el área de influencia de un elemento, un terreno peligroso…), igual
+que `acciones` lo es para lo que se hace a propósito. La clase puede
+delegar en los objetos del proyecto que haya en esa casilla y cambiar el
+mapa (`reducirVida`, `marcarFlag`…).
+
+- El personaje aún está donde empezó: `personaje` es su estado al empezar.
+- Solo se pregunta por las casillas en que podría quedarse: las de otros
+  personajes, por encima de los que pasa, se saltan.
+- `seguir`: pregunta por la siguiente; si todas siguen, se mueve hasta el
+  final.
+- `detenerse`: se mueve solo hasta esa casilla y no pregunta por las demás.
+  Se apunta lo que ha recorrido: si se detiene antes del tramo de deslizar,
+  no gasta deslizar. Las condiciones del destino (terminar junto a un
+  enemigo al cargar…) no se vuelven a comprobar.
+- `terminar-turno`: como `detenerse` y, además, ya no le quedan acciones en
+  el turno (`TurnoDePersonaje.quedanAcciones: false`): su activación termina
+  y, si a ninguno de su escuadra le quedan, la de la escuadra.
+- Si mientras tanto deja de estar colocado (la trampa lo mata y se elimina),
+  no se mueve ni se apunta nada.
+- No se llama al mover personajes no jugadores (`moverPersonajeNoJugador`) ni
+  al agrupar la escuadra.
+
+En el banco de pruebas, un héroe (no un monstruo) que entra en una casilla
+de una estancia sin `sin_trampas` pisa una trampa con un 30% de
+probabilidades (`PROBABILIDAD_DE_TRAMPA`): lo avisa en un diálogo y se
+detiene en esa casilla (`detenerse`). Cada llamada a `alEntrar` se ve en la
+consola, con lo que responde.
 
 ## Ejemplo completo
 

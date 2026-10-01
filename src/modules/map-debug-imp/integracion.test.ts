@@ -4,14 +4,14 @@ import { JUGADORES_DE_PRUEBA } from './configuracion'
 import { escuadrasDePrueba } from './escuadras'
 import { PuertasDePrueba } from './modelo/puerta'
 
-/** Proveedor del banco de pruebas, sin diálogos: escuadras de prueba y siempre una sala de 6 × 4 hacia abajo con una salida */
+/** Proveedor del banco de pruebas, sin diálogos ni trampas (el azar nunca da una trampa): escuadras de prueba y siempre una sala de 6 × 4 hacia abajo con una salida */
 function proveedorDePrueba() {
   const puertas = new PuertasDePrueba()
   const proveedor: ProveedorMapa = {
     configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', jugadores: JUGADORES_DE_PRUEBA },
     confirmar: async () => true,
     describirEstancia: async () => ({ tipo: 'sala', tamano: { columnas: 6, filas: 4 }, orientacion: 'abajo', salidas: 1, elementos: [] }),
-    ...escuadrasDePrueba(puertas),
+    ...escuadrasDePrueba(puertas, undefined, undefined, () => 0.99),
     estanciaCreada: (estancia) => puertas.asociar(estancia),
     turnoDe: () => {},
     finDeTurno: () => {},
