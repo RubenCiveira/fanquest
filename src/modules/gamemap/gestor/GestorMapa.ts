@@ -483,10 +483,10 @@ export class GestorMapa implements MapaEnJuego {
     this.#cambiar(quedanAcciones ? atacado : this.#apuntarAccionNoJugador(atacado, personaje, TERMINAR_TURNO.id))
   }
 
-  /** El ataque del personaje a ese objetivo (tipo y distancia), o por qué no puede: no está colocado o no es su enemigo */
+  /** El ataque del personaje a ese objetivo (tipo, distancias y trayectoria: `medirAtaque`), o por qué no puede: no está colocado o no es su enemigo */
   #ataque(atacante: Personaje, objetivoId: string): Ataque | string {
     const objetivo = todosLosPersonajes(this.#mapa).find((p) => p.id === objetivoId)
-    const medida = objetivo && medirAtaque(this.#mapa, atacante, objetivo)
+    const medida = objetivo && medirAtaque(this.#mapa, this.configuracion, atacante, objetivo)
     if (!objetivo || !medida) return `No hay ningún personaje «${objetivoId}» colocado en el mapa`
     if (!esEnemigo(this.#mapa, objetivoId, jugadorDe(this.#mapa, atacante.id)?.alianza)) return `${objetivo.nombre} no es enemigo de ${atacante.nombre}`
     return { atacante, objetivo, ...medida }

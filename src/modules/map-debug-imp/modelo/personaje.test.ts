@@ -167,7 +167,10 @@ describe('coger objetos', () => {
 describe('ataques del personaje de prueba', () => {
   const barbaro: Personaje = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 1 }, turnos: [] }
   const orco = { id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 2, y: 1 }, vida: 3, turnos: [], jugador: 'oscuridad' }
-  const ataque = { atacante: barbaro, objetivo: orco, tipo: 'cuerpo-a-cuerpo' as const, distancia: 1 }
+  const trayectoria = { casillas: [], aliados: 0, enemigos: 0, coberturas: { ninguna: 0, ligera: 0, pesada: 0, bloqueante: 0 }, objetos: 0, muros: 0 }
+  const ataque = { atacante: barbaro, objetivo: orco, tipo: 'cuerpo-a-cuerpo' as const, distancia: 1, recorrido: 1, trayectoria }
+  // el personaje de prueba pinta cada ataque en la consola
+  const log = vi.spyOn(console, 'log').mockImplementation(() => {})
   /** Mapa en juego con el orco, que se queda con `vidaTras` al reducirle la vida */
   const mapaCon = (vidaTras: number) => {
     const estado = { estancias: [], turno: 1, personajesNoJugadores: [orco] }
@@ -222,17 +225,19 @@ describe('ataques del personaje de prueba', () => {
     }
   }
 
-  it('un héroe mata sin más al monstruo que ataca', async () => {
+  it('un héroe que ataca a un monstruo pide el daño: ya no lo mata sin más', async () => {
     const mapa = conJugadores()
-    await conDano(1).atacar(ataque, mapa)
-    expect(mapa.eliminarPersonaje).toHaveBeenCalledWith('orco')
+    await conDano(2).atacar(ataque, mapa)
+    expect(mapa.reducirVida).toHaveBeenCalledWith('orco', 2)
   })
 
-  it('al matarlo no pide el daño ni le quita vida', async () => {
-    const mapa = conJugadores()
-    const avisos = dialogos()
-    await conDano(1, avisos).atacar(ataque, mapa)
-    expect([avisos.resolverAtaque.mock.calls.length, mapa.reducirVida.mock.calls.length]).toEqual([0, 0])
+  it('pinta en la consola lo que el gestor dice del ataque', async () => {
+    log.mockClear()
+    await conDano(1).atacar({ ...ataque, trayectoria: { ...trayectoria, casillas: [{ x: 2, y: 1 }], enemigos: 1 } }, conJugadores())
+    expect(log.mock.lastCall).toEqual([
+      '[map-debug] Bárbaro ataca a Orco',
+      expect.objectContaining({ tipo: 'cuerpo-a-cuerpo', distancia: 1, recorrido: 1, casillas: '2,1', enemigos: 1 }),
+    ])
   })
 
   /** El orco ataca al bárbaro: los diálogos y el mapa */

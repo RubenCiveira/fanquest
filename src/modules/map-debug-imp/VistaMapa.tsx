@@ -31,6 +31,7 @@ import {
   type Puerta,
   type RecorridoEvaluado,
   type TipoAtaque,
+  type Terreno,
   type TipoTerreno,
   numeroDeTurno,
   personajesNoJugadoresDe,
@@ -413,11 +414,11 @@ function CapaEstancia({
         // con imagen, solo la imagen; sin ella, el rayado de su tipo
         return t.imagen ? (
           <image key={i} className="vista-terreno" href={t.imagen} x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid slice">
-            <title>{NOMBRE_TERRENO[t.tipo]}</title>
+            <title>{conCobertura(t)}</title>
           </image>
         ) : (
           <rect key={i} className={`vista-terreno ${t.tipo}`} x={x} y={y} width={width} height={height} fill={`url(#${patrones}-${t.tipo})`}>
-            <title>{NOMBRE_TERRENO[t.tipo]}</title>
+            <title>{conCobertura(t)}</title>
           </rect>
         )
       })}
@@ -509,6 +510,9 @@ function CapaEstancia({
 
 const NOMBRE_TERRENO: Record<TipoTerreno, string> = { dificil: 'Terreno difícil', 'muy-dificil': 'Terreno muy difícil', impasable: 'Terreno impasable' }
 
+/** Nombre del terreno y, si la da, su cobertura contra los disparos */
+const conCobertura = ({ tipo, cobertura = 'ninguna' }: Terreno) => `${NOMBRE_TERRENO[tipo]}${cobertura === 'ninguna' ? '' : `, cobertura ${cobertura}`}`
+
 /**
  * Rayados con que se marca el terreno sin imagen: rayas sueltas el difícil,
  * trama cruzada el muy difícil y rayas densas sobre fondo oscuro el impasable
@@ -577,7 +581,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
       if (!a || misma(a.objetivo, c)) return a
       // sobre un enemigo, en vez de la flecha del recorrido, el icono de ataque
       const enemigo = onAtacar && enemigoEn(mapa, a.ficha.id, c)
-      const medida = enemigo && medirAtaque(mapa, a.ficha, enemigo)
+      const medida = enemigo && medirAtaque(mapa, { medicionMovimiento: medicion, terrenoPersonajes }, a.ficha, enemigo)
       return enemigo && medida ? { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } } : { ...trazar(vistoPor(a.ficha), a, c, medicion), ataque: undefined }
     })
   }

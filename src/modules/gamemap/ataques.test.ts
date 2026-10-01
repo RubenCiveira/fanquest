@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { conVidaReducida, enemigoEn, medirAtaque, sinPersonaje } from './ataques'
+import { conVidaReducida, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
 import { crearEstancia } from './estancias'
 import type { Casilla } from './modelo/casilla'
+import type { Configuracion } from './modelo/configuracion'
 import type { Objeto } from './modelo/elemento'
 import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
@@ -25,7 +26,9 @@ const sala = (orco: Casilla, haciaHeroes: Postura = 'hostil', objetos: Objeto[] 
   },
 })
 const orcoDe = (m: Mapa) => m.personajesNoJugadores?.[0] ?? barbaro
-const medir = (m: Mapa) => medirAtaque(m, barbaro, orcoDe(m))
+const sinDiagonales = { medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal' } as const
+const medir = (m: Mapa, config: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes'> = sinDiagonales) => medirAtaque(m, config, barbaro, orcoDe(m))
+const casilla = (id: string, x: number, y: number): Objeto => ({ id, tipo: 'objeto', nombre: id, columnas: 1, filas: 1, posicion: { x, y } })
 
 describe('enemigo bajo el puntero', () => {
   it('el enemigo que está en esa casilla', () => {
@@ -43,11 +46,11 @@ describe('enemigo bajo el puntero', () => {
 
 describe('tipo de ataque', () => {
   it('pegado, cuerpo a cuerpo', () => {
-    expect(medir(sala({ x: 2, y: 1 }))).toEqual({ tipo: 'cuerpo-a-cuerpo', distancia: 1 })
+    expect(medir(sala({ x: 2, y: 1 }))).toMatchObject({ tipo: 'cuerpo-a-cuerpo', distancia: 1 })
   })
 
   it('pegado en diagonal, también cuerpo a cuerpo', () => {
-    expect(medir(sala({ x: 2, y: 2 }))).toEqual({ tipo: 'cuerpo-a-cuerpo', distancia: 1 })
+    expect(medir(sala({ x: 2, y: 2 }))?.tipo).toBe('cuerpo-a-cuerpo')
   })
 
   it('en diagonal con la esquina tapada por dos objetos, a distancia', () => {
@@ -58,8 +61,119 @@ describe('tipo de ataque', () => {
     expect(medir(sala({ x: 2, y: 2 }, 'hostil', objetos))?.tipo).toBe('distancia')
   })
 
-  it('lejos, a distancia, contando las casillas en recto o en diagonal', () => {
-    expect(medir(sala({ x: 5, y: 2 }))).toEqual({ tipo: 'distancia', distancia: 4 })
+  it('lejos, a distancia', () => {
+    expect(medir(sala({ x: 5, y: 2 }))?.tipo).toBe('distancia')
+  })
+})
+
+describe('distancias del ataque', () => {
+  const lejos = sala({ x: 4, y: 2 })
+
+  it('sin diagonales, la distancia cuenta casilla a casilla en recto', () => {
+    expect(medir(lejos)?.distancia).toBe(4)
+  })
+
+  it('con la diagonal como recta, la mayor de las dos', () => {
+    expect(medir(lejos, { ...sinDiagonales, medicionMovimiento: 'diagonal' })?.distancia).toBe(3)
+  })
+
+  it('por Pitágoras, redondeando hacia arriba', () => {
+    expect(medir(lejos, { ...sinDiagonales, medicionMovimiento: 'euclidea' })?.distancia).toBe(4)
+  })
+
+  it('el recorrido es lo que costaría llegar moviéndose, rodeando lo que estorba', () => {
+    expect(medir(sala({ x: 3, y: 1 }, 'hostil', [casilla('c1', 2, 1), casilla('c2', 2, 2)]))).toMatchObject({ distancia: 2, recorrido: 4 })
+  })
+
+  it('sin forma de llegar, no hay recorrido', () => {
+    expect(medir(sala({ x: 3, y: 1 }, 'hostil', [casilla('c0', 2, 0), casilla('c1', 2, 1), casilla('c2', 2, 2)]))?.recorrido).toBeUndefined()
+  })
+})
+
+describe('trayectoria del ataque', () => {
+  it('en recto, las casillas de una fila', () => {
+    expect(lineaDeCasillas({ x: 0, y: 0 }, { x: 3, y: 0 })).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 3, y: 0 },
+    ])
+  })
+
+  it('en diagonal, por las esquinas', () => {
+    expect(lineaDeCasillas({ x: 0, y: 0 }, { x: 2, y: 2 })).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 1 },
+      { x: 2, y: 2 },
+    ])
+  })
+
+  it('en otro ángulo, las casillas que cruza la línea', () => {
+    expect(lineaDeCasillas({ x: 0, y: 0 }, { x: 3, y: 1 })).toEqual([
+      { x: 0, y: 0 },
+      { x: 1, y: 0 },
+      { x: 2, y: 1 },
+      { x: 3, y: 1 },
+    ])
+  })
+
+  /** El bárbaro en 1,1 ataca al orco en 5,1: el elfo (aliado) en 2,1, un goblin (enemigo) en 3,1, barro difícil (cobertura ligera) en 4,1 y un cofre en 4,1 */
+  const cruzada = (): Mapa => {
+    const m = sala({ x: 5, y: 1 }, 'hostil', [casilla('cofre', 4, 1)])
+    return {
+      ...m,
+      estancias: [{ ...m.estancias[0], terrenos: [{ tipo: 'dificil', cobertura: 'ligera', posicion: { x: 4, y: 1 }, columnas: 1, filas: 1 }] }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'ana', personajes: [barbaro, { id: 'elfo', nombre: 'Elfo', estancia: 'sala', casilla: { x: 2, y: 1 }, turnos: [] }], turnos: [] }],
+      personajesNoJugadores: [...(m.personajesNoJugadores ?? []), { id: 'goblin', nombre: 'Goblin', estancia: 'sala', casilla: { x: 3, y: 1 }, turnos: [], jugador: 'oscuridad' }],
+    }
+  }
+  const deLaCruzada = () => trayectoria(cruzada(), barbaro, orcoDe(cruzada()))
+
+  it('las casillas entre los dos, sin contar las suyas', () => {
+    expect(deLaCruzada()?.casillas).toEqual([
+      { x: 2, y: 1 },
+      { x: 3, y: 1 },
+      { x: 4, y: 1 },
+    ])
+  })
+
+  it('cuenta los personajes aliados y enemigos que cruza', () => {
+    expect(deLaCruzada()).toMatchObject({ aliados: 1, enemigos: 1 })
+  })
+
+  it('cuenta las casillas que dan cada tipo de cobertura', () => {
+    expect(deLaCruzada()?.coberturas).toEqual({ ninguna: 2, ligera: 1, pesada: 0, bloqueante: 0 })
+  })
+
+  it('un terreno bloqueante también se cuenta, aunque no se pueda pisar', () => {
+    const m = cruzada()
+    const conPilar = { ...m, estancias: [{ ...m.estancias[0], terrenos: [{ tipo: 'impasable' as const, cobertura: 'bloqueante' as const, posicion: { x: 3, y: 0 }, columnas: 1, filas: 3 }] }] }
+    expect(trayectoria(conPilar, barbaro, orcoDe(conPilar))?.coberturas.bloqueante).toBe(1)
+  })
+
+  it('cuenta las casillas con objetos', () => {
+    expect(deLaCruzada()?.objetos).toBe(1)
+  })
+
+  /** Dos salas de 3 × 1 pegadas, el bárbaro en la izquierda y el orco en la derecha, con la puerta entre ellas abierta o no */
+  const pegadas = (abierta: boolean): Mapa => {
+    const m = sala({ x: 1, y: 0 })
+    const izquierda = { ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 1 }), puertas: [{ id: 'p', tipo: 'salida' as const, casilla: { x: 2, y: 0 }, lado: 'derecha' as const, abierta }] }
+    return {
+      ...m,
+      estancias: [izquierda, { ...crearEstancia({ id: 'otra', tipo: 'sala', columnas: 3, filas: 1 }), posicion: { x: 3, y: 0 } }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'ana', personajes: [{ ...barbaro, casilla: { x: 0, y: 0 } }], turnos: [] }],
+      personajesNoJugadores: m.personajesNoJugadores?.map((p) => ({ ...p, estancia: 'otra' })),
+    }
+  }
+  const muros = (m: Mapa) => trayectoria(m, m.escuadras?.[0].personajes[0] ?? barbaro, orcoDe(m))?.muros
+
+  it('cuenta los muros que cruza entre estancias', () => {
+    expect(muros(pegadas(false))).toBe(1)
+  })
+
+  it('por una puerta abierta no hay muro', () => {
+    expect(muros(pegadas(true))).toBe(0)
   })
 })
 

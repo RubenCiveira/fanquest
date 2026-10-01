@@ -117,21 +117,28 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   }
 
   /**
-   * Si aún le queda su acción del turno: un héroe mata sin más al monstruo
-   * que ataca (lo elimina de la estancia) y un monstruo falla siempre contra
-   * un héroe (lo avisa en un diálogo); en otro caso, pide el daño del ataque
-   * (`resolverAtaque`: el diálogo del banco de pruebas), se lo quita al
-   * objetivo y, si se queda sin vida, lo elimina del mapa
+   * Pinta en la consola lo que el gestor dice del ataque (tipo, distancias y
+   * trayectoria, con las coberturas que cruza) y, si aún le queda su acción del turno: un monstruo falla
+   * siempre contra un héroe (lo avisa en un diálogo); en otro caso, pide el
+   * daño del ataque (`resolverAtaque`: el diálogo del banco de pruebas), se lo
+   * quita al objetivo y, si se queda sin vida, lo elimina del mapa
    */
   async atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion> {
-    const { atacante, objetivo } = ataque
+    const { atacante, objetivo, tipo, distancia, recorrido, trayectoria } = ataque
+    // banco de pruebas: se ve en la consola qué calcula el gestor de cada ataque
+    console.log(`[map-debug] ${atacante.nombre} ataca a ${objetivo.nombre}`, {
+      tipo,
+      distancia,
+      recorrido,
+      casillas: trayectoria.casillas.map(({ x, y }) => `${x},${y}`).join(' → '),
+      aliados: trayectoria.aliados,
+      enemigos: trayectoria.enemigos,
+      coberturas: trayectoria.coberturas,
+      objetos: trayectoria.objetos,
+      muros: trayectoria.muros,
+    })
     await this.#gastarAccion(mapa)
     const esMonstruo = (id: string) => jugadorDe(mapa.mapa, id)?.id === JUGADOR_MONSTRUOS
-    if (esMonstruo(objetivo.id) && !esMonstruo(atacante.id)) {
-      const motivo = mapa.eliminarPersonaje(objetivo.id)
-      if (motivo) throw new Error(motivo)
-      return TRAS_SU_ACCION
-    }
     if (esMonstruo(atacante.id) && !esMonstruo(objetivo.id)) {
       await this.#dialogos.avisar({ titulo: 'Ataque', texto: `${atacante.nombre} ataca a ${objetivo.nombre}: ¡ups, ha fallado!` })
       return TRAS_SU_ACCION

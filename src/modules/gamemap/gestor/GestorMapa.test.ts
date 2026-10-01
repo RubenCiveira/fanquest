@@ -588,7 +588,7 @@ describe('gestor del mapa: ataques', () => {
     const { gestor, p, barbaro, orco } = await conOrco()
     const [atacante, objetivo] = [barbaro(), orco()]
     await gestor.atacar('barbaro', 'orco')
-    expect(p.atacar.mock.lastCall?.[0]).toEqual({ atacante, objetivo, tipo: 'cuerpo-a-cuerpo', distancia: 1 })
+    expect(p.atacar.mock.lastCall?.[0]).toMatchObject({ atacante, objetivo, tipo: 'cuerpo-a-cuerpo', distancia: 1, recorrido: 1, trayectoria: { casillas: [] } })
   })
 
   it('el ataque se apunta en el turno del personaje y en el de su escuadra', async () => {

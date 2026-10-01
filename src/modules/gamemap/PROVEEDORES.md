@@ -174,7 +174,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   salidas: number,
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
   muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
-  terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
+  terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
   personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, vida?: number, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
 ```
@@ -194,6 +194,12 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   terreno impasable, y un terreno que se sale de la estancia no se puede
   construir. Con `imagen`, la vista pinta solo la imagen sobre todas sus
   casillas; sin ella, un rayado según el tipo.
+- La `cobertura` de un terreno dice cuánto protege de los disparos que lo
+  cruzan: `ligera`, `pesada` o `bloqueante` (sin ella, `ninguna`). Es
+  independiente del `tipo`, que solo afecta al movimiento: un seto puede ser
+  difícil de cruzar y dar cobertura ligera. Si una casilla tiene varios
+  terrenos, cuenta la mayor. El banco de pruebas la pone según el tipo:
+  difícil, ligera; muy difícil, pesada; impasable, bloqueante.
 - Los `personajesNoJugadores`, cada uno de un `jugador` (enemigos si su
   alianza es hostil), aparecen en la
   estancia: en su `casilla`, o en una al azar de su `zona` o, sin ninguna de
@@ -370,9 +376,24 @@ type Ataque = {
   atacante: Personaje
   objetivo: Personaje
   tipo: 'cuerpo-a-cuerpo' | 'distancia' // pegados, también en diagonal, sin muro ni esquina en medio; si no, a distancia
-  distancia: number                    // casillas, en recto o en diagonal
+  distancia: number                    // casillas según `medicionMovimiento`, en línea recta y sin obstáculos
+  recorrido?: number                   // lo que costaría llegar moviéndose (rodeando, con el terreno); sin él, no se puede llegar
+  trayectoria: {
+    casillas: Casilla[]                // las que cruza la línea de centro a centro, sin las de los dos
+    aliados: number                    // personajes en ellas que no son enemigos del atacante
+    enemigos: number
+    coberturas: { ninguna: number; ligera: number; pesada: number; bloqueante: number } // casillas que dan cada cobertura
+    objetos: number                    // casillas con objetos o muebles
+    muros: number                      // muros que cruza: entre estancias sin puerta abierta, o fuera de ellas
+  }
 }
 ```
+
+La trayectoria es la línea recta del centro de la casilla del atacante al de
+la del objetivo, con todas las casillas que cruza (si pasa justo por una
+esquina, sigue en diagonal sin contar las de los lados). Con ella la clase
+puede decidir la línea de visión, la cobertura o los modificadores del
+ataque.
 
 - La clase presenta el ataque (un diálogo, dados…) y aplica el resultado con
   `mapa.reducirVida(objetivo, puntos)` y, si se queda sin vida,
@@ -395,10 +416,11 @@ type Ataque = {
   `PersonajeDePrueba` (`claseDeNoJugador` del proveedor de pruebas).
 
 En el banco de pruebas, `PersonajeDePrueba` empieza con el cuerpo de su
-héroe o monstruo como vida. Atacar gasta su acción del turno: si ya no le
-queda, lo avisa en un diálogo y se cancela. Por ahora, un héroe mata sin más
-al monstruo que ataca (lo elimina de la estancia) y un monstruo siempre falla
-contra un héroe (un diálogo: «¡ups, ha fallado!»); en los demás ataques pide
+héroe o monstruo como vida y pinta en la consola lo que el gestor dice de
+cada ataque (tipo, distancias y trayectoria). Atacar gasta su acción del
+turno: si ya no le queda, lo avisa en un diálogo y se cancela. Por ahora, un
+monstruo siempre falla contra un héroe (un diálogo: «¡ups, ha fallado!»); en
+los demás ataques pide
 el daño en un diálogo (`DialogoAtaque`), se lo quita al objetivo y, si se
 queda sin vida, lo elimina. Resuelve `{ quedanAcciones: false }`.
 

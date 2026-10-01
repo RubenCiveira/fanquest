@@ -1,10 +1,19 @@
 import { conPersonaje, conPersonajeNoJugador, todosLosPersonajes } from './activaciones'
 import { esEnemigo, jugadorDe } from './jugadores'
-import { enElMapa, sePuedePasar } from './movimiento'
-import type { Ataque } from './modelo/ataque'
+import { casillaDelMapa, conPersonajes, costeDe, enElMapa, ruta, sePuedePasar } from './movimiento'
+import { coberturaEn } from './terrenos'
+import type { Ataque, Trayectoria } from './modelo/ataque'
 import type { Casilla } from './modelo/casilla'
+import type { Configuracion } from './modelo/configuracion'
+import type { Elemento } from './modelo/elemento'
+import type { Estancia } from './modelo/estancia'
 import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
+
+const misma = (a: Casilla | undefined, b: Casilla) => !!a && a.x === b.x && a.y === b.y
+
+const cubre = (el: Elemento, { x, y }: Casilla) =>
+  !!el.posicion && x >= el.posicion.x && y >= el.posicion.y && x < el.posicion.x + el.columnas && y < el.posicion.y + el.filas
 
 /** El enemigo del personaje que está en esa casilla del mapa, si lo hay */
 export function enemigoEn(m: Mapa, personajeId: string, casilla: Casilla): Personaje | undefined {
@@ -16,16 +25,104 @@ export function enemigoEn(m: Mapa, personajeId: string, casilla: Casilla): Perso
 }
 
 /**
- * Tipo y distancia (en casillas, en recto o en diagonal) del ataque: cuerpo a
- * cuerpo si el objetivo está pegado, también en diagonal, y se podría pasar
- * de una casilla a la otra (sin muro ni esquina en medio); si no, a
- * distancia. Nada si alguno no está colocado
+ * Casillas del mapa que cruza la línea recta del centro de `desde` al de
+ * `hasta`, en orden y con las dos. Si pasa justo por una esquina, sigue en
+ * diagonal sin contar las casillas de los lados, que solo roza
  */
-export function medirAtaque(m: Mapa, atacante: Personaje, objetivo: Personaje): Pick<Ataque, 'tipo' | 'distancia'> | undefined {
+export function lineaDeCasillas(desde: Casilla, hasta: Casilla): Casilla[] {
+  const [nx, ny] = [Math.abs(hasta.x - desde.x), Math.abs(hasta.y - desde.y)]
+  const [sx, sy] = [Math.sign(hasta.x - desde.x), Math.sign(hasta.y - desde.y)]
+  const casillas = [desde]
+  let { x, y } = desde
+  for (let ix = 0, iy = 0; ix < nx || iy < ny; ) {
+    // qué borde de la casilla cruza antes la línea: el vertical, el horizontal o los dos a la vez (la esquina)
+    const cruce = (1 + 2 * ix) * ny - (1 + 2 * iy) * nx
+    if (cruce <= 0) {
+      x += sx
+      ix++
+    }
+    if (cruce >= 0) {
+      y += sy
+      iy++
+    }
+    casillas.push({ x, y })
+  }
+  return casillas
+}
+
+/** Si entre dos casillas del mapa seguidas de la línea hay un muro: de una estancia a otra sin una puerta abierta entre ellas, o entrando o saliendo de las estancias */
+function cruzaMuro(m: Mapa, a: Casilla, b: Casilla): boolean {
+  const [desde, hasta] = [casillaDelMapa(m, a), casillaDelMapa(m, b)]
+  if (!desde || !hasta) return desde !== hasta
+  if (desde.estancia.id === hasta.estancia.id) return false
+  if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) !== 1) return true
+  const lado = (de: Casilla, a: Casilla) => (a.x > de.x ? 'derecha' : a.x < de.x ? 'izquierda' : a.y > de.y ? 'abajo' : 'arriba')
+  const abierta = ({ estancia, casilla }: { estancia: Estancia; casilla: Casilla }, hacia: string) =>
+    estancia.puertas.some((p) => p.abierta && p.lado === hacia && p.casilla.x === casilla.x && p.casilla.y === casilla.y)
+  return !abierta(desde, lado(a, b)) && !abierta(hasta, lado(b, a))
+}
+
+/** Lo que cruza la línea del ataque del atacante al objetivo (ver `Trayectoria`); nada si alguno no está colocado */
+export function trayectoria(m: Mapa, atacante: Personaje, objetivo: Personaje): Trayectoria | undefined {
   const [desde, hasta] = [enElMapa(m, atacante), enElMapa(m, objetivo)]
   if (!desde || !hasta) return
-  const distancia = Math.max(Math.abs(desde.x - hasta.x), Math.abs(desde.y - hasta.y))
-  return { tipo: distancia === 1 && sePuedePasar(m, desde, hasta, 'diagonal') ? 'cuerpo-a-cuerpo' : 'distancia', distancia }
+  const linea = lineaDeCasillas(desde, hasta)
+  const casillas = linea.slice(1, -1)
+  const alianza = jugadorDe(m, atacante.id)?.alianza
+  const en = (c: Casilla) => todosLosPersonajes(m).filter((p) => p.id !== atacante.id && p.id !== objetivo.id && misma(enElMapa(m, p), c))
+  const personajes = casillas.flatMap(en)
+  const coberturas: Trayectoria['coberturas'] = { ninguna: 0, ligera: 0, pesada: 0, bloqueante: 0 }
+  let objetos = 0
+  for (const c of casillas) {
+    const suya = casillaDelMapa(m, c)
+    if (!suya) continue
+    coberturas[coberturaEn(suya.estancia, suya.casilla)]++
+    if (suya.estancia.elementos.some((el) => el.posicion && cubre(el, suya.casilla))) objetos++
+  }
+  return {
+    casillas,
+    aliados: personajes.filter((p) => !esEnemigo(m, p.id, alianza)).length,
+    enemigos: personajes.filter((p) => esEnemigo(m, p.id, alianza)).length,
+    coberturas,
+    objetos,
+    muros: linea.slice(1).filter((c, i) => cruzaMuro(m, linea[i], c)).length,
+  }
+}
+
+/** Casillas de `a` a `b` según la medición del movimiento, en línea recta y sin obstáculos (por Pitágoras, redondeando hacia arriba) */
+function distanciaSegun(medicion: Configuracion['medicionMovimiento'], a: Casilla, b: Casilla) {
+  const [dx, dy] = [Math.abs(a.x - b.x), Math.abs(a.y - b.y)]
+  if (medicion === 'ortogonal') return dx + dy
+  if (medicion === 'diagonal') return Math.max(dx, dy)
+  // sin arrastrar el error de coma flotante: 2 × √2 no llega a 3
+  return Math.ceil(Math.max(dx, dy) - Math.min(dx, dy) + Math.min(dx, dy) * Math.SQRT2 - 1e-9)
+}
+
+/**
+ * Cómo es el ataque: cuerpo a cuerpo si el objetivo está pegado, también en
+ * diagonal, y se podría pasar de una casilla a la otra (sin muro ni esquina
+ * en medio); si no, a distancia. Con la distancia según la medición del
+ * movimiento, lo que costaría llegar moviéndose (como el atacante ve el mapa,
+ * con el objetivo apartado) y la trayectoria. Nada si alguno no está colocado
+ */
+export function medirAtaque(
+  m: Mapa,
+  { medicionMovimiento, terrenoPersonajes }: Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes'>,
+  atacante: Personaje,
+  objetivo: Personaje,
+): Omit<Ataque, 'atacante' | 'objetivo'> | undefined {
+  const [desde, hasta] = [enElMapa(m, atacante), enElMapa(m, objetivo)]
+  const linea = trayectoria(m, atacante, objetivo)
+  if (!desde || !hasta || !linea) return
+  const pegado = Math.max(Math.abs(desde.x - hasta.x), Math.abs(desde.y - hasta.y)) === 1 && sePuedePasar(m, desde, hasta, 'diagonal')
+  const vista = conPersonajes(sinPersonaje(m, objetivo.id), atacante.id, terrenoPersonajes)
+  const camino = ruta(vista, desde, hasta, medicionMovimiento)
+  return {
+    tipo: pegado ? 'cuerpo-a-cuerpo' : 'distancia',
+    distancia: distanciaSegun(medicionMovimiento, desde, hasta),
+    ...(camino && { recorrido: costeDe(vista, camino, medicionMovimiento) }),
+    trayectoria: linea,
+  }
 }
 
 /** Resta puntos de vida al personaje (de escuadra o no jugador), sin bajar de cero; sin cambios si no lleva la cuenta */

@@ -11,6 +11,15 @@ describe('terreno de prueba', () => {
     ])
   })
 
+  it('cada uno con la cobertura de su tipo: difícil ligera, muy difícil pesada e impasable bloqueante', () => {
+    expect(terrenosDePrueba({ columnas: 10, filas: 8 }).map((t) => [t.tipo, t.cobertura])).toEqual([
+      ['dificil', 'ligera'],
+      ['muy-dificil', 'pesada'],
+      ['impasable', 'bloqueante'],
+      ['dificil', 'ligera'],
+    ])
+  })
+
   it('no toca los muros, para no tapar puertas', () => {
     const { columnas, filas } = { columnas: 6, filas: 4 }
     expect(terrenosDePrueba({ columnas, filas }).every((t) => t.posicion.x >= 1 && t.posicion.y >= 1 && t.posicion.x + t.columnas < columnas && t.posicion.y + t.filas < filas)).toBe(true)

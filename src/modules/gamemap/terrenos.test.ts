@@ -7,7 +7,7 @@ import type { Personaje } from './modelo/personaje'
 import type { Terreno } from './modelo/terreno'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import { conPersonajes, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
-import { factorDeTerreno, terrenoEn } from './terrenos'
+import { coberturaEn, factorDeTerreno, terrenoEn } from './terrenos'
 import type { Jugadores } from './modelo/jugadores'
 
 /** Sin reparto de jugadores: nadie tiene turno ni enemigos */
@@ -122,5 +122,27 @@ describe('casillas con personajes', () => {
     const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'dificil', jugadores: SIN_JUGADORES } as const
     const movido = moverPersonaje(conEnano, config, 'grupo', enElPasillo, hastaElFondo, { opcion: seis.base, tramos: [0, 0, 0, 0] })
     expect(gastadoPor(movido, movido.escuadras?.[0].personajes[0] ?? enElPasillo).casillas).toBe(5)
+  })
+})
+
+describe('cobertura del terreno', () => {
+  const con = (terrenos: Terreno[]) => ({ ...crearEstancia({ id: 'sala', tipo: 'sala', columnas: 3, filas: 3 }), terrenos })
+  const barro: Terreno = { tipo: 'dificil', cobertura: 'ligera', posicion: { x: 0, y: 0 }, columnas: 2, filas: 2 }
+
+  it('sin terreno, ninguna', () => {
+    expect(coberturaEn(con([barro]), { x: 2, y: 2 })).toBe('ninguna')
+  })
+
+  it('la de su terreno', () => {
+    expect(coberturaEn(con([barro]), { x: 1, y: 1 })).toBe('ligera')
+  })
+
+  it('un terreno sin cobertura no cubre', () => {
+    expect(coberturaEn(con([{ ...barro, cobertura: undefined }]), { x: 1, y: 1 })).toBe('ninguna')
+  })
+
+  it('con varios terrenos, la mayor', () => {
+    const muro: Terreno = { tipo: 'dificil', cobertura: 'pesada', posicion: { x: 1, y: 1 }, columnas: 1, filas: 1 }
+    expect(coberturaEn(con([barro, muro]), { x: 1, y: 1 })).toBe('pesada')
   })
 })

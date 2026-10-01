@@ -1,6 +1,6 @@
 import type { Casilla } from './modelo/casilla'
 import type { Estancia } from './modelo/estancia'
-import type { Terreno, TipoTerreno } from './modelo/terreno'
+import type { Terreno, TipoCobertura, TipoTerreno } from './modelo/terreno'
 
 /** Lo que cuesta entrar en una casilla de cada terreno (en veces lo que cuesta una normal) */
 export const COSTE_TERRENO: Record<Exclude<TipoTerreno, 'impasable'>, number> = { dificil: 2, 'muy-dificil': 3 }
@@ -13,6 +13,15 @@ const factorDe = (tipo: TipoTerreno) => (tipo === 'impasable' ? Number.POSITIVE_
 /** Terreno de esa casilla de la estancia, si no es normal; si hay varios, el peor */
 export const terrenoEn = (e: Estancia, c: Casilla): Terreno | undefined =>
   e.terrenos?.filter((t) => cubre(t, c)).reduce<Terreno | undefined>((peor, t) => (!peor || factorDe(t.tipo) > factorDe(peor.tipo) ? t : peor), undefined)
+
+/** De menos a más cobertura */
+const ORDEN_COBERTURA: TipoCobertura[] = ['ninguna', 'ligera', 'pesada', 'bloqueante']
+
+/** Cobertura que da esa casilla de la estancia a los disparos que la cruzan: la de su terreno o, si hay varios, la mayor; sin terreno, ninguna */
+export const coberturaEn = (e: Estancia, c: Casilla): TipoCobertura =>
+  (e.terrenos ?? [])
+    .filter((t) => cubre(t, c))
+    .reduce<TipoCobertura>((mayor, { cobertura = 'ninguna' }) => (ORDEN_COBERTURA.indexOf(cobertura) > ORDEN_COBERTURA.indexOf(mayor) ? cobertura : mayor), 'ninguna')
 
 /** Veces que cuesta entrar en esa casilla de la estancia lo que una normal; infinito si es impasable */
 export function factorDeTerreno(e: Estancia, c: Casilla): number {

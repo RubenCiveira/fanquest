@@ -63,6 +63,8 @@ mismo sitio.
 - **Terreno**: zona de una estancia difícil (entrar en cada casilla cuesta
   dos), muy difícil (tres) o impasable, con o sin imagen que la cubra. La
   ruta de un personaje lo tiene en cuenta y lo rodea si sale más barato.
+  Además, da a los disparos que lo cruzan una cobertura: ninguna, ligera,
+  pesada o bloqueante.
 - **Objeto** (elemento): ocupa `filas` × `columnas` casillas de una estancia.
   Al crearla, el gestor lo pone en el sitio libre más cercano al centro, sin
   tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**
@@ -122,7 +124,10 @@ mismo sitio.
   consume una acción adicional, antes se pide confirmación.
 - **Ataque**: al arrastrar una ficha sobre la de un enemigo, el gestor pide a
   la clase del personaje que ataque (`atacar`), con el tipo (cuerpo a cuerpo o
-  a distancia) y la distancia. La clase decide y aplica el daño sobre la
+  a distancia), la distancia según la medición del movimiento, lo que costaría
+  llegar moviéndose y la trayectoria: las casillas que cruza la línea del
+  ataque, con los aliados, enemigos, coberturas, objetos y muros que hay en
+  ella. La clase decide y aplica el daño sobre la
   `vida` del objetivo (`reducirVida`) y lo elimina si hace falta
   (`eliminarPersonaje`).
 - **Resultado de una acción**: los comandos (`exec`) y los ataques resuelven
