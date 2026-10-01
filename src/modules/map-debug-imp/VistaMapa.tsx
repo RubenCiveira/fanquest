@@ -130,18 +130,28 @@ function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida }, x, y, activacion,
 /** Icono de cada tipo de ataque */
 const ICONO_ATAQUE: Record<TipoAtaque, string> = { 'cuerpo-a-cuerpo': '⚔️', distancia: '🏹' }
 
-/** Mientras se arrastra sobre un enemigo: una línea de la ficha a él y el icono del tipo de ataque (casillas del mapa) */
-function IconoAtaque({ desde, hasta, objetivo, tipo }: { desde: Casilla; hasta: Casilla; objetivo: Personaje; tipo: TipoAtaque }) {
+/**
+ * Mientras se arrastra sobre un enemigo: una línea de la ficha a él y el icono
+ * del tipo de ataque (casillas del mapa); si no puede atacarlo, apagado y con
+ * el `motivo`
+ */
+function IconoAtaque({ desde, hasta, objetivo, tipo, motivo }: { desde: Casilla; hasta: Casilla; objetivo: Personaje; tipo: TipoAtaque; motivo?: string }) {
   const centro = (c: Casilla) => ({ x: (c.x + 0.5) * LADO, y: (c.y + 0.5) * LADO })
   const [a, b] = [centro(desde), centro(hasta)]
   return (
-    <g className={`vista-ataque ${tipo}`}>
+    <g className={`vista-ataque ${tipo}${motivo ? ' invalido' : ''}`}>
       <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
       <circle cx={b.x} cy={b.y} r={RADIO_ICONO} />
       <text x={b.x} y={b.y + 4}>
         {ICONO_ATAQUE[tipo]}
       </text>
-      <title>{`Atacar a ${objetivo.nombre} ${tipo === 'cuerpo-a-cuerpo' ? 'cuerpo a cuerpo' : 'a distancia'}`}</title>
+      {motivo && (
+        // en medio de la línea, donde hay más sitio a los dos lados para el texto
+        <text className="vista-ataque-motivo" x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 8}>
+          {motivo}
+        </text>
+      )}
+      <title>{motivo ?? `Atacar a ${objetivo.nombre} ${tipo === 'cuerpo-a-cuerpo' ? 'cuerpo a cuerpo' : 'a distancia'}`}</title>
     </g>
   )
 }
@@ -283,7 +293,7 @@ type Arrastre = {
   /** El puntero está en una casilla a la que no llega: soltar ahí no hace nada */
   fuera?: boolean
   /** El puntero está sobre un enemigo: soltar ahí lo ataca */
-  ataque?: { objetivo: Personaje; tipo: TipoAtaque }
+  ataque?: { objetivo: Personaje; tipo: TipoAtaque; motivo?: string }
 }
 
 const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
@@ -323,6 +333,8 @@ type Props = {
   onMover?: (personajeId: string, recorrido: Casilla[]) => void
   /** Al soltar una ficha arrastrada sobre la de un enemigo suyo: sin esto, no se ataca */
   onAtacar?: (personajeId: string, objetivoId: string) => void
+  /** Por qué un personaje no puede atacar a ese enemigo (se pregunta al arrastrar su ficha por encima), o nada si puede */
+  motivoParaNoAtacar?: (personajeId: string, objetivoId: string) => Promise<string | undefined>
   /** Cómo se miden los movimientos al arrastrar (sin diagonales, si no se dice) */
   medicion?: MedicionMovimiento
   /** Cómo cuenta para moverse la casilla de otro personaje (se pasa por encima como si nada, si no se dice) */
@@ -551,7 +563,7 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0 } = props
+  const { opcionesMovimiento, onMover, onAtacar, motivoParaNoAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0 } = props
   /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
   const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
   /** Como lo ve la ficha, con la zona de control de sus enemigos impasable: para rutas que la rodeen */
@@ -583,14 +595,17 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
 
   function arrastrar(ev: PointerEvent) {
     const c = casillaBajo(ev)
-    if (!c) return
-    setArrastre((a) => {
-      if (!a || misma(a.objetivo, c)) return a
-      // sobre un enemigo, en vez de la flecha del recorrido, el icono de ataque
-      const enemigo = onAtacar && enemigoEn(mapa, a.ficha.id, c)
-      const medida = enemigo && medirAtaque(mapa, { medicionMovimiento: medicion, terrenoPersonajes }, a.ficha, enemigo)
-      return enemigo && medida ? { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } } : { ...trazar(vistoPor(a.ficha), rodeando(a.ficha), a, c, medicion), ataque: undefined }
-    })
+    if (!c || !arrastre || misma(arrastre.objetivo, c)) return
+    // sobre un enemigo, en vez de la flecha del recorrido, el icono de ataque
+    const { ficha } = arrastre
+    const enemigo = onAtacar && enemigoEn(mapa, ficha.id, c)
+    const medida = enemigo && medirAtaque(mapa, { medicionMovimiento: medicion, terrenoPersonajes }, ficha, enemigo)
+    if (!enemigo || !medida) return setArrastre((a) => a && { ...trazar(vistoPor(a.ficha), rodeando(a.ficha), a, c, medicion), ataque: undefined })
+    setArrastre((a) => a && { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } })
+    // si no puede atacarlo, el icono lo dice; la respuesta solo vale si el puntero sigue sobre ese enemigo
+    motivoParaNoAtacar?.(ficha.id, enemigo.id).then((motivo) =>
+      setArrastre((a) => (a?.ataque?.objetivo.id === enemigo.id ? { ...a, ataque: { ...a.ataque, ...(motivo && { motivo }) } } : a)),
+    )
   }
 
   function soltar() {

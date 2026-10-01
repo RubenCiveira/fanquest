@@ -470,8 +470,9 @@ export class GestorMapa implements MapaEnJuego {
   }
 
   /**
-   * El personaje de una escuadra ataca a un enemigo suyo: pide a su clase que
-   * resuelva el ataque (`atacar`, con su tipo y su distancia), que aplica el
+   * El personaje de una escuadra ataca a un enemigo suyo: si su clase dice que
+   * puede (`motivoParaNoAtacar`), le pide que resuelva el ataque (`atacar`,
+   * con su tipo, sus distancias y su trayectoria), que aplica el
    * daño con `reducirVida` y `eliminarPersonaje`, y apunta «atacar» en su turno
    * (con si aún le quedan acciones, según su clase) y en el de su escuadra. Si la clase falla o se cancela, no se apunta y el
    * error sigue. Si no puede atacar, el mapa no cambia y devuelve el motivo
@@ -486,26 +487,50 @@ export class GestorMapa implements MapaEnJuego {
     if (typeof ataque === 'string') return ataque
     const clase = await this.#claseDePersonaje(escuadra.id, personajeId)
     if (!clase) return `${personaje.nombre} no tiene clase que resuelva su ataque`
+    const noPuede = clase.motivoParaNoAtacar(ataque, this)
+    if (noPuede) return noPuede
     const resultado = await clase.atacar(ataque, this)
     this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadra.id, ATACAR.id, personajeId, resultado))
     await this.#preguntarSiCompleta(escuadra.id)
   }
 
   /**
-   * Un personaje no jugador del jugador en turno ataca a un enemigo suyo: como
-   * no tiene clase, resuelve el ataque `atacar` (la de quien lo maneja). Se
-   * apunta en su activación y, si resuelve que ya no le quedan acciones, su
-   * activación termina. Si `atacar` falla o se cancela, no se apunta y el
-   * error sigue. Si no puede atacar, el mapa no cambia y devuelve el motivo
+   * Por qué el personaje (de escuadra, con su clase; o no jugador, con la
+   * `clase` que le da quien lo maneja) no puede atacar ahora a ese objetivo:
+   * no puede actuar, el objetivo no es su enemigo o su clase dice que no
+   * (`motivoParaNoAtacar`: alcance, línea de visión…). Nada si puede
    */
-  async atacarNoJugador(personajeId: string, objetivoId: string, atacar: ClaseDePersonaje['atacar']): Promise<string | undefined> {
+  async motivoParaNoAtacar(personajeId: string, objetivoId: string, clase?: Pick<ClaseDePersonaje, 'motivoParaNoAtacar'>): Promise<string | undefined> {
+    const deEscuadra = this.#personajeDe(personajeId)
+    const noJugador = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    const personaje = deEscuadra?.personaje ?? noJugador
+    if (!personaje?.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
+    const motivo = deEscuadra ? motivoParaNoActuar(this.#mapa, this.configuracion, deEscuadra.escuadra.id, personajeId) : this.motivoParaNoActuarNoJugador(personajeId)
+    if (motivo) return motivo
+    const ataque = this.#ataque(personaje, objetivoId)
+    if (typeof ataque === 'string') return ataque
+    const suya = clase ?? (deEscuadra && (await this.#claseDePersonaje(deEscuadra.escuadra.id, personajeId)))
+    return suya ? suya.motivoParaNoAtacar(ataque, this) : `${personaje.nombre} no tiene clase que resuelva su ataque`
+  }
+
+  /**
+   * Un personaje no jugador del jugador en turno ataca a un enemigo suyo: como
+   * no tiene clase, lo resuelve la `clase` que le da quien lo maneja (si
+   * puede, `motivoParaNoAtacar`, y el ataque, `atacar`). Se apunta en su
+   * activación y, si resuelve que ya no le quedan acciones, su activación
+   * termina. Si `atacar` falla o se cancela, no se apunta y el error sigue. Si
+   * no puede atacar, el mapa no cambia y devuelve el motivo
+   */
+  async atacarNoJugador(personajeId: string, objetivoId: string, clase: Pick<ClaseDePersonaje, 'atacar' | 'motivoParaNoAtacar'>): Promise<string | undefined> {
     const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
     if (!personaje?.casilla) return `No hay ningún personaje no jugador «${personajeId}» colocado en el mapa`
     const motivo = this.motivoParaNoActuarNoJugador(personajeId)
     if (motivo) return motivo
     const ataque = this.#ataque(personaje, objetivoId)
     if (typeof ataque === 'string') return ataque
-    const { quedanAcciones } = await atacar(ataque, this)
+    const noPuede = clase.motivoParaNoAtacar(ataque, this)
+    if (noPuede) return noPuede
+    const { quedanAcciones } = await clase.atacar(ataque, this)
     const atacado = this.#apuntarAccionNoJugador(this.#mapa, personaje, ATACAR.id)
     this.#cambiar(quedanAcciones ? atacado : this.#apuntarAccionNoJugador(atacado, personaje, TERMINAR_TURNO.id))
   }

@@ -181,6 +181,28 @@
   text-anchor: middle;
 }
 
+/* si no puede atacarlo: apagado y con el motivo debajo */
+.vista-ataque.invalido line {
+  stroke: var(--tinta);
+  opacity: 0.4;
+}
+
+.vista-ataque.invalido circle,
+.vista-ataque.invalido text:not(.vista-ataque-motivo) {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
+
+.vista-ataque .vista-ataque-motivo {
+  font-family: var(--versalitas);
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--rubrica);
+  paint-order: stroke;
+  stroke: var(--vitela);
+  stroke-width: 3;
+}
+
 .vista-badge.agresivo circle {
   stroke: var(--rubrica);
 }

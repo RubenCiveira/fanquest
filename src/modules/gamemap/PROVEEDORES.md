@@ -72,7 +72,8 @@ movimientos con las acciones que consumieron.
 | `ClaseDeEscuadra` | `activar(acciones)` | Tras cada acción o movimiento de la escuadra, mientras se activa |
 | `ClaseDePersonaje` | `acciones(personaje, mapa)` | Al pulsar su ficha y al ejecutar una de sus acciones |
 | `ClaseDePersonaje` | `opcionesMovimiento(personaje, gastado)` | Al empezar a arrastrar su ficha y al soltarla |
-| `ClaseDePersonaje` | `atacar(ataque, mapa)` | Al soltar su ficha arrastrada sobre la de un enemigo |
+| `ClaseDePersonaje` | `motivoParaNoAtacar(ataque, mapa)` | Al pasar su ficha arrastrada por encima de un enemigo y antes de atacar |
+| `ClaseDePersonaje` | `atacar(ataque, mapa)` | Al soltar su ficha arrastrada sobre la de un enemigo, si puede |
 | `Comando` | `exec()` | Al elegir una acción que es un comando |
 
 ## ProveedorConfiguracion
@@ -249,6 +250,7 @@ interface ClaseDePersonaje {
   vida?: number      // puntos de vida con los que empieza
   opcionesMovimiento(personaje: PersonajeEnJuego, gastado: MovimientoGastado): Promise<OpcionesMovimiento | undefined>
   acciones(personaje: PersonajeEnJuego, mapa: MapaEnJuego): Promise<Accion[]>
+  motivoParaNoAtacar(ataque: Ataque, mapa: MapaEnJuego): string | undefined
   atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion>
 }
 ```
@@ -427,6 +429,12 @@ esquina, sigue en diagonal sin contar las de los lados). Con ella la clase
 puede decidir la línea de visión, la cobertura o los modificadores del
 ataque.
 
+- Antes, la clase decide si puede hacer ese ataque con sus datos
+  (`motivoParaNoAtacar`: alcance, línea de visión, cobertura bloqueante…):
+  devuelve el motivo si no puede, o nada. La vista lo pregunta al pasar la
+  ficha arrastrada por encima del enemigo (`gestor.motivoParaNoAtacar`) y,
+  si no puede, apaga el icono y muestra el motivo; el gestor lo vuelve a
+  preguntar antes de atacar y, con motivo, no ataca y lo devuelve.
 - La clase presenta el ataque (un diálogo, dados…) y aplica el resultado con
   `mapa.reducirVida(objetivo, puntos)` y, si se queda sin vida,
   `mapa.eliminarPersonaje(objetivo)`: el gestor no mata a nadie por su
@@ -441,14 +449,18 @@ ataque.
 - Los personajes empiezan con la `vida` de su clase (o de su descripción, los
   no jugadores).
 - Los personajes no jugadores no tienen clase: quien los maneja ataca con
-  `gestor.atacarNoJugador(personaje, objetivo, atacar)`, pasando la función
-  que resuelve el ataque (con la misma forma que `atacar` de una clase). Se
+  `gestor.atacarNoJugador(personaje, objetivo, clase)`, pasando quién lo
+  resuelve: un objeto con `motivoParaNoAtacar` y `atacar`, como los de una
+  clase. Para preguntar antes, `gestor.motivoParaNoAtacar(personaje,
+  objetivo, clase)`. Se
   apunta en su activación y, si resuelve `{ quedanAcciones: false }`, su
   activación termina. El banco de pruebas usa para ellos un
   `PersonajeDePrueba` (`claseDeNoJugador` del proveedor de pruebas).
 
-En el banco de pruebas, `PersonajeDePrueba` empieza con el cuerpo de su
-héroe o monstruo como vida y pinta en la consola lo que el gestor dice de
+En el banco de pruebas, `PersonajeDePrueba` ataca hasta su alcance
+(`ALCANCE_DE_PRUEBA`: el bárbaro a menos de 2 casillas, el enano hasta 5 y
+los demás a 1) y nunca si la trayectoria cruza terreno bloqueante. Empieza
+con el cuerpo de su héroe o monstruo como vida y pinta en la consola lo que el gestor dice de
 cada ataque (tipo, distancias y trayectoria). Atacar gasta su acción del
 turno: si ya no le queda, lo avisa en un diálogo y se cancela. Por ahora, un
 monstruo siempre falla contra un héroe (un diálogo: «¡ups, ha fallado!»); en
@@ -520,8 +532,8 @@ const barbaro: ClaseDePersonaje = {
       ? [{ id: 'abrir-puerta', nombre: 'Abrir puerta', icono: '🚪', exec: () => mapa.abrirPuerta(donde).then(() => ({ quedanAcciones: false })) }]
       : []
   },
-  atacar: async ({ objetivo, tipo }, mapa) => {
-    if (tipo !== 'cuerpo-a-cuerpo') throw new Error('El bárbaro solo ataca cuerpo a cuerpo')
+  motivoParaNoAtacar: ({ tipo }) => (tipo === 'cuerpo-a-cuerpo' ? undefined : 'El bárbaro solo ataca cuerpo a cuerpo'),
+  atacar: async ({ objetivo }, mapa) => {
     mapa.reducirVida(objetivo.id, 1)
     if ((objetivo.vida ?? 0) <= 1) mapa.eliminarPersonaje(objetivo.id)
     return { quedanAcciones: false }

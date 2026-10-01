@@ -30,6 +30,14 @@ export interface ClaseDePersonaje {
    */
   acciones(personaje: PersonajeEnJuego, mapa: MapaEnJuego): Promise<Accion[]>
   /**
+   * Por qué no puede hacer ese ataque (fuera de su alcance, sin línea de
+   * visión…), o nada si puede: lo decide con los datos del ataque (tipo,
+   * distancias, trayectoria). Se pregunta al pasar su ficha arrastrada por
+   * encima de un enemigo, para mostrarlo, y antes de atacar: si hay motivo,
+   * no ataca
+   */
+  motivoParaNoAtacar(ataque: Ataque, mapa: MapaEnJuego): string | undefined
+  /**
    * Ataca a un enemigo: se llama al soltar su ficha arrastrada sobre la de un
    * enemigo. Presenta el ataque (un diálogo, dados…) y aplica el resultado con
    * `mapa.reducirVida` y `mapa.eliminarPersonaje`. Como cualquier acción,

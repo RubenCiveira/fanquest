@@ -127,7 +127,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
   async function atacar(personaje: string, objetivo: string) {
     const noJugador = personajesNoJugadoresDe(mapa).find((p) => p.id === personaje)
     try {
-      setNota(noJugador ? await gestor.atacarNoJugador(personaje, objetivo, (ataque, m) => claseDeNoJugador(noJugador).atacar(ataque, m)) : await gestor.atacar(personaje, objetivo))
+      setNota(noJugador ? await gestor.atacarNoJugador(personaje, objetivo, claseDeNoJugador(noJugador)) : await gestor.atacar(personaje, objetivo))
     } catch (error) {
       if (!esCancelacion(error)) setNota(error instanceof Error ? error.message : String(error))
     }
@@ -217,6 +217,10 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         opcionesMovimiento={(personaje) => (esNoJugador(personaje) ? Promise.resolve(gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado))) : gestor.opcionesMovimiento(personaje))}
         onMover={moverPersonaje}
         onAtacar={atacar}
+        motivoParaNoAtacar={(personaje, objetivo) => {
+          const noJugador = personajesNoJugadoresDe(mapa).find((p) => p.id === personaje)
+          return gestor.motivoParaNoAtacar(personaje, objetivo, noJugador && claseDeNoJugador(noJugador))
+        }}
         medicion={configuracion.medicionMovimiento}
         terrenoPersonajes={configuracion.terrenoPersonajes}
         distanciaControl={configuracion.distanciaControl}

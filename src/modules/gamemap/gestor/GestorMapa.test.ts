@@ -62,9 +62,10 @@ function proveedor(descripcion = sala, conElfo = false) {
   const opcionesMovimiento = vi.fn(async (_personaje: PersonajeEnJuego, _gastado: MovimientoGastado) => opciones)
   const activar = vi.fn(async (_acciones: AccionEjecutada[]) => ({ completo: false }))
   const atacar = vi.fn(async (_ataque: Ataque, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
-  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', vida: 4, opcionesMovimiento, acciones, atacar }
-  const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar }
-  const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar }
+  const motivoParaNoAtacar = vi.fn((_ataque: Ataque, _mapa: MapaEnJuego): string | undefined => undefined)
+  const barbaro = { id: 'barbaro', nombre: 'Bárbaro', imagenVtt: 'barbaro.png', vida: 4, opcionesMovimiento, acciones, atacar, motivoParaNoAtacar }
+  const elfo = { id: 'elfo', nombre: 'Elfo', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
+  const enano = { id: 'enano', nombre: 'Enano', opcionesMovimiento, acciones: async () => [], atacar, motivoParaNoAtacar }
   return {
     configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, jugadores: REPARTO } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
@@ -80,6 +81,7 @@ function proveedor(descripcion = sala, conElfo = false) {
     opcionesMovimiento,
     activar,
     atacar,
+    motivoParaNoAtacar,
   }
 }
 
@@ -636,6 +638,24 @@ describe('gestor del mapa: ataques', () => {
     expect(activacionDe(gestor.mapa, 'rojos')?.terminada).toBe(false)
   })
 
+  it('si la clase dice que no puede atacarlo, no ataca y dice por qué', async () => {
+    const { gestor, p } = await conOrco()
+    p.motivoParaNoAtacar.mockReturnValueOnce('Fuera de alcance')
+    expect([await gestor.atacar('barbaro', 'orco'), p.atacar.mock.calls.length]).toEqual(['Fuera de alcance', 0])
+  })
+
+  it('se puede preguntar antes si puede atacar: lo decide su clase con los datos del ataque', async () => {
+    const { gestor, p } = await conOrco()
+    p.motivoParaNoAtacar.mockReturnValueOnce('Fuera de alcance')
+    expect([await gestor.motivoParaNoAtacar('barbaro', 'orco'), p.motivoParaNoAtacar.mock.lastCall?.[0]]).toMatchObject(['Fuera de alcance', { tipo: 'cuerpo-a-cuerpo', distancia: 1 }])
+  })
+
+  it('preguntar no ataca ni apunta nada', async () => {
+    const { gestor, p, barbaro } = await conOrco()
+    await gestor.motivoParaNoAtacar('barbaro', 'orco')
+    expect([p.atacar.mock.calls.length, turnoDePersonaje(barbaro(), 1).acciones]).toEqual([0, []])
+  })
+
   it('con reducirVida y eliminarPersonaje, la clase hiere y elimina al objetivo', async () => {
     const { gestor, p, orco } = await conOrco()
     p.atacar.mockImplementationOnce(async ({ objetivo }, mapa) => {
@@ -692,32 +712,39 @@ describe('gestor del mapa: ataques de personajes no jugadores', () => {
       turno: 1,
     })
     const atacar = vi.fn(async (_ataque: Ataque, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
-    return { gestor, atacar }
+    const motivoParaNoAtacar = vi.fn((_ataque: Ataque, _mapa: MapaEnJuego): string | undefined => undefined)
+    return { gestor, atacar, motivoParaNoAtacar, clase: { atacar, motivoParaNoAtacar } }
   }
 
   it('el ataque lo resuelve quien se le pasa, con su tipo y su distancia', async () => {
-    const { gestor, atacar } = conOrcoEnTurno()
-    await gestor.atacarNoJugador('orco', 'barbaro', atacar)
+    const { gestor, atacar, clase } = conOrcoEnTurno()
+    await gestor.atacarNoJugador('orco', 'barbaro', clase)
     expect(atacar.mock.lastCall?.[0]).toMatchObject({ atacante: { id: 'orco' }, objetivo: { id: 'barbaro' }, tipo: 'cuerpo-a-cuerpo', distancia: 1 })
   })
 
   it('si ya no le quedan acciones, su activación termina', async () => {
-    const { gestor, atacar } = conOrcoEnTurno()
-    await gestor.atacarNoJugador('orco', 'barbaro', atacar)
+    const { gestor, clase } = conOrcoEnTurno()
+    await gestor.atacarNoJugador('orco', 'barbaro', clase)
     expect(activacionDeNoJugador(gestor.mapa, 'orco')?.activacion.terminada).toBe(true)
   })
 
   it('si aún le quedan, sigue activándose', async () => {
-    const { gestor, atacar } = conOrcoEnTurno()
+    const { gestor, atacar, clase } = conOrcoEnTurno()
     atacar.mockResolvedValueOnce({ quedanAcciones: true })
-    await gestor.atacarNoJugador('orco', 'barbaro', atacar)
+    await gestor.atacarNoJugador('orco', 'barbaro', clase)
     expect(gestor.motivoParaNoActuarNoJugador('orco')).toBeUndefined()
   })
 
+  it('si la clase que se le pasa dice que no puede, no ataca y dice por qué', async () => {
+    const { gestor, atacar, motivoParaNoAtacar, clase } = conOrcoEnTurno()
+    motivoParaNoAtacar.mockReturnValueOnce('Demasiado lejos')
+    expect([await gestor.atacarNoJugador('orco', 'barbaro', clase), atacar.mock.calls.length]).toEqual(['Demasiado lejos', 0])
+  })
+
   it('no ataca a quien no es enemigo', async () => {
-    const { gestor, atacar } = conOrcoEnTurno()
+    const { gestor, clase } = conOrcoEnTurno()
     gestor.cambiarJugadores(REPARTO)
-    expect(await gestor.atacarNoJugador('orco', 'barbaro', atacar)).toBe('Bárbaro no es enemigo de Orco')
+    expect(await gestor.atacarNoJugador('orco', 'barbaro', clase)).toBe('Bárbaro no es enemigo de Orco')
   })
 })
 

@@ -302,3 +302,39 @@ describe('ataques del personaje de prueba', () => {
     expect([error instanceof DOMException && error.name, mapa.eliminarPersonaje.mock.calls.length]).toEqual(['AbortError', 0])
   })
 })
+
+describe('alcance de los ataques de prueba', () => {
+  const sinCobertura = { ninguna: 0, ligera: 0, pesada: 0, bloqueante: 0 }
+  const trayectoria = { casillas: [], aliados: 0, enemigos: 0, coberturas: sinCobertura, objetos: 0, muros: 0 }
+  const orco = enJuego<Personaje>({ id: 'orco', nombre: 'Orco', estancia: 'sala', turnos: [] })
+  const ataque = (distancia: number, bloqueante = 0) => ({
+    atacante: enJuego<Personaje>({ id: 'x', nombre: 'x', estancia: 'sala', turnos: [] }),
+    objetivo: orco,
+    tipo: 'distancia' as const,
+    distancia,
+    trayectoria: { ...trayectoria, coberturas: { ...sinCobertura, bloqueante } },
+  })
+  const clase = (id: string, nombre: string) => new PersonajeDePrueba({ id, nombre }, new PuertasDePrueba(), dialogos())
+
+  it('el bárbaro ataca a menos de 2 casillas', () => {
+    expect([clase('barbaro', 'Bárbaro').motivoParaNoAtacar(ataque(1)), clase('barbaro', 'Bárbaro').motivoParaNoAtacar(ataque(2))]).toEqual([
+      undefined,
+      'Bárbaro solo ataca hasta 1 casilla y Orco está a 2',
+    ])
+  })
+
+  it('el enano llega hasta 5', () => {
+    expect([clase('enano', 'Enano').motivoParaNoAtacar(ataque(5)), clase('enano', 'Enano').motivoParaNoAtacar(ataque(6))]).toEqual([
+      undefined,
+      'Enano solo ataca hasta 5 casillas y Orco está a 6',
+    ])
+  })
+
+  it('los demás, solo a 1', () => {
+    expect(clase('asesino-a-sueldo-1', 'Asesino').motivoParaNoAtacar(ataque(2))).toBe('Asesino solo ataca hasta 1 casilla y Orco está a 2')
+  })
+
+  it('con terreno bloqueante en medio, nadie ataca', () => {
+    expect(clase('enano', 'Enano').motivoParaNoAtacar(ataque(3, 1))).toBe('Hay terreno bloqueante entre Enano y Orco')
+  })
+})

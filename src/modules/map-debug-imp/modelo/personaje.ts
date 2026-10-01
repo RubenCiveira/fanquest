@@ -26,6 +26,13 @@ export type ResolverAtaque = (ataque: Ataque) => Promise<number>
 /** Diálogos del banco de pruebas que usa un personaje: decidir el daño de un ataque y avisar de algo (se resuelve al cerrarlo) */
 export type DialogosDePrueba = { resolverAtaque: ResolverAtaque; avisar: (aviso: { titulo: string; texto: string }) => Promise<void> }
 
+/**
+ * Hasta cuántas casillas ataca cada personaje de prueba (`Ataque.distancia`,
+ * según la medición del movimiento): el bárbaro a menos de 2 y el enano hasta
+ * 5; los demás, solo a 1
+ */
+export const ALCANCE_DE_PRUEBA: Record<string, number> = { barbaro: 1, enano: 5 }
+
 /** Un personaje de prueba hace una acción por turno (moverse no cuenta): tras ella, ya no le quedan */
 const TRAS_SU_ACCION: ResultadoAccion = { quedanAcciones: false }
 const DESLIZAR = { id: 'deslizar', nombre: 'Deslizar', icono: '💨' }
@@ -72,8 +79,9 @@ export function movimientoDePrueba({ casillas, acciones }: MovimientoGastado): O
  * Clase de un personaje del mapa de prueba: se mueve según `movimientoDePrueba`
  * y hace una acción por turno. Ofrece las acciones de los objetos de su
  * casilla (abrir la puerta que pisa…), revisar cada mueble sin revisar y coger
- * cada objeto que tiene al lado, y ataca; si ya no le queda su acción, al
- * intentarlo lo avisa en un diálogo y no la hace
+ * cada objeto que tiene al lado, y ataca hasta su alcance si no hay terreno
+ * bloqueante en medio; si ya no le queda su acción, al intentarlo lo avisa en
+ * un diálogo y no la hace
  */
 export class PersonajeDePrueba implements ClaseDePersonaje {
   readonly id: string
@@ -90,6 +98,17 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     this.vida = vida
     this.#puertas = puertas
     this.#dialogos = dialogos
+  }
+
+  /** Casillas hasta las que ataca (`ALCANCE_DE_PRUEBA`) */
+  get alcance() {
+    return ALCANCE_DE_PRUEBA[this.id] ?? 1
+  }
+
+  /** No ataca más allá de su alcance ni si la trayectoria cruza terreno bloqueante */
+  motivoParaNoAtacar({ objetivo, distancia, trayectoria }: Ataque): string | undefined {
+    if (distancia > this.alcance) return `${this.nombre} solo ataca hasta ${this.alcance} ${this.alcance === 1 ? 'casilla' : 'casillas'} y ${objetivo.nombre} está a ${distancia}`
+    if (trayectoria.coberturas.bloqueante) return `Hay terreno bloqueante entre ${this.nombre} y ${objetivo.nombre}`
   }
 
   async opcionesMovimiento(_personaje: Personaje, gastado: MovimientoGastado) {
