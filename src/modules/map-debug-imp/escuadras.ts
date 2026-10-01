@@ -65,6 +65,8 @@ export const escuadrasDePrueba = (
         id: `escuadra-monstruos-${i + 1}`,
         nombre: `Escuadra de monstruos ${i + 1}`,
         jugador: JUGADOR_MONSTRUOS,
+        // los monstruos del dueño de la mazmorra, como los solitarios, no buscan trampas
+        buscaTrampas: false,
         personajes: async () => (suyos ??= personajes.map((p) => new PersonajeDePrueba(p, puertas, dialogos))),
         modoActivacion: async () => 'sigiloso',
         activar: async (acciones) => activacionDePrueba(acciones, personajes.map((p) => p.id)),

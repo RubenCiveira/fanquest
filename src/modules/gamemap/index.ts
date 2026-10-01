@@ -65,7 +65,7 @@ export {
 export { conVidaReducida, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
 export { anadirPersonajesNoJugadores, huecoDePersonaje, sitioParaPersonaje } from './apariciones'
 export { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores, postura } from './jugadores'
-export { apoyosDe, estaTrabado } from './zonaDeControl'
+export { apoyosDe, estaTrabado, trabadoPor } from './zonaDeControl'
 export { construirEstancia } from './construccion'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
 export { anidar, crearEstancia, estanciaEn, estanciasDe, motivoParaNoAnidar } from './estancias'

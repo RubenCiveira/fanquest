@@ -92,7 +92,7 @@ export function transitable(m: Mapa, c: Casilla): boolean {
 }
 
 /** Personajes del mapa enemigos del personaje: los de alianzas hostiles hacia la suya */
-const enemigosDe = (m: Mapa, personaje: string): Personaje[] => {
+export const enemigosDe = (m: Mapa, personaje: string): Personaje[] => {
   const alianza = jugadorDe(m, personaje)?.alianza
   return todosLosPersonajes(m).filter((p) => esEnemigo(m, p.id, alianza))
 }

@@ -243,6 +243,7 @@ interface ClaseDeEscuadra {
   id: string
   nombre: string
   jugador: string // id de un jugador de `configuracion.jugadores`
+  buscaTrampas?: boolean // si sus personajes pueden «Buscar trampas»; sin decirlo, sí
   personajes(): Promise<ClaseDePersonaje[]>
   modoActivacion(): Promise<'agresivo' | 'sigiloso'>
   activar(acciones: AccionEjecutada[]): Promise<ResultadoActivacion>
@@ -294,7 +295,10 @@ ha hecho y compone sus acciones. El gestor no pregunta a los objetos ni
 mezcla nada: solo añade detrás las suyas:
 
 - «Buscar trampas» (`buscar-trampas`), mientras la estancia no esté marcada
-  `sin_trampas`; al ejecutarla la marca.
+  `sin_trampas` y la escuadra busque trampas (`ClaseDeEscuadra.buscaTrampas`
+  no es `false`); al ejecutarla la marca. En el banco de pruebas, las
+  escuadras de monstruos del dueño de la mazmorra no buscan trampas, igual
+  que los monstruos solitarios.
 - «Agrupar aquí» (`agrupar`), si la escuadra tiene más personajes: cada uno de
   los demás que está colocado se mueve, con su movimiento restante
   (`opcionesMovimiento` de su clase, solo la opción base: sin acciones
@@ -388,6 +392,7 @@ el mapa, calculado al preguntarlo (con el mapa de ese momento):
 ```ts
 type PersonajeEnJuego = Personaje & {
   estaTrabado(): boolean           // en la zona de control (`distanciaControl`) de algún enemigo: trabado en cuerpo a cuerpo
+  trabadoPor(): PersonajeEnJuego[] // los enemigos en cuya zona de control está: los que lo traban
   conApoyos(): PersonajeEnJuego[]  // los que están en su zona de control y lo consideran aliado (alianza aliada o la misma)
 }
 ```
@@ -464,7 +469,8 @@ ataque.
 
 En el banco de pruebas, `PersonajeDePrueba` ataca hasta su alcance
 (`ALCANCE_DE_PRUEBA`: el bárbaro a menos de 2 casillas, el enano hasta 5 y
-los demás a 1) y nunca si la trayectoria cruza terreno bloqueante. Empieza
+los demás a 1), nunca si la trayectoria cruza terreno bloqueante y, trabado,
+solo a uno de los que lo traban (`trabadoPor`). Empieza
 con el cuerpo de su héroe o monstruo como vida y pinta en la consola lo que el gestor dice de
 cada ataque (tipo, distancias y trayectoria). Atacar gasta su acción del
 turno: si ya no le queda, lo avisa en un diálogo y se cancela. Por ahora, un

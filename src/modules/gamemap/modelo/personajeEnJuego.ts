@@ -9,6 +9,8 @@ import type { Personaje } from './personaje'
 export type PersonajeEnJuego = Personaje & {
   /** Si está en la zona de control de algún enemigo: trabado en cuerpo a cuerpo */
   estaTrabado(): boolean
+  /** Los enemigos en cuya zona de control está: los que lo traban */
+  trabadoPor(): PersonajeEnJuego[]
   /** Los personajes en su zona de control que lo consideran aliado (su alianza es aliada de la suya, o es la misma) */
   conApoyos(): PersonajeEnJuego[]
 }

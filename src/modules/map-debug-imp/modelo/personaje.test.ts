@@ -6,7 +6,7 @@ import { JUGADORES_DE_PRUEBA } from '../configuracion'
 import { PuertasDePrueba } from './puerta'
 
 /** El personaje en juego, sin trabar y sin apoyos */
-const enJuego = <P extends Personaje>(p: P): P & PersonajeEnJuego => ({ ...p, estaTrabado: () => false, conApoyos: () => [] })
+const enJuego = <P extends Personaje>(p: P): P & PersonajeEnJuego => ({ ...p, estaTrabado: () => false, trabadoPor: () => [], conApoyos: () => [] })
 
 /** Diálogos del banco de pruebas: el daño que se decide y el aviso, que se cierra al momento */
 const dialogos = (dano = 1) => ({ resolverAtaque: vi.fn(async () => dano), avisar: vi.fn(async (_aviso: { titulo: string; texto: string }) => {}) })
@@ -338,3 +338,28 @@ describe('alcance de los ataques de prueba', () => {
     expect(clase('enano', 'Enano').motivoParaNoAtacar(ataque(3, 1))).toBe('Hay terreno bloqueante entre Enano y Orco')
   })
 })
+
+describe('atacar trabado', () => {
+  const sinCobertura = { ninguna: 0, ligera: 0, pesada: 0, bloqueante: 0 }
+  const trayectoria = { casillas: [], aliados: 0, enemigos: 0, coberturas: sinCobertura, objetos: 0, muros: 0 }
+  const orco = enJuego<Personaje>({ id: 'orco', nombre: 'Orco', estancia: 'sala', turnos: [] })
+  const goblin = enJuego<Personaje>({ id: 'goblin', nombre: 'Goblin', estancia: 'sala', turnos: [] })
+  /** El bárbaro trabado por el orco ataca a ese objetivo, pegado */
+  const ataqueA = (objetivo: typeof orco) => ({
+    atacante: { ...enJuego<Personaje>({ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', turnos: [] }), estaTrabado: () => true, trabadoPor: () => [orco] },
+    objetivo,
+    tipo: 'cuerpo-a-cuerpo' as const,
+    distancia: 1,
+    trayectoria,
+  })
+  const barbaro = () => new PersonajeDePrueba({ id: 'barbaro', nombre: 'Bárbaro' }, new PuertasDePrueba(), dialogos())
+
+  it('trabado, puede atacar a quien lo traba', () => {
+    expect(barbaro().motivoParaNoAtacar(ataqueA(orco))).toBeUndefined()
+  })
+
+  it('trabado, no puede atacar a otro', () => {
+    expect(barbaro().motivoParaNoAtacar(ataqueA(goblin))).toBe('Bárbaro está trabado: solo puede atacar a Orco')
+  })
+})
+

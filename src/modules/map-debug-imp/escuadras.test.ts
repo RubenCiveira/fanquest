@@ -4,7 +4,7 @@ import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA } from './modelo/personaje'
 import { PuertasDePrueba } from './modelo/puerta'
 
 /** Estado de un personaje recién colocado */
-const enJuego = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', turnos: [], estaTrabado: () => false, conApoyos: () => [] }
+const enJuego = { id: 'barbaro', nombre: 'Bárbaro', estancia: 'estancia-1', turnos: [], estaTrabado: () => false, trabadoPor: () => [], conApoyos: () => [] }
 
 describe('escuadras de prueba', () => {
   const escuadras = () => escuadrasDePrueba(new PuertasDePrueba()).listarEscuadras()
@@ -69,5 +69,14 @@ describe('escuadras de prueba', () => {
 
   it('usar una acción sin moverse no completa la activación', () => {
     expect(activacionDePrueba([{ accion: 'cambiar-modo' }], ['barbaro'])).toEqual({ completo: false })
+  })
+
+  it('las escuadras de monstruos no buscan trampas; las de héroes, sí', async () => {
+    const { listarEscuadras } = escuadrasDePrueba(new PuertasDePrueba(), () => [[{ id: 'orco-1', nombre: 'Orco', jugador: 'oscuridad' }]])
+    expect((await listarEscuadras()).map((e) => [e.id, e.buscaTrampas ?? true])).toEqual([
+      ['escuadra-barbaro', true],
+      ['escuadra-enano', true],
+      ['escuadra-monstruos-1', false],
+    ])
   })
 })

@@ -1,14 +1,21 @@
 import { todosLosPersonajes } from './activaciones'
 import { jugadorDe, postura } from './jugadores'
-import { casillasDeEnemigos, enElMapa, enZonaDeControl } from './movimiento'
+import { enElMapa, enemigosDe, enZonaDeControl } from './movimiento'
 import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
 
-/** Si el personaje está en la zona de control (a `distanciaControl` o menos) de algún enemigo: trabado en cuerpo a cuerpo. No, si no está colocado */
-export function estaTrabado(m: Mapa, distanciaControl: number, personaje: Personaje): boolean {
+/** Enemigos colocados en cuya zona de control (a `distanciaControl` o menos) está el personaje: los que lo traban en cuerpo a cuerpo. Ninguno si no está colocado */
+export function trabadoPor(m: Mapa, distanciaControl: number, personaje: Personaje): Personaje[] {
   const suya = enElMapa(m, personaje)
-  return !!suya && enZonaDeControl(casillasDeEnemigos(m, personaje.id), distanciaControl)(suya)
+  if (!suya) return []
+  return enemigosDe(m, personaje.id).filter((en) => {
+    const donde = enElMapa(m, en)
+    return !!donde && enZonaDeControl([donde], distanciaControl)(suya)
+  })
 }
+
+/** Si el personaje está en la zona de control de algún enemigo: trabado en cuerpo a cuerpo */
+export const estaTrabado = (m: Mapa, distanciaControl: number, personaje: Personaje): boolean => trabadoPor(m, distanciaControl, personaje).length > 0
 
 /**
  * Personajes colocados en la zona de control del personaje (a

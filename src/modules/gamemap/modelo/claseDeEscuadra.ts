@@ -9,6 +9,8 @@ export interface ClaseDeEscuadra {
   nombre: string
   /** Id del jugador del que es, de los de la configuración */
   jugador: string
+  /** Si sus personajes pueden buscar trampas (la acción «Buscar trampas» del gestor); sin decirlo, sí */
+  buscaTrampas?: boolean
   personajes(): Promise<ClaseDePersonaje[]>
   /** Modo en que empieza, si la configuración permite modo agresivo o sigiloso */
   modoActivacion(): Promise<ModoAgresivoSigiloso>

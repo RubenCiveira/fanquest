@@ -109,8 +109,15 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     return ALCANCE_DE_PRUEBA[this.id] ?? 1
   }
 
-  /** No ataca más allá de su alcance ni si la trayectoria cruza terreno bloqueante */
-  motivoParaNoAtacar({ objetivo, distancia, trayectoria }: Ataque): string | undefined {
+  /**
+   * Trabado en cuerpo a cuerpo, solo ataca a uno de los que lo traban; y no
+   * ataca más allá de su alcance ni si la trayectoria cruza terreno bloqueante
+   */
+  motivoParaNoAtacar({ atacante, objetivo, distancia, trayectoria }: Ataque): string | undefined {
+    const loTraban = atacante.trabadoPor()
+    if (loTraban.length && !loTraban.some((p) => p.id === objetivo.id)) {
+      return `${this.nombre} está trabado: solo puede atacar a ${loTraban.map((p) => p.nombre).join(' o ')}`
+    }
     if (distancia > this.alcance) return `${this.nombre} solo ataca hasta ${this.alcance} ${this.alcance === 1 ? 'casilla' : 'casillas'} y ${objetivo.nombre} está a ${distancia}`
     if (trayectoria.coberturas.bloqueante) return `Hay terreno bloqueante entre ${this.nombre} y ${objetivo.nombre}`
   }

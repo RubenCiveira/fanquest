@@ -92,8 +92,9 @@ mismo sitio.
 - **Enemigo**: personaje de una alianza hostil hacia la del que se mueve. Su
   casilla es impasable y cuenta para alejarse o cargar.
 - **Personaje en juego**: lo que reciben las clases del proyecto: el estado
-  del personaje con `estaTrabado()` (en la zona de control de un enemigo) y
-  `conApoyos()` (los aliados en su zona de control), calculados al
+  del personaje con `estaTrabado()` (en la zona de control de un enemigo),
+  `trabadoPor()` (esos enemigos) y `conApoyos()` (los aliados en su zona de
+  control), calculados al
   preguntarlos. `MapaEnJuego` da cualquier otro (`personaje`, `personajesEn`).
 - **Clase de escuadra y de personaje**: las da el proyecto (`ProveedorPersonajes`) y
   dicen qué puede hacer cada uno: sus personajes, su modo de partida y cuándo

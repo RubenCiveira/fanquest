@@ -4,7 +4,7 @@ import type { Postura } from './modelo/alianza'
 import type { Casilla } from './modelo/casilla'
 import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
-import { apoyosDe, estaTrabado } from './zonaDeControl'
+import { apoyosDe, estaTrabado, trabadoPor } from './zonaDeControl'
 
 const personaje = (id: string, casilla: Casilla): Personaje => ({ id, nombre: id, estancia: 'sala', casilla, turnos: [] })
 const barbaro = personaje('barbaro', { x: 2, y: 2 })
@@ -55,6 +55,22 @@ describe('trabado en cuerpo a cuerpo', () => {
 
   it('a su lado alguien que no es enemigo no lo traba', () => {
     expect(estaTrabado(sala({ orcos: [personaje('orco', { x: 3, y: 2 })], monstruos: 'neutral' }), 1, barbaro)).toBe(false)
+  })
+})
+
+describe('quién lo traba', () => {
+  const ids = (m: Mapa) => trabadoPor(m, 1, barbaro).map((p) => p.id)
+
+  it('los enemigos en cuya zona de control está', () => {
+    expect(ids(sala({ orcos: [personaje('orco', { x: 3, y: 3 }), personaje('troll', { x: 1, y: 2 })] }))).toEqual(['orco', 'troll'])
+  })
+
+  it('no los que están lejos', () => {
+    expect(ids(sala({ orcos: [personaje('orco', { x: 3, y: 3 }), personaje('troll', { x: 5, y: 4 })] }))).toEqual(['orco'])
+  })
+
+  it('no los que no son enemigos', () => {
+    expect(ids(sala({ orcos: [personaje('orco', { x: 3, y: 3 })], monstruos: 'neutral' }))).toEqual([])
   })
 })
 

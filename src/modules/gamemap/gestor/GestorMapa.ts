@@ -26,7 +26,7 @@ import { estanciasDe } from '../estancias'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillasDeEnemigos, conPersonajes, desplazar, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
-import { apoyosDe, estaTrabado } from '../zonaDeControl'
+import { apoyosDe, estaTrabado, trabadoPor } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
 import type { Ataque } from '../modelo/ataque'
 import type { ModoActivacion } from '../modelo/activacion'
@@ -313,7 +313,7 @@ export class GestorMapa implements MapaEnJuego {
     if (motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)) return []
     return [
       ...(await this.#accionesDelPersonaje(escuadraId, personajeId)),
-      ...this.#accionesDeEstancia(escuadraId, personajeId),
+      ...(await this.#accionesDeEstancia(escuadraId, personajeId)),
       ...this.#accionesDeEscuadra(escuadraId, personajeId),
       ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId),
     ]
@@ -337,7 +337,7 @@ export class GestorMapa implements MapaEnJuego {
     const motivo = motivoParaNoActuar(this.#mapa, this.configuracion, escuadraId, personajeId)
     if (motivo) return motivo
     const delPersonaje = (await this.#accionesDelPersonaje(escuadraId, personajeId)).find((a) => a.id === accionId)
-    const deEstancia = this.#accionesDeEstancia(escuadraId, personajeId).find((a) => a.id === accionId)
+    const deEstancia = (await this.#accionesDeEstancia(escuadraId, personajeId)).find((a) => a.id === accionId)
     const deEscuadra = this.#accionesDeEscuadra(escuadraId, personajeId).find((a) => a.id === accionId)
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
     if (!delPersonaje && !deEstancia && !deEscuadra && !delGestor) return `«${accionId}» no es una acción disponible ahora`
@@ -378,6 +378,7 @@ export class GestorMapa implements MapaEnJuego {
     return {
       ...personaje,
       estaTrabado: () => estaTrabado(this.#mapa, this.configuracion.distanciaControl, ahora()),
+      trabadoPor: () => trabadoPor(this.#mapa, this.configuracion.distanciaControl, ahora()).map((p) => this.#enJuego(p)),
       conApoyos: () => apoyosDe(this.#mapa, this.configuracion.distanciaControl, ahora()).map((p) => this.#enJuego(p)),
     }
   }
@@ -646,10 +647,12 @@ export class GestorMapa implements MapaEnJuego {
     return clase ? clase.acciones(this.#enJuego(encontrado.personaje), this) : []
   }
 
-  #accionesDeEstancia(escuadraId: string, personajeId?: string): Accion[] {
+  /** «Buscar trampas», para el personaje colocado de una escuadra que busca trampas (`ClaseDeEscuadra.buscaTrampas`) en una estancia sin buscar */
+  async #accionesDeEstancia(escuadraId: string, personajeId?: string): Promise<Accion[]> {
     const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
     if (!encontrado?.personaje.casilla || encontrado.escuadra.id !== escuadraId || this.tieneFlag(encontrado.personaje.estancia, 'sin_trampas')) return []
-    return [BUSCAR_TRAMPAS]
+    const clase = (await this.#listarEscuadras()).find((e) => e.id === escuadraId)
+    return clase?.buscaTrampas === false ? [] : [BUSCAR_TRAMPAS]
   }
 
   /**

@@ -748,6 +748,24 @@ describe('gestor del mapa: ataques de personajes no jugadores', () => {
   })
 })
 
+describe('gestor del mapa: buscar trampas', () => {
+  it('los personajes de una escuadra buscan trampas', async () => {
+    const { gestor } = await conInicial()
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toContain('buscar-trampas')
+  })
+
+  it('salvo si su escuadra no busca trampas', async () => {
+    const p = proveedor()
+    const escuadras = await p.listarEscuadras()
+    const gestor = new GestorMapa({ ...p, listarEscuadras: async () => escuadras.map((e) => ({ ...e, buscaTrampas: false })) })
+    await gestor.nuevaEstancia()
+    expect([(await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id), await gestor.ejecutarAccion('rojos', 'buscar-trampas', 'barbaro')]).toEqual([
+      expect.not.arrayContaining(['buscar-trampas']),
+      '«buscar-trampas» no es una acción disponible ahora',
+    ])
+  })
+})
+
 describe('gestor del mapa: personajes en juego', () => {
   /** El bárbaro y el enano de los rojos en 1,1 y 2,1, con zona de control de una casilla */
   function conZona() {
@@ -799,6 +817,12 @@ describe('gestor del mapa: personajes en juego', () => {
     const barbaro = gestor.personaje('barbaro')
     conOrco()
     expect(barbaro?.estaTrabado()).toBe(true)
+  })
+
+  it('dice quién lo traba', () => {
+    const { gestor, conOrco } = conZona()
+    conOrco()
+    expect(gestor.personaje('barbaro')?.trabadoPor().map((p) => p.id)).toEqual(['orco'])
   })
 
   it('el mapa en juego da los personajes de una estancia', () => {
