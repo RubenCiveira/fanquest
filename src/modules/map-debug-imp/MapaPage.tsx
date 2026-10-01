@@ -51,7 +51,7 @@ type Seleccion = { estancia: string; elemento: string }
  * atarlas a este gestor: StrictMode crea dos y React se queda con uno)
  */
 function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
-  const { proveedor, dialogo, configuracion, cambiarConfiguracion } = useProveedorDebug(inicial)
+  const { proveedor, claseDeNoJugador, dialogo, configuracion, cambiarConfiguracion } = useProveedorDebug(inicial)
   const [gestor] = useState(() => {
     const nuevo = new GestorMapa(proveedor, inicial)
     inicial.estancias.forEach((e) => proveedor.estanciaCreada(e, nuevo))
@@ -119,10 +119,15 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
     setNota(motivo)
   }
 
-  /** El personaje ataca al enemigo sobre el que se soltó su ficha; si se cancela el diálogo de ataque, no pasa nada */
+  /**
+   * El personaje ataca al enemigo sobre el que se soltó su ficha (un no
+   * jugador, con su clase de prueba); si se cancela el diálogo de ataque, no
+   * pasa nada
+   */
   async function atacar(personaje: string, objetivo: string) {
+    const noJugador = personajesNoJugadoresDe(mapa).find((p) => p.id === personaje)
     try {
-      setNota(await gestor.atacar(personaje, objetivo))
+      setNota(noJugador ? await gestor.atacarNoJugador(personaje, objetivo, (ataque, m) => claseDeNoJugador(noJugador).atacar(ataque, m)) : await gestor.atacar(personaje, objetivo))
     } catch (error) {
       if (!esCancelacion(error)) setNota(error instanceof Error ? error.message : String(error))
     }

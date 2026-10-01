@@ -387,13 +387,18 @@ type Ataque = {
 
 - Los personajes empiezan con la `vida` de su clase (o de su descripción, los
   no jugadores).
-- De momento solo atacan los personajes de escuadra: los no jugadores no
-  tienen clase.
+- Los personajes no jugadores no tienen clase: quien los maneja ataca con
+  `gestor.atacarNoJugador(personaje, objetivo, atacar)`, pasando la función
+  que resuelve el ataque (con la misma forma que `atacar` de una clase). Se
+  apunta en su activación y, si resuelve `{ quedanAcciones: false }`, su
+  activación termina. El banco de pruebas usa para ellos un
+  `PersonajeDePrueba` (`claseDeNoJugador` del proveedor de pruebas).
 
 En el banco de pruebas, `PersonajeDePrueba` empieza con el cuerpo de su
 héroe o monstruo como vida. Atacar gasta su acción del turno: si ya no le
 queda, lo avisa en un diálogo y se cancela. Por ahora, un héroe mata sin más
-al monstruo que ataca (lo elimina de la estancia); en los demás ataques pide
+al monstruo que ataca (lo elimina de la estancia) y un monstruo siempre falla
+contra un héroe (un diálogo: «¡ups, ha fallado!»); en los demás ataques pide
 el daño en un diálogo (`DialogoAtaque`), se lo quita al objetivo y, si se
 queda sin vida, lo elimina. Resuelve `{ quedanAcciones: false }`.
 

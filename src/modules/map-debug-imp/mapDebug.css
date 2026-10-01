@@ -362,8 +362,10 @@
   fill: var(--grafito);
 }
 
-/* personajes de otras escuadras mientras una se activa: apagados hasta que termine */
-.vista-elemento.personaje.esperando {
+/* personajes que no pueden actuar ahora: apagados, pero con el disco opaco para que el terreno de debajo no los tape */
+.vista-elemento.personaje.esperando > image,
+.vista-elemento.personaje.esperando > text,
+.vista-elemento.personaje.esperando > g {
   opacity: 0.45;
   filter: blur(0.6px) grayscale(0.6);
 }

@@ -13,6 +13,7 @@ import {
   type Mapa,
   type MapaEnJuego,
   type ModoActivacion,
+  type PersonajeNoJugador,
   type ProveedorMapa,
 } from '../gamemap'
 import { AvisoFinTurno, AvisoTrampas, AvisoTurno } from './AvisoTurno'
@@ -20,6 +21,7 @@ import { cargarConfiguracion, guardarConfiguracion, JUGADOR_MONSTRUOS } from './
 import { DialogoAtaque } from './DialogoAtaque'
 import { DialogoEstancia } from './DialogoEstancia'
 import { escuadrasDePrueba } from './escuadras'
+import { PersonajeDePrueba, type DialogosDePrueba } from './modelo/personaje'
 import { PuertasDePrueba } from './modelo/puerta'
 
 /** Pregunta de `confirmar` pendiente de respuesta */
@@ -38,8 +40,11 @@ export const esCancelacion = (error: unknown) => error instanceof DOMException &
  * confirmaciones, un diálogo de confirmar o cancelar. Tras cada activación
  * avisa en otro diálogo de a quién le toca.
  * A cada estancia creada se le asocian puertas de prueba (`PuertasDePrueba`),
- * cuyas acciones (abrirse) ofrecen los personajes que las pisan. El `dialogo` se pinta en la página; cerrarlo sin
- * crear rechaza la promesa con una cancelación (`esCancelacion`)
+ * cuyas acciones (abrirse) ofrecen los personajes que las pisan. Los
+ * personajes no jugadores, que no tienen clase en el gestor, resuelven lo que
+ * hacen con la de prueba (`claseDeNoJugador`). El `dialogo` se pinta en la
+ * página; cerrarlo sin crear rechaza la promesa con una cancelación
+ * (`esCancelacion`)
  */
 export function useProveedorDebug(inicial?: Mapa) {
   const [peticion, setPeticion] = useState<Peticion>()
@@ -71,25 +76,28 @@ export function useProveedorDebug(inicial?: Mapa) {
     setConfiguracion(nueva)
   }
 
-  const proveedor = useMemo<ProveedorMapa>(() => {
+  const { proveedor, claseDeNoJugador } = useMemo(() => {
     const puertas = new PuertasDePrueba()
-    return {
+    const dialogos: DialogosDePrueba = {
+      resolverAtaque: (ataque) =>
+        new Promise((resolve, reject) =>
+          setAtaque({
+            ataque,
+            responder: (dano) => (setAtaque(undefined), resolve(dano)),
+            cancelar: () => (setAtaque(undefined), reject(new DOMException('Ataque cancelado', 'AbortError'))),
+          }),
+        ),
+      avisar: (aviso) => new Promise((resolve) => setAviso({ ...aviso, cerrar: () => (setAviso(undefined), resolve()) })),
+    }
+    /** Los personajes no jugadores no tienen clase en el gestor: la de prueba, para resolver lo que hacen (atacar…) */
+    const claseDeNoJugador = (personaje: PersonajeNoJugador) => new PersonajeDePrueba(personaje, puertas, dialogos)
+    const proveedor: ProveedorMapa = {
       get configuracion() {
         return vigente.current
       },
       confirmar: (mensaje) =>
         new Promise((resolve) => setConfirmacion({ mensaje, responder: (si) => (setConfirmacion(undefined), resolve(si)) })),
-      ...escuadrasDePrueba(puertas, escuadrasMonstruos.listar, {
-        resolverAtaque: (ataque) =>
-          new Promise((resolve, reject) =>
-            setAtaque({
-              ataque,
-              responder: (dano) => (setAtaque(undefined), resolve(dano)),
-              cancelar: () => (setAtaque(undefined), reject(new DOMException('Ataque cancelado', 'AbortError'))),
-            }),
-          ),
-        avisar: (aviso) => new Promise((resolve) => setAviso({ ...aviso, cerrar: () => (setAviso(undefined), resolve()) })),
-      }),
+      ...escuadrasDePrueba(puertas, escuadrasMonstruos.listar, dialogos),
       estanciaCreada: (estancia) => puertas.asociar(estancia),
       turnoDe: (jugador, mapa) =>
         setTurno({
@@ -109,6 +117,7 @@ export function useProveedorDebug(inicial?: Mapa) {
           }),
         ),
     }
+    return { proveedor, claseDeNoJugador }
   }, [escuadrasMonstruos.listar])
 
   const dialogo = (
@@ -139,5 +148,5 @@ export function useProveedorDebug(inicial?: Mapa) {
       )}
     </>
   )
-  return { proveedor, dialogo, configuracion, cambiarConfiguracion }
+  return { proveedor, claseDeNoJugador, dialogo, configuracion, cambiarConfiguracion }
 }

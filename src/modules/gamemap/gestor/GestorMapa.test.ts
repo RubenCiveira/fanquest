@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { activacionDe, numeroDeTurno, turnoDeEscuadra, turnoDePersonaje } from '../activaciones'
+import { activacionDe, activacionDeNoJugador, numeroDeTurno, turnoDeEscuadra, turnoDePersonaje } from '../activaciones'
 import type { Accion } from '../modelo/accion'
 import type { AccionEjecutada } from '../modelo/accionEjecutada'
 import type { Ataque } from '../modelo/ataque'
@@ -668,6 +668,55 @@ describe('gestor del mapa: ataques', () => {
     p.atacar.mockRejectedValueOnce(new Error('cancelado'))
     await expect(gestor.atacar('barbaro', 'orco')).rejects.toThrow('cancelado')
     expect(turnoDePersonaje(barbaro(), 1).acciones).toEqual([])
+  })
+})
+
+describe('gestor del mapa: ataques de personajes no jugadores', () => {
+  /** El orco de la Oscuridad en 0,0 y el bárbaro (los rojos ya terminaron) en 1,0, con Héroes y Monstruos hostiles entre sí: le toca a la Oscuridad */
+  function conOrcoEnTurno() {
+    const mutuo: Jugadores = { ...REPARTO, alianzas: [{ id: 'heroes', nombre: 'Héroes', posturas: { monstruos: 'hostil' } }, REPARTO.alianzas[1]] }
+    const gestor = new GestorMapa(proveedor(), {
+      estancias: [{ id: 'sala', tipo: 'sala', columnas: 5, filas: 3, puertas: [], elementos: [], estancias: [] }],
+      escuadras: [
+        {
+          id: 'rojos',
+          nombre: 'Rojos',
+          jugador: 'j1',
+          personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', casilla: { x: 1, y: 0 }, vida: 4, turnos: [] }],
+          turnos: [{ numero: 1, activacion: { modo: 'normal', terminada: true }, acciones: [] }],
+        },
+      ],
+      personajesNoJugadores: [{ id: 'orco', nombre: 'Orco', estancia: 'sala', casilla: { x: 0, y: 0 }, turnos: [], jugador: 'oscuridad' }],
+      jugadores: mutuo,
+      turno: 1,
+    })
+    const atacar = vi.fn(async (_ataque: Ataque, _mapa: MapaEnJuego): Promise<ResultadoAccion> => ({ quedanAcciones: false }))
+    return { gestor, atacar }
+  }
+
+  it('el ataque lo resuelve quien se le pasa, con su tipo y su distancia', async () => {
+    const { gestor, atacar } = conOrcoEnTurno()
+    await gestor.atacarNoJugador('orco', 'barbaro', atacar)
+    expect(atacar.mock.lastCall?.[0]).toMatchObject({ atacante: { id: 'orco' }, objetivo: { id: 'barbaro' }, tipo: 'cuerpo-a-cuerpo', distancia: 1 })
+  })
+
+  it('si ya no le quedan acciones, su activación termina', async () => {
+    const { gestor, atacar } = conOrcoEnTurno()
+    await gestor.atacarNoJugador('orco', 'barbaro', atacar)
+    expect(activacionDeNoJugador(gestor.mapa, 'orco')?.activacion.terminada).toBe(true)
+  })
+
+  it('si aún le quedan, sigue activándose', async () => {
+    const { gestor, atacar } = conOrcoEnTurno()
+    atacar.mockResolvedValueOnce({ quedanAcciones: true })
+    await gestor.atacarNoJugador('orco', 'barbaro', atacar)
+    expect(gestor.motivoParaNoActuarNoJugador('orco')).toBeUndefined()
+  })
+
+  it('no ataca a quien no es enemigo', async () => {
+    const { gestor, atacar } = conOrcoEnTurno()
+    gestor.cambiarJugadores(REPARTO)
+    expect(await gestor.atacarNoJugador('orco', 'barbaro', atacar)).toBe('Bárbaro no es enemigo de Orco')
   })
 })
 

@@ -27,6 +27,7 @@ import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores
 import { accionesAdicionales, accionesConsumidas, casillasDeEnemigos, conPersonajes, desplazar, evaluarRecorrido, gastadoPor, mover } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import type { Accion } from '../modelo/accion'
+import type { Ataque } from '../modelo/ataque'
 import type { ModoActivacion } from '../modelo/activacion'
 import type { Casilla } from '../modelo/casilla'
 import type { ClaseDeEscuadra } from '../modelo/claseDeEscuadra'
@@ -454,15 +455,41 @@ export class GestorMapa implements MapaEnJuego {
     const { personaje, escuadra } = encontrado
     const motivo = motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personajeId)
     if (motivo) return motivo
-    const objetivo = todosLosPersonajes(this.#mapa).find((p) => p.id === objetivoId)
-    const medida = objetivo && medirAtaque(this.#mapa, personaje, objetivo)
-    if (!objetivo || !medida) return `No hay ningún personaje «${objetivoId}» colocado en el mapa`
-    if (!esEnemigo(this.#mapa, objetivoId, jugadorDe(this.#mapa, personajeId)?.alianza)) return `${objetivo.nombre} no es enemigo de ${personaje.nombre}`
+    const ataque = this.#ataque(personaje, objetivoId)
+    if (typeof ataque === 'string') return ataque
     const clase = await this.#claseDePersonaje(escuadra.id, personajeId)
     if (!clase) return `${personaje.nombre} no tiene clase que resuelva su ataque`
-    const resultado = await clase.atacar({ atacante: personaje, objetivo, ...medida }, this)
+    const resultado = await clase.atacar(ataque, this)
     this.#cambiar(ejecutarAccion(this.#mapa, this.configuracion, escuadra.id, ATACAR.id, personajeId, resultado))
     await this.#preguntarSiCompleta(escuadra.id)
+  }
+
+  /**
+   * Un personaje no jugador del jugador en turno ataca a un enemigo suyo: como
+   * no tiene clase, resuelve el ataque `atacar` (la de quien lo maneja). Se
+   * apunta en su activación y, si resuelve que ya no le quedan acciones, su
+   * activación termina. Si `atacar` falla o se cancela, no se apunta y el
+   * error sigue. Si no puede atacar, el mapa no cambia y devuelve el motivo
+   */
+  async atacarNoJugador(personajeId: string, objetivoId: string, atacar: ClaseDePersonaje['atacar']): Promise<string | undefined> {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    if (!personaje?.casilla) return `No hay ningún personaje no jugador «${personajeId}» colocado en el mapa`
+    const motivo = this.motivoParaNoActuarNoJugador(personajeId)
+    if (motivo) return motivo
+    const ataque = this.#ataque(personaje, objetivoId)
+    if (typeof ataque === 'string') return ataque
+    const { quedanAcciones } = await atacar(ataque, this)
+    const atacado = this.#apuntarAccionNoJugador(this.#mapa, personaje, ATACAR.id)
+    this.#cambiar(quedanAcciones ? atacado : this.#apuntarAccionNoJugador(atacado, personaje, TERMINAR_TURNO.id))
+  }
+
+  /** El ataque del personaje a ese objetivo (tipo y distancia), o por qué no puede: no está colocado o no es su enemigo */
+  #ataque(atacante: Personaje, objetivoId: string): Ataque | string {
+    const objetivo = todosLosPersonajes(this.#mapa).find((p) => p.id === objetivoId)
+    const medida = objetivo && medirAtaque(this.#mapa, atacante, objetivo)
+    if (!objetivo || !medida) return `No hay ningún personaje «${objetivoId}» colocado en el mapa`
+    if (!esEnemigo(this.#mapa, objetivoId, jugadorDe(this.#mapa, atacante.id)?.alianza)) return `${objetivo.nombre} no es enemigo de ${atacante.nombre}`
+    return { atacante, objetivo, ...medida }
   }
 
   reducirVida(personajeId: string, puntos: number): string | undefined {

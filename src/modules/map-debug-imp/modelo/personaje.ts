@@ -118,8 +118,9 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
 
   /**
    * Si aún le queda su acción del turno: un héroe mata sin más al monstruo
-   * que ataca (lo elimina de la estancia); en otro caso, pide el daño del
-   * ataque (`resolverAtaque`: el diálogo del banco de pruebas), se lo quita al
+   * que ataca (lo elimina de la estancia) y un monstruo falla siempre contra
+   * un héroe (lo avisa en un diálogo); en otro caso, pide el daño del ataque
+   * (`resolverAtaque`: el diálogo del banco de pruebas), se lo quita al
    * objetivo y, si se queda sin vida, lo elimina del mapa
    */
   async atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion> {
@@ -129,6 +130,10 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     if (esMonstruo(objetivo.id) && !esMonstruo(atacante.id)) {
       const motivo = mapa.eliminarPersonaje(objetivo.id)
       if (motivo) throw new Error(motivo)
+      return TRAS_SU_ACCION
+    }
+    if (esMonstruo(atacante.id) && !esMonstruo(objetivo.id)) {
+      await this.#dialogos.avisar({ titulo: 'Ataque', texto: `${atacante.nombre} ataca a ${objetivo.nombre}: ¡ups, ha fallado!` })
       return TRAS_SU_ACCION
     }
     const motivo = mapa.reducirVida(objetivo.id, await this.#dialogos.resolverAtaque(ataque))

@@ -235,11 +235,27 @@ describe('ataques del personaje de prueba', () => {
     expect([avisos.resolverAtaque.mock.calls.length, mapa.reducirVida.mock.calls.length]).toEqual([0, 0])
   })
 
-  it('un monstruo que ataca a un héroe sí pide el daño', async () => {
+  /** El orco ataca al bárbaro: los diálogos y el mapa */
+  async function orcoAtaca() {
     const mapa = conJugadores()
     const avisos = dialogos()
-    await new PersonajeDePrueba({ id: 'orco', nombre: 'Orco' }, new PuertasDePrueba(), avisos).atacar({ ...ataque, atacante: orco, objetivo: barbaro }, mapa)
-    expect(avisos.resolverAtaque).toHaveBeenCalled()
+    const resultado = await new PersonajeDePrueba({ id: 'orco', nombre: 'Orco' }, new PuertasDePrueba(), avisos).atacar({ ...ataque, atacante: orco, objetivo: barbaro }, mapa)
+    return { mapa, avisos, resultado }
+  }
+
+  it('un monstruo que ataca a un héroe falla y lo avisa en un diálogo', async () => {
+    const { avisos } = await orcoAtaca()
+    expect(avisos.avisar).toHaveBeenCalledWith({ titulo: 'Ataque', texto: 'Orco ataca a Bárbaro: ¡ups, ha fallado!' })
+  })
+
+  it('al fallar no pide el daño ni le quita vida', async () => {
+    const { avisos, mapa } = await orcoAtaca()
+    expect([avisos.resolverAtaque.mock.calls.length, mapa.reducirVida.mock.calls.length]).toEqual([0, 0])
+  })
+
+  it('fallar también gasta su acción del turno', async () => {
+    const { resultado } = await orcoAtaca()
+    expect(resultado).toEqual({ quedanAcciones: false })
   })
 
   /** El mapa en juego en el que el bárbaro ya ha hecho su acción del turno */
