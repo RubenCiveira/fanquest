@@ -27,4 +27,11 @@ export type Personaje = {
   flags?: string[]
   /** Hacia dónde mira (su encaramiento); sin ella, aún no ha girado: `ORIENTACION_INICIAL` */
   orientacion?: Direccion
+  /**
+   * Casillas que ocupa hacia donde mira (`largo`) y de lado (`ancho`); sin
+   * ellas, una. Su `casilla` es la esquina superior izquierda de las que
+   * ocupa (su huella), que gira con él
+   */
+  largo?: number
+  ancho?: number
 }

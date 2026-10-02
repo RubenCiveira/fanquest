@@ -6,6 +6,8 @@ import {
   casillasDeEnemigos,
   conPersonajes,
   costeDe,
+  dimensionesDe,
+  esGrande,
   costesDe,
   enElMapa,
   encaramientoDe,
@@ -97,37 +99,42 @@ function estadoBadge(activacion?: Activacion, ultimoModo?: ModoActivacion) {
 /** Ángulo de la marca del encaramiento, en grados desde arriba en el sentido del reloj */
 const ANGULO: Record<Direccion, number> = { arriba: 0, derecha: 90, abajo: 180, izquierda: 270 }
 
-function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida, orientacion = ORIENTACION_INICIAL }, x, y, activacion, ultimoModo }: PropsFicha) {
+function FichaEnMapa({ ficha, x, y, activacion, ultimoModo }: PropsFicha) {
+  const { id, nombre, imagenVtt, vida, orientacion = ORIENTACION_INICIAL } = ficha
   const modo = activacion?.modo ?? ultimoModo
   const estado = activacion ? (activacion.terminada ? ' terminada' : '') : ' anterior'
-  const radio = LADO / 2 - 2
+  // ocupando varias casillas, un rectángulo redondeado sobre todas las de su huella; si no, un círculo
+  const { columnas, filas } = dimensionesDe(ficha)
+  const [ancho, alto] = [columnas * LADO, filas * LADO]
+  const [cx, cy] = [x + ancho / 2, y + alto / 2]
+  const forma = esGrande(ficha) ? <rect x={x + 2} y={y + 2} width={ancho - 4} height={alto - 4} rx={LADO / 3} /> : <circle cx={cx} cy={cy} r={LADO / 2 - 2} />
+  // el triángulo del encaramiento, en el centro del borde hacia el que mira
+  const borde = { arriba: [cx, y], abajo: [cx, y + alto], izquierda: [x, cy], derecha: [x + ancho, cy] }[orientacion]
   return (
     <>
-      <clipPath id={`ficha-${id}`}>
-        <circle cx={x + LADO / 2} cy={y + LADO / 2} r={radio} />
-      </clipPath>
-      <circle cx={x + LADO / 2} cy={y + LADO / 2} r={radio} />
+      <clipPath id={`ficha-${id}`}>{forma}</clipPath>
+      {forma}
       {imagenVtt ? (
-        <image href={imagenVtt} x={x + 2} y={y + 2} width={LADO - 4} height={LADO - 4} clipPath={`url(#ficha-${id})`} />
+        <image href={imagenVtt} x={x + 2} y={y + 2} width={ancho - 4} height={alto - 4} clipPath={`url(#ficha-${id})`} preserveAspectRatio="xMidYMid slice" />
       ) : (
-        <text x={x + LADO / 2} y={y + LADO / 2 + 4}>
+        <text x={cx} y={cy + 4}>
           {nombre.slice(0, 2)}
         </text>
       )}
       {modo && (
         <g className={`vista-badge ${modo}${estado}`}>
-          <circle cx={x + LADO - 5} cy={y + 5} r={6} />
-          <text x={x + LADO - 5} y={y + 8}>
+          <circle cx={x + ancho - 5} cy={y + 5} r={6} />
+          <text x={x + ancho - 5} y={y + 8}>
             {INICIAL_MODO[modo]}
           </text>
         </g>
       )}
       {/* encaramiento: un triángulo en el borde hacia el que mira */}
-      <path className="vista-encaramiento" d={`M${x + LADO / 2} ${y} l5 6 h-10 z`} transform={`rotate(${ANGULO[orientacion]} ${x + LADO / 2} ${y + LADO / 2})`} />
+      <path className="vista-encaramiento" d={`M${borde[0]} ${borde[1]} l5 6 h-10 z`} transform={`rotate(${ANGULO[orientacion]} ${borde[0]} ${borde[1]})`} />
       {vida !== undefined && (
         <g className="vista-vida">
-          <circle cx={x + 5} cy={y + LADO - 5} r={6} />
-          <text x={x + 5} y={y + LADO - 2}>
+          <circle cx={x + 5} cy={y + alto - 5} r={6} />
+          <text x={x + 5} y={y + alto - 2}>
             {vida}
           </text>
         </g>

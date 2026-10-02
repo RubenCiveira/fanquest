@@ -27,11 +27,12 @@ import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from '../desplazamientos'
 import { guiaDeCoherencia } from '../coherencia'
-import { girada, girosEntre, ORIENTACION_INICIAL } from '../encaramiento'
+import { girada, girosDe, girosEntre, ORIENTACION_INICIAL } from '../encaramiento'
+import { huella, huellaEnElMapa, tamanoDe } from '../huella'
 import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
-import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enContacto, enElMapa, enemigosDe, evaluarRecorrido, gastadoPor, girar, mover } from '../movimiento'
+import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enContacto, enElMapa, encaramientoDe, enemigosDe, evaluarRecorrido, gastadoPor, girar, mover, transitable } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
 import { apoyosDe, estaTrabado, trabadoPor } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
@@ -148,11 +149,12 @@ export class GestorMapa implements MapaEnJuego {
     for (const clase of await this.#listarEscuadras()) {
       const personajes: Personaje[] = []
       const alianza = this.#alianzaDe(clase.jugador)
-      for (const { id, nombre, imagenVtt, vida } of await clase.personajes()) {
-        const personaje = huecoDePersonaje({ id, nombre })
+      for (const { id, nombre, imagenVtt, vida, largo, ancho } of await clase.personajes()) {
+        const tamano = { ...(largo && largo > 1 && { largo }), ...(ancho && ancho > 1 && { ancho }) }
+        const personaje = huecoDePersonaje({ id, nombre, ...tamano })
         const casilla = this.#sitioInicial({ ...estancia, elementos: [...estancia.elementos, ...ocupados] }, personaje, alianza, ocupados)
         if (casilla) ocupados.push({ ...personaje, posicion: casilla, alianza })
-        personajes.push({ id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estancia.id, ...(casilla && { casilla }), ...(vida !== undefined && { vida }), turnos: [] })
+        personajes.push({ id, nombre, ...(imagenVtt && { imagenVtt }), estancia: estancia.id, ...(casilla && { casilla }), ...(vida !== undefined && { vida }), ...tamano, turnos: [] })
       }
       const modo = this.configuracion.modosActivacion === 'agresivo-sigiloso' ? await clase.modoActivacion() : undefined
       escuadras.push({ id: clase.id, nombre: clase.nombre, jugador: clase.jugador, personajes, ...(modo && { modo }), turnos: [] })
@@ -740,10 +742,9 @@ export class GestorMapa implements MapaEnJuego {
   async #trasCargar(personaje: Personaje) {
     const { apoyoALaCarga, ajusteDelDefensor, cuerpoACuerpo } = this.configuracion
     const donde = enElMapa(this.#mapa, personaje)
-    const cargado = donde && enemigosDe(this.#mapa, personaje.id).find((e) => {
-      const suya = enElMapa(this.#mapa, e)
-      return suya && enContacto(donde, suya, cuerpoACuerpo)
-    })
+    // ocupando varias casillas, en contacto si alguna de las suyas lo está con alguna del enemigo
+    const suyas = huellaEnElMapa(this.#mapa, personaje)
+    const cargado = donde && enemigosDe(this.#mapa, personaje.id).find((e) => huellaEnElMapa(this.#mapa, e).some((c) => suyas.some((suya) => enContacto(suya, c, cuerpoACuerpo))))
     if (!cargado) return
     if (apoyoALaCarga) await this.#desplazarSuGrupo(personaje.id, { sentido: 'hacia', de: this.#suGrupo(cargado.id), casillas: apoyoALaCarga, hasta: 1 })
     if (ajusteDelDefensor) await this.#desplazarSuGrupo(cargado.id, { sentido: 'hacia', de: this.#suGrupo(personaje.id), casillas: ajusteDelDefensor, hasta: 1 })
@@ -801,7 +802,7 @@ export class GestorMapa implements MapaEnJuego {
     if (adicionales.length && !(await this.#proveedor.confirmar(`Confirme que queremos ${adicionales.map((a) => a.nombre.toLowerCase()).join(' y ')}`))) return false
     const confirmado = adicionales.length ? evaluar() : evaluado
     if ('motivo' in confirmado) return confirmado.motivo
-    const { hasta, resultado } = alEntrar ? await this.#dondeSeDetiene(confirmado.personaje, recorrido, alEntrar) : { hasta: recorrido.length - 1, resultado: 'seguir' }
+    const { hasta, resultado } = alEntrar ? await this.#dondeSeDetiene(confirmado.personaje, recorrido, alEntrar, true) : { hasta: recorrido.length - 1, resultado: 'seguir' }
     const personaje = todosLosPersonajes(this.#mapa).find((p) => p.id === personajeId)
     if (!personaje?.casilla) return
     const hecho = { opcion: confirmado.opcion, tramos: confirmado.tramos.slice(0, hasta) }
@@ -818,13 +819,24 @@ export class GestorMapa implements MapaEnJuego {
 
   /**
    * Hasta qué paso del recorrido llega el personaje: pregunta a `alEntrar`
-   * por cada casilla en que podría quedarse (sin otro personaje), en orden,
+   * por cada casilla en que podría quedarse (sin otro personaje en las que
+   * ocuparía; si `girando`, mirando hacia donde va), en orden,
    * hasta que se detiene; si no se detiene en ninguna, hasta el final
    */
-  async #dondeSeDetiene(personaje: Personaje, recorrido: Casilla[], alEntrar: (donde: Ubicacion) => Promise<ResultadoAlEntrar>): Promise<{ hasta: number; resultado: ResultadoAlEntrar }> {
-    const ocupadas = todosLosPersonajes(this.#mapa).flatMap((p) => (p.id === personaje.id ? [] : (enElMapa(this.#mapa, p) ?? [])))
+  async #dondeSeDetiene(
+    personaje: Personaje,
+    recorrido: Casilla[],
+    alEntrar: (donde: Ubicacion) => Promise<ResultadoAlEntrar>,
+    girando = false,
+  ): Promise<{ hasta: number; resultado: ResultadoAlEntrar }> {
+    const ocupadas = todosLosPersonajes(this.#mapa).flatMap((p) => (p.id === personaje.id ? [] : huellaEnElMapa(this.#mapa, p)))
+    // ocupando varias casillas, la huella en cada paso: al moverse gira hacia donde va; desplazado, no
+    const tamano = tamanoDe(personaje)
+    const encaramiento = encaramientoDe(personaje, this.configuracion)
+    const enCadaPaso = [encaramiento.orientacion, ...(girando ? girosDe(recorrido, encaramiento).orientaciones : recorrido.slice(1).map(() => encaramiento.orientacion))]
+    const libre = (c: Casilla, i: number) => !(tamano ? huella(c, tamano, enCadaPaso[i]) : [c]).some((suya) => ocupadas.some(({ x, y }) => x === suya.x && y === suya.y))
     for (const [i, c] of recorrido.entries()) {
-      const donde = i > 0 && !ocupadas.some(({ x, y }) => x === c.x && y === c.y) && casillaDelMapa(this.#mapa, c)
+      const donde = i > 0 && libre(c, i) && casillaDelMapa(this.#mapa, c)
       const resultado = donde ? await alEntrar({ estancia: donde.estancia.id, casilla: donde.casilla }) : 'seguir'
       if (resultado !== 'seguir') return { hasta: i, resultado }
     }
@@ -931,6 +943,10 @@ export class GestorMapa implements MapaEnJuego {
     const coste = girosEntre(personaje.orientacion ?? ORIENTACION_INICIAL, orientacion) * this.configuracion.costeGiro
     const queda = coste ? ((await this.opcionesMovimiento(personajeId))?.base.tramos[0]?.distancia ?? 0) : 0
     if (coste > queda) return `${personaje.nombre} no tiene movimiento para girar: le cuesta ${coste} y le ${queda === 1 ? 'queda' : 'quedan'} ${queda}`
+    // ocupando varias casillas, gira su huella: tiene que caber, sin pisar a nadie
+    const tamano = tamanoDe(personaje)
+    const esquina = enElMapa(this.#mapa, personaje)
+    if (tamano && esquina && !transitable(conPersonajes(this.#mapa, personajeId, 'impasable'), esquina, { tamano }, orientacion)) return `${personaje.nombre} no cabe girado hacia ${orientacion}`
     this.#cambiar(girar(this.#mapa, personajeId, orientacion, coste))
   }
 

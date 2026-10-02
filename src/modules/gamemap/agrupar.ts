@@ -1,4 +1,5 @@
 import { escuadrasDe, todosLosPersonajes } from './activaciones'
+import { huella, huellaEnElMapa, tamanoDe } from './huella'
 import { conPersonajes, enElMapa, planearMovimiento, sePuedePasar, transitable, type MedicionMovimiento, type ReglasDeMovimiento } from './movimiento'
 import type { Casilla } from './modelo/casilla'
 import type { Mapa } from './modelo/mapa'
@@ -52,13 +53,15 @@ export function recorridoParaAgrupar(
   const centro = enElMapa(m, lider)
   const suya = enElMapa(m, miembro)
   if (!centro || !suya || junto(suya, centro)) return
-  const ocupadas = new Set(todosLosPersonajes(m).flatMap((p) => enElMapa(m, p) ?? []).map(clave))
+  // las casillas de cada uno (toda su huella, si ocupa varias), menos las del que se acerca, que puede volver a ocupar
+  const ocupadas = new Set(todosLosPersonajes(m).flatMap((p) => (p.id === miembro.id ? [] : huellaEnElMapa(m, p))).map(clave))
+  const tamano = tamanoDe(miembro)
   const vista = conPersonajes(m, miembro.id, config.terrenoPersonajes)
   const soloBase = { base: opciones.base, variaciones: [] }
   for (const destino of alrededor(conPersonajes(m, lider.id, 'normal'), centro, config.medicionMovimiento)) {
     // las siguientes están más lejos del líder que donde ya está
     if (clave(destino) === clave(suya)) return
-    if (ocupadas.has(clave(destino)) || !transitable(vista, destino)) continue
+    if ((tamano ? huella(destino, tamano) : [destino]).some((c) => ocupadas.has(clave(c))) || !transitable(vista, destino, { tamano })) continue
     const plan = planearMovimiento(m, config, miembro, destino, soloBase)
     if ('opcion' in plan) return plan
   }

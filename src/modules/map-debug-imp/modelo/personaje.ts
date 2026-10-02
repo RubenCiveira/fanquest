@@ -122,13 +122,15 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   readonly nombre: string
   readonly imagenVtt?: string
   readonly vida?: number
+  readonly largo?: number
+  readonly ancho?: number
   #puertas: PuertasDePrueba
   #dialogos: DialogosDePrueba
   /** De dónde salen las tiradas de dado (entre 0 y 1) */
   #azar: () => number
 
   constructor(
-    { id, nombre, imagenVtt, vida }: Pick<ClaseDePersonaje, 'id' | 'nombre' | 'imagenVtt' | 'vida'>,
+    { id, nombre, imagenVtt, vida, largo, ancho }: Pick<ClaseDePersonaje, 'id' | 'nombre' | 'imagenVtt' | 'vida' | 'largo' | 'ancho'>,
     puertas: PuertasDePrueba,
     dialogos: DialogosDePrueba,
     azar: () => number = Math.random,
@@ -137,6 +139,8 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     this.nombre = nombre
     this.imagenVtt = imagenVtt
     this.vida = vida
+    this.largo = largo
+    this.ancho = ancho
     this.#puertas = puertas
     this.#dialogos = dialogos
     this.#azar = azar

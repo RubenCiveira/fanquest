@@ -463,7 +463,7 @@ elegir objetivo y acción con las mismas consultas.
 | Terreno difícil (máximo 6″) | 🟡 Dos variaciones de movimiento |
 | Terreno peligroso | ❌ Falta terreno con efecto |
 | Elevación, saltos y caídas | ❌ El mapa es plano |
-| Peanas grandes (vehículos, monstruos) | ❌ Un personaje ocupa una casilla |
+| Peanas grandes (vehículos, monstruos) | ✅ `largo` × `ancho` en la clase o la descripción del personaje |
 | Disparo de unidad, cobertura y PA | ✅ `modoAtaque: 'escuadra'` y `atacarEscuadra`; dados, cobertura y PA, del proyecto |
 | Cuerpo a cuerpo a 2″, devolver golpe y fatiga | 🟡 Proyecto |
 | Respuesta del defensor, consolidación y empujar | ✅ `ajusteDelDefensor`, `consolidacionTrasCombate` y `retrocesoTrasCombate` en la configuración; empujar, con `desplazar` |
@@ -492,7 +492,7 @@ un juego en el motor: son puntos de extensión.
 | 9 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
 | 10 | **Despliegue** | OPR, y FAI con el damero | Zonas de despliegue por alianza en la estancia inicial y validación en `colocarPersonaje` con un `motivoParaNoColocar` del proveedor |
 | 11 | ✅ **Encaramiento** | FetenQuest (área de ataque, espalda, campo de visión) | Hecho: `Personaje.orientacion`, girar al moverse (`costeGiro` por cada 90° y `costeGiroDiagonal` al empezar a ir en diagonal, que solo se puede hacia las diagonales de delante) y girar sin moverse (`gestor.girar`). El área de ataque y el campo de visión los decide la clase con `ataque.atacante.orientacion` |
-| 12 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
+| 12 | ✅ **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | Hecho: `largo` × `ancho` (hacia donde mira y de lado) en la clase o la descripción; la huella gira con el encaramiento y cuenta para colocar, moverse, ocupar, trabar, atacar (entre las casillas más cercanas) y la coherencia |
 | 13 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 
 Con 1 a 6 (hechos) se puede jugar FAI completo en solitario y OPR fiel a sus

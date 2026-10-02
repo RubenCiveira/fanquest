@@ -30,3 +30,26 @@ export function monstruosDePrueba(
 export function monstruosDePruebaDeTipo(monstruos: Monstruo[], tipo: string, mapa?: Mapa, cantidad = 1, idsReservados: string[] = []): DescripcionPersonajeNoJugador[] {
   return monstruosDePrueba(monstruos.filter((m) => m.id === tipo), mapa, () => 0, cantidad, idsReservados)
 }
+
+/**
+ * Monstruos grandes de prueba, de la Oscuridad: un ogro que ocupa 2 × 2 y un
+ * león que ocupa 2 × 1 (dos casillas hacia donde mira). Con el retrato de un
+ * monstruo de ese nombre, si lo hay. Sus ids no repiten los de los personajes
+ * del mapa
+ */
+export function monstruosGrandesDePrueba(monstruos: Monstruo[], mapa?: Mapa, idsReservados: string[] = []): DescripcionPersonajeNoJugador[] {
+  const usados = new Set([...(mapa ? todosLosPersonajes(mapa).map((p) => p.id) : []), ...idsReservados])
+  const libre = (base: string) => {
+    let n = 1
+    while (usados.has(`${base}-${n}`)) n++
+    return `${base}-${n}`
+  }
+  const retrato = (nombre: string) => {
+    const monstruo = monstruos.find((m) => m.imagen && m.nombre.toLowerCase().includes(nombre))
+    return monstruo ? { imagenVtt: urlRetrato('monstruos', monstruo) } : {}
+  }
+  return [
+    { id: libre('ogro'), nombre: 'Ogro', ...retrato('ogro'), vida: 6, largo: 2, ancho: 2, jugador: JUGADOR_MONSTRUOS },
+    { id: libre('leon'), nombre: 'León', ...retrato('león'), vida: 4, largo: 2, ancho: 1, jugador: JUGADOR_MONSTRUOS },
+  ]
+}

@@ -31,6 +31,6 @@ describe('giros de encaramiento', () => {
   })
 
   it('al final mira hacia su último paso en recto', () => {
-    expect(girosDe(enLinea([0, 0], [0, 1], [1, 1]), { orientacion: 'arriba', ...unoPorGiro })).toEqual({ costes: [2, 1], orientacion: 'derecha' })
+    expect(girosDe(enLinea([0, 0], [0, 1], [1, 1]), { orientacion: 'arriba', ...unoPorGiro })).toEqual({ costes: [2, 1], orientaciones: ['abajo', 'derecha'], orientacion: 'derecha' })
   })
 })

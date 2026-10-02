@@ -43,13 +43,16 @@ export function giroDelPaso(rumbo: Rumbo, de: Casilla, a: Casilla, { costeGiro, 
   return { coste: girosEntre(rumbo.orientacion, hacia) * costeGiro + (rumbo.enDiagonal ? 0 : costeGiroDiagonal), rumbo: { orientacion: hacia, enDiagonal: true } }
 }
 
-/** Lo que cuesta girar en cada paso del recorrido (sin contar la casilla de salida) y hacia dónde mira al final */
-export function girosDe(recorrido: Casilla[], encaramiento: Encaramiento): { costes: number[]; orientacion: Direccion } {
+/**
+ * Lo que cuesta girar en cada paso del recorrido (sin contar la casilla de
+ * salida), hacia dónde mira tras cada uno (`orientaciones`) y al final
+ */
+export function girosDe(recorrido: Casilla[], encaramiento: Encaramiento): { costes: number[]; orientaciones: Direccion[]; orientacion: Direccion } {
   let rumbo: Rumbo = { orientacion: encaramiento.orientacion, enDiagonal: false }
-  const costes = recorrido.slice(1).map((c, i) => {
+  const pasos = recorrido.slice(1).map((c, i) => {
     const paso = giroDelPaso(rumbo, recorrido[i], c, encaramiento)
     rumbo = paso.rumbo
-    return paso.coste
+    return paso
   })
-  return { costes, orientacion: rumbo.orientacion }
+  return { costes: pasos.map((p) => p.coste), orientaciones: pasos.map((p) => p.rumbo.orientacion), orientacion: rumbo.orientacion }
 }

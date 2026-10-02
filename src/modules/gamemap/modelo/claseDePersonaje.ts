@@ -20,6 +20,9 @@ export interface ClaseDePersonaje {
   imagenVtt?: string
   /** Puntos de vida con los que empieza; sin ellos, no se lleva la cuenta */
   vida?: number
+  /** Casillas que ocupa hacia donde mira (`largo`) y de lado (`ancho`); sin ellas, una (`Personaje.largo`, `ancho`) */
+  largo?: number
+  ancho?: number
   /**
    * Cómo puede moverse ahora, con lo que ya ha movido este turno (`gastado`);
    * se pregunta al empezar a arrastrar su ficha. Sin opciones, no puede moverse

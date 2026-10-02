@@ -1,12 +1,14 @@
 import { turnoDePersonaje } from './activaciones'
 import { distanciaSegun } from './ataques'
+import { huellaEnElMapa } from './huella'
 import { enElMapa, type MedicionMovimiento } from './movimiento'
 import type { Casilla } from './modelo/casilla'
 import type { Coherencia, GuiaDeCoherencia } from './modelo/coherencia'
 import type { Escuadra } from './modelo/escuadra'
 import type { Mapa } from './modelo/mapa'
 
-type Colocado = { id: string; casilla: Casilla }
+/** Un personaje colocado de la escuadra: su casilla y todas las que ocupa */
+type Colocado = { id: string; casilla: Casilla; huella: Casilla[] }
 
 /** Grupos de personajes unidos en cadena: cada uno a `distancia` o menos de alguno del grupo; el más grande primero (con empate, el del primero de la escuadra) */
 function cadenas(colocados: Colocado[], cerca: (a: Colocado, b: Colocado) => boolean): Colocado[][] {
@@ -88,9 +90,11 @@ function mejorCirculo(colocados: Colocado[], distancia: number, ultimo?: string)
 export function guiaDeCoherencia(m: Mapa, medicion: MedicionMovimiento, escuadra: Escuadra, coherencia: Coherencia): GuiaDeCoherencia {
   const colocados = escuadra.personajes.flatMap((p) => {
     const casilla = enElMapa(m, p)
-    return casilla ? [{ id: p.id, casilla }] : []
+    return casilla ? [{ id: p.id, casilla, huella: huellaEnElMapa(m, p) }] : []
   })
-  const cerca = (a: Colocado, b: Colocado) => distanciaSegun(medicion, a.casilla, b.casilla) <= coherencia.distancia
+  // ocupando varias casillas, entre las más cercanas de los dos
+  const entre = (a: Colocado, b: Colocado) => Math.min(...a.huella.flatMap((ca) => b.huella.map((cb) => distanciaSegun(medicion, ca, cb))))
+  const cerca = (a: Colocado, b: Colocado) => entre(a, b) <= coherencia.distancia
   const enlace = (a: Colocado, b: Colocado) => ({ de: a.id, a: b.id, desde: a.casilla, hasta: b.casilla, enCoherencia: cerca(a, b) })
   const parejas = colocados.flatMap((a, i) => colocados.slice(i + 1).map((b) => [a, b] as const))
   const base = { escuadra: escuadra.id, coherencia }
@@ -103,7 +107,7 @@ export function guiaDeCoherencia(m: Mapa, medicion: MedicionMovimiento, escuadra
   const [principal = [], ...sueltos] = cadenas(colocados, cerca)
   const fuera = sueltos.flat()
   const masCercano = (p: Colocado) =>
-    principal.reduce((mejor, q) => (distanciaSegun(medicion, p.casilla, q.casilla) < distanciaSegun(medicion, p.casilla, mejor.casilla) ? q : mejor))
+    principal.reduce((mejor, q) => (entre(p, q) < entre(p, mejor) ? q : mejor))
   return {
     ...base,
     enlaces: [...parejas.filter(([a, b]) => cerca(a, b)).map(([a, b]) => enlace(a, b)), ...fuera.map((p) => enlace(p, masCercano(p)))],

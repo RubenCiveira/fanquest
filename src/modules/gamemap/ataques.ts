@@ -1,6 +1,7 @@
 import { conPersonaje, conPersonajeNoJugador, todosLosPersonajes } from './activaciones'
+import { huellaEnElMapa } from './huella'
 import { esEnemigo, jugadorDe } from './jugadores'
-import { casillaDelMapa, conPersonajes, costeDe, enContacto, enElMapa, ruta, sePuedePasar } from './movimiento'
+import { casillaDelMapa, conPersonajes, costeDe, enContacto, ruta, sePuedePasar } from './movimiento'
 import { aristaEntre, coberturaDeArista } from './muros'
 import { coberturaEn } from './terrenos'
 import type { Ataque, Trayectoria } from './modelo/ataque'
@@ -12,18 +13,29 @@ import type { Mapa } from './modelo/mapa'
 import type { TipoCobertura } from './modelo/terreno'
 import type { Personaje } from './modelo/personaje'
 
-const misma = (a: Casilla | undefined, b: Casilla) => !!a && a.x === b.x && a.y === b.y
+const misma = (a: Casilla, b: Casilla) => a.x === b.x && a.y === b.y
 
 const cubre = (el: Elemento, { x, y }: Casilla) =>
   !!el.posicion && x >= el.posicion.x && y >= el.posicion.y && x < el.posicion.x + el.columnas && y < el.posicion.y + el.filas
 
-/** El enemigo del personaje que está en esa casilla del mapa, si lo hay */
+/** El enemigo del personaje que ocupa esa casilla del mapa (alguna de su huella), si lo hay */
 export function enemigoEn(m: Mapa, personajeId: string, casilla: Casilla): Personaje | undefined {
   const alianza = jugadorDe(m, personajeId)?.alianza
-  return todosLosPersonajes(m).find((p) => {
-    const suya = p.id !== personajeId && esEnemigo(m, p.id, alianza) && enElMapa(m, p)
-    return !!suya && suya.x === casilla.x && suya.y === casilla.y
-  })
+  return todosLosPersonajes(m).find((p) => p.id !== personajeId && esEnemigo(m, p.id, alianza) && huellaEnElMapa(m, p).some((c) => misma(c, casilla)))
+}
+
+/**
+ * Las dos casillas más cercanas de las que ocupan los dos personajes (las
+ * suyas, o las de su huella si ocupan varias), según la medición (sin decirla,
+ * en línea recta por Pitágoras): entre ellas se miden la distancia, el
+ * contacto y la trayectoria de un ataque. Nada si alguno no está colocado
+ */
+export function masCercanas(m: Mapa, a: Personaje, b: Personaje, medicion: Configuracion['medicionMovimiento'] = 'euclidea'): [Casilla, Casilla] | undefined {
+  const [deA, deB] = [huellaEnElMapa(m, a), huellaEnElMapa(m, b)]
+  const parejas = deA.flatMap((ca) => deB.map((cb): [Casilla, Casilla] => [ca, cb]))
+  // a igual distancia, la más corta en línea recta: la trayectoria más limpia
+  const recta = ([p, q]: [Casilla, Casilla]) => (p.x - q.x) ** 2 + (p.y - q.y) ** 2
+  return parejas.sort((p, q) => distanciaSegun(medicion, ...p) - distanciaSegun(medicion, ...q) || recta(p) - recta(q))[0]
 }
 
 /**
@@ -92,13 +104,14 @@ function coberturaDeMuro(m: Mapa, a: Casilla, b: Casilla): TipoCobertura | undef
 }
 
 /** Lo que cruza la línea del ataque del atacante al objetivo (ver `Trayectoria`); nada si alguno no está colocado */
-export function trayectoria(m: Mapa, atacante: Personaje, objetivo: Personaje): Trayectoria | undefined {
-  const [desde, hasta] = [enElMapa(m, atacante), enElMapa(m, objetivo)]
-  if (!desde || !hasta) return
-  const linea = lineaDeCasillas(desde, hasta)
-  const casillas = linea.slice(1, -1)
+export function trayectoria(m: Mapa, atacante: Personaje, objetivo: Personaje, entre = masCercanas(m, atacante, objetivo)): Trayectoria | undefined {
+  if (!entre) return
+  const linea = lineaDeCasillas(...entre)
+  // sin las casillas del atacante ni del objetivo, aunque ocupen varias
+  const suyas = [...huellaEnElMapa(m, atacante), ...huellaEnElMapa(m, objetivo)]
+  const casillas = linea.slice(1, -1).filter((c) => !suyas.some((s) => misma(s, c)))
   const alianza = jugadorDe(m, atacante.id)?.alianza
-  const en = (c: Casilla) => todosLosPersonajes(m).filter((p) => p.id !== atacante.id && p.id !== objetivo.id && misma(enElMapa(m, p), c))
+  const en = (c: Casilla) => todosLosPersonajes(m).filter((p) => p.id !== atacante.id && p.id !== objetivo.id && huellaEnElMapa(m, p).some((s) => misma(s, c)))
   const personajes = casillas.flatMap(en)
   const coberturas: Trayectoria['coberturas'] = { ninguna: 0, ligera: 0, pesada: 0, bloqueante: 0 }
   let objetos = 0
@@ -143,10 +156,12 @@ export function medirAtaque(
   atacante: Personaje,
   objetivo: Personaje,
 ): Omit<Ataque, 'atacante' | 'objetivo'> | undefined {
-  const [desde, hasta] = [enElMapa(m, atacante), enElMapa(m, objetivo)]
-  const linea = trayectoria(m, atacante, objetivo)
-  if (!desde || !hasta || !linea) return
-  const pegado = enContacto(desde, hasta, cuerpoACuerpo) && sePuedePasar(m, desde, hasta, 'diagonal')
+  const entre = masCercanas(m, atacante, objetivo, medicionMovimiento)
+  const linea = entre && trayectoria(m, atacante, objetivo, entre)
+  if (!entre || !linea) return
+  const [desde, hasta] = entre
+  // ocupando varias casillas, en contacto si alguna de las suyas lo está con alguna del objetivo
+  const pegado = huellaEnElMapa(m, atacante).some((a) => huellaEnElMapa(m, objetivo).some((b) => enContacto(a, b, cuerpoACuerpo) && sePuedePasar(m, a, b, 'diagonal')))
   const vista = conPersonajes(sinPersonaje(m, objetivo.id), atacante.id, terrenoPersonajes)
   const camino = ruta(vista, desde, hasta, medicionMovimiento)
   return {

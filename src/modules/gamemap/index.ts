@@ -70,7 +70,7 @@ export {
   turnoDeEscuadra,
   turnoDePersonaje,
 } from './activaciones'
-export { conVidaReducida, distanciaSegun, enemigoEn, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
+export { conVidaReducida, distanciaSegun, enemigoEn, masCercanas, lineaDeCasillas, medirAtaque, sinPersonaje, trayectoria } from './ataques'
 export { anadirPersonajesNoJugadores, huecoDePersonaje, sitioParaPersonaje } from './apariciones'
 export { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores, postura } from './jugadores'
 export { apoyosDe, estaTrabado, trabadoPor } from './zonaDeControl'
@@ -79,6 +79,7 @@ export { guiaDeCoherencia } from './coherencia'
 export { construirEstancia } from './construccion'
 export { girada, giroDelPaso, girosDe, girosEntre, ORIENTACION_INICIAL, VECTOR, type Rumbo } from './encaramiento'
 export { conFlags, flagsDe } from './flags'
+export { dimensionesDe, esCuadrado, esGrande, huella, huellaEnElMapa, tamanoDe, type Tamano } from './huella'
 export { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from './desplazamientos'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
 export { anidar, crearEstancia, estanciaEn, estanciasDe, motivoParaNoAnidar } from './estancias'

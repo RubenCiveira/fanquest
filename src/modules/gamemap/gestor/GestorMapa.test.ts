@@ -582,6 +582,18 @@ describe('gestor del mapa: encaramiento', () => {
     expect([await gestor.girar('barbaro', 'abajo'), barbaro()?.orientacion]).toEqual(['Bárbaro no tiene movimiento para girar: le cuesta 2 y le queda 1', undefined])
   })
 
+  it('ocupando varias casillas, no gira si su huella girada no cabe', async () => {
+    const base = proveedor(amplia)
+    const clases = await base.listarEscuadras()
+    // el bárbaro ocupa 2 × 1: mirando arriba, su casilla y la de debajo
+    const conLargo = clases.map((c) => (c.id === 'rojos' ? { ...c, personajes: async () => (await c.personajes()).map((h) => ({ ...h, largo: 2 })) } : c))
+    const gestor = new GestorMapa({ ...base, listarEscuadras: vi.fn(async () => conLargo) })
+    await gestor.nuevaEstancia()
+    const { x, y } = gestor.personaje('barbaro')?.casilla ?? { x: 0, y: 0 }
+    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: { x: x + 1, y } }])
+    expect(await gestor.girar('barbaro', 'derecha')).toBe('Bárbaro no cabe girado hacia derecha')
+  })
+
   it('al moverse, gira hacia donde va, lo paga y acaba mirando hacia allí', async () => {
     const { gestor, barbaro } = await conGiros()
     await gestor.moverPersonaje('barbaro', enLinea(barbaro()?.casilla, 1))

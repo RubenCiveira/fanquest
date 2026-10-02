@@ -1,5 +1,6 @@
 import { conPersonaje, conPersonajeNoJugador, escuadrasDe, todosLosPersonajes } from './activaciones'
 import { distanciaSegun } from './ataques'
+import { huella, huellaEnElMapa, tamanoDe } from './huella'
 import { alcanzables, casillaDelMapa, casillasDeEnemigos, conPersonajes, conZonaDeControl, enElMapa, sePuedePasar, type MedicionMovimiento, type ReglasDeMovimiento } from './movimiento'
 import type { Casilla } from './modelo/casilla'
 import type { Desplazamiento, DesplazamientoPorRecorrido, Referencia } from './modelo/desplazamiento'
@@ -8,19 +9,19 @@ import type { Personaje } from './modelo/personaje'
 
 const igual = (a: Casilla, b: Casilla) => a.x === b.x && a.y === b.y
 
-/** Casillas del mapa de la referencia, para ese personaje (sus enemigos…): las de lo que está colocado */
+/** Casillas del mapa de la referencia, para ese personaje (sus enemigos…): las de lo que está colocado (todas las de la huella de cada uno) */
 export function casillasDeReferencia(m: Mapa, personaje: Personaje, de: Referencia): Casilla[] {
   if ('enemigos' in de) return casillasDeEnemigos(m, personaje.id)
   if ('ubicacion' in de) return [enElMapa(m, de.ubicacion) ?? []].flat()
   const suyos = 'personaje' in de ? todosLosPersonajes(m).filter((p) => p.id === de.personaje) : (escuadrasDe(m).find((e) => e.id === de.escuadra)?.personajes ?? [])
-  return suyos.flatMap((p) => enElMapa(m, p) ?? [])
+  return suyos.flatMap((p) => huellaEnElMapa(m, p))
 }
 
 /** Distancia en línea recta (según la medición) de la casilla a la más cercana de las de la referencia */
 export const distanciaA = (medicion: MedicionMovimiento, c: Casilla, referencia: Casilla[]) => Math.min(...referencia.map((r) => distanciaSegun(medicion, c, r)))
 
 /** Casillas del mapa de los demás personajes colocados: en ellas no se puede terminar */
-const ocupadasPorOtros = (m: Mapa, personaje: Personaje) => todosLosPersonajes(m).flatMap((p) => (p.id === personaje.id ? [] : (enElMapa(m, p) ?? [])))
+const ocupadasPorOtros = (m: Mapa, personaje: Personaje) => todosLosPersonajes(m).flatMap((p) => (p.id === personaje.id ? [] : huellaEnElMapa(m, p)))
 
 /**
  * Por dónde se desplaza el personaje (`Desplazamiento`): de las casillas a las
@@ -41,11 +42,14 @@ export function planearDesplazamiento(m: Mapa, reglas: ReglasDeMovimiento, perso
   const vista = conPersonajes(m, personaje.id, reglas.terrenoPersonajes)
   const porDonde = d.zonaDeControl === 'respetar' ? conZonaDeControl(vista, casillasDeEnemigos(m, personaje.id), reglas.distanciaControl) : vista
   const ocupadas = ocupadasPorOtros(m, personaje)
-  const distancia = (c: Casilla) => distanciaA(medicion, c, referencia)
+  // ocupando varias casillas, su huella con la esquina en `c` (un desplazamiento no le hace girar)
+  const tamano = tamanoDe(personaje)
+  const ocupa = (c: Casilla) => (tamano ? huella(c, tamano) : [c])
+  const distancia = (c: Casilla) => Math.min(...ocupa(c).map((suya) => distanciaA(medicion, suya, referencia)))
   // cuánto vale terminar en cada casilla: más es mejor
   const valor = (c: Casilla) => (d.sentido === 'hacia' ? -Math.max(distancia(c), d.hasta ?? 0) : Math.min(distancia(c), d.hasta ?? Number.POSITIVE_INFINITY))
-  const [mejor] = alcanzables(porDonde, desde, d.casillas, medicion, d.forma)
-    .filter(({ recorrido }) => !ocupadas.some((o) => igual(o, recorrido.at(-1) ?? desde)))
+  const [mejor] = alcanzables(porDonde, desde, d.casillas, medicion, { ...d.forma, tamano })
+    .filter(({ recorrido }) => !ocupa(recorrido.at(-1) ?? desde).some((suya) => ocupadas.some((o) => igual(o, suya))))
     // de más barata a más cara: a igual valor, se queda la primera
     .sort((a, b) => valor(b.recorrido.at(-1) ?? desde) - valor(a.recorrido.at(-1) ?? desde))
   const destino = mejor.recorrido.at(-1) ?? desde
@@ -66,8 +70,10 @@ export function motivoParaNoRecorrer(m: Mapa, reglas: ReglasDeMovimiento, person
   if (!desde) return `${personaje.nombre} no está colocado en el mapa`
   if (!salida || !igual(salida, desde)) return `El recorrido tiene que empezar en ${personaje.nombre}`
   const vista = conPersonajes(m, personaje.id, reglas.terrenoPersonajes)
-  if (!pasos.every((c, i) => sePuedePasar(vista, recorrido[i], c, reglas.medicionMovimiento, forma))) return 'El recorrido pasa por donde no se puede'
-  if (ocupadasPorOtros(m, personaje).some((o) => igual(o, destino))) return `${personaje.nombre} no puede terminar encima de otro personaje`
+  const tamano = tamanoDe(personaje)
+  if (!pasos.every((c, i) => sePuedePasar(vista, recorrido[i], c, reglas.medicionMovimiento, { ...forma, tamano }))) return 'El recorrido pasa por donde no se puede'
+  const deLlegada = tamano ? huella(destino, tamano) : [destino]
+  if (ocupadasPorOtros(m, personaje).some((o) => deLlegada.some((suya) => igual(o, suya)))) return `${personaje.nombre} no puede terminar encima de otro personaje`
 }
 
 /** El mapa con el personaje (de escuadra o no jugador) en esa casilla del mapa, sin apuntar nada en su turno: un desplazamiento forzado no gasta movimiento */

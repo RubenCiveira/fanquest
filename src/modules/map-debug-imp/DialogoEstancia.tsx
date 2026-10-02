@@ -15,7 +15,7 @@ import {
   type TipoEstancia,
 } from '../gamemap'
 import { ETIQUETA_ORIENTACION } from './mapas'
-import { monstruosDePruebaDeTipo } from './monstruos'
+import { monstruosDePruebaDeTipo, monstruosGrandesDePrueba } from './monstruos'
 import { murosDePrueba } from './muros'
 import { terrenosDePrueba } from './terrenos'
 import { VistaMapa } from './VistaMapa'
@@ -56,6 +56,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
   const [solitarios, setSolitarios] = useState(1)
   const [escuadrasMonstruos, setEscuadrasMonstruos] = useState(0)
   const [conMonstruos, setConMonstruos] = useState(true)
+  const [conGrandes, setConGrandes] = useState(false)
 
   useEffect(() => ref.current?.showModal(), [])
   useEffect(() => {
@@ -67,7 +68,8 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
   }, [mapa])
 
   const maxSalidas = largoMuro(tamano, orientacion)
-  const monstruos = conMonstruos ? monstruosDePruebaDeTipo(monstruosDisponibles, 'esqueleto', mapa, solitarios) : []
+  const solos = conMonstruos ? monstruosDePruebaDeTipo(monstruosDisponibles, 'esqueleto', mapa, solitarios) : []
+  const monstruos = [...solos, ...(conGrandes ? monstruosGrandesDePrueba(monstruosDisponibles, mapa, solos.map((m) => m.id)) : [])]
   const escuadras = inicial
     ? Array.from({ length: escuadrasMonstruos }, (_, i) =>
         monstruosDePruebaDeTipo(
@@ -190,6 +192,10 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
           <label className="campo">
             Solitarios
             <input type="number" min={0} max={8} value={conMonstruos ? solitarios : 0} disabled={!conMonstruos} onChange={(e) => setSolitarios(Math.max(0, Math.trunc(e.target.valueAsNumber) || 0))} />
+          </label>
+          <label className="map-debug-casilla-marcar">
+            <input type="checkbox" checked={conGrandes} onChange={(e) => setConGrandes(e.target.checked)} />
+            Añadir monstruos grandes: un ogro (2 × 2 casillas) y un león (2 × 1, dos casillas hacia donde mira).
           </label>
           {inicial && (
             <label className="campo">

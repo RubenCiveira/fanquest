@@ -43,6 +43,8 @@ type Personaje = {
   casilla?: Casilla           // su casilla en ella; sin ella, en la zona de espera
   vida?: number               // puntos de vida que le quedan; sin ellos, no se lleva la cuenta
   orientacion?: Direccion     // hacia dónde mira (su encaramiento); sin ella, `ORIENTACION_INICIAL` (arriba)
+  largo?: number              // casillas que ocupa hacia donde mira; sin él, 1
+  ancho?: number              // casillas que ocupa de lado; sin él, 1. Su `casilla` es la esquina superior izquierda de su huella
   turnos: TurnoDePersonaje[]      // { numero, acciones: string[], movimientos: [{ opcion, casillas, acciones }] }
   flags?: string[]            // marcas de estado: aturdido… (`marcarFlag('personaje', …)`)
 }
@@ -247,6 +249,34 @@ configuracion: {
     `girar`) y necesita que le queden.
   - Los desplazamientos forzados no cuestan giros ni cambian hacia dónde mira.
 
+### Personajes de varias casillas
+
+Un personaje ocupa `largo` casillas hacia donde mira y `ancho` de lado (por
+defecto, 1 × 1): los da su clase (`ClaseDePersonaje.largo`, `ancho`) o, si
+no tiene, su descripción (`DescripcionPersonaje`), y el gestor los guarda en
+su estado. Mirando arriba o abajo, su largo va en filas; a un lado, en
+columnas. Su `casilla` es la esquina superior izquierda de las que ocupa (su
+huella: `huella`, `huellaEnElMapa`), y la huella gira con él.
+
+- Al aparecer o colocarse, ocupa su huella sin pisar a nadie ni nada.
+- Al moverse, todas las casillas de su huella tienen que poder pasar: un
+  ogro de 2 × 2 no cruza un hueco ni una puerta de una casilla. El terreno le
+  cuesta lo de la peor casilla en que entra. Al girar, las casillas nuevas de
+  su huella tienen que estar libres (`gestor.girar` dice si no cabe), y las
+  rutas siguen hacia dónde mira paso a paso si no es cuadrado.
+- Para los demás, ocupa toda su huella: no se termina encima de ninguna de
+  sus casillas, cualquiera de ellas lo hace enemigo bajo el puntero
+  (`enemigoEn`) y desde cualquiera ejerce su zona de control y traba.
+- Los ataques se miden entre las dos casillas más cercanas de los dos
+  (`masCercanas`): la distancia, el contacto y la trayectoria; y la
+  coherencia y los desplazamientos forzados, desde la más cercana de su
+  huella.
+- `alEntrar` se pregunta por la casilla de su esquina.
+
+El banco de pruebas dibuja a los grandes como un rectángulo redondeado sobre
+toda su huella y ofrece, al crear una estancia, un ogro de 2 × 2 y un león de
+2 × 1 (`monstruosGrandesDePrueba`).
+
   El banco de pruebas lo ofrece en el formulario (gratis o una casilla) y
   dibuja en cada ficha un triángulo hacia donde mira.
 
@@ -306,7 +336,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
   terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
   muros?: [{ desde: { x, y }, hasta: { x, y }, pasos?: number[], puertas?: number[], cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante' }],
-  personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, vida?: number, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
+  personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, vida?: number, largo?: number, ancho?: number, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
 ```
 
@@ -393,6 +423,8 @@ interface ClaseDePersonaje {
   nombre: string
   imagenVtt?: string // URL de la ficha VTT vista desde arriba
   vida?: number      // puntos de vida con los que empieza
+  largo?: number     // casillas que ocupa hacia donde mira; sin él, 1
+  ancho?: number     // casillas que ocupa de lado; sin él, 1
   opcionesMovimiento(personaje: PersonajeEnJuego, gastado: MovimientoGastado): Promise<OpcionesMovimiento | undefined>
   acciones(personaje: PersonajeEnJuego, mapa: MapaEnJuego): Promise<Accion[]>
   motivoParaNoAtacar(ataque: Ataque, mapa: MapaEnJuego): string | undefined

@@ -1,17 +1,14 @@
 import { todosLosPersonajes } from './activaciones'
+import { huellaEnElMapa } from './huella'
 import { jugadorDe, postura } from './jugadores'
-import { enElMapa, enemigosDe, enZonaDeControl } from './movimiento'
+import { enemigosDe, enZonaDeControl } from './movimiento'
 import type { Mapa } from './modelo/mapa'
 import type { Personaje } from './modelo/personaje'
 
 /** Enemigos colocados en cuya zona de control (a `distanciaControl` pasos o menos, sin atravesar muros) está el personaje: los que lo traban en cuerpo a cuerpo. Ninguno si no está colocado */
 export function trabadoPor(m: Mapa, distanciaControl: number, personaje: Personaje): Personaje[] {
-  const suya = enElMapa(m, personaje)
-  if (!suya) return []
-  return enemigosDe(m, personaje.id).filter((en) => {
-    const donde = enElMapa(m, en)
-    return !!donde && enZonaDeControl(m, [donde], distanciaControl)(suya)
-  })
+  const suyas = huellaEnElMapa(m, personaje)
+  return enemigosDe(m, personaje.id).filter((en) => suyas.some(enZonaDeControl(m, huellaEnElMapa(m, en), distanciaControl)))
 }
 
 /** Si el personaje está en la zona de control de algún enemigo: trabado en cuerpo a cuerpo */
@@ -24,12 +21,13 @@ export const estaTrabado = (m: Mapa, distanciaControl: number, personaje: Person
  * aliado: su alianza es aliada de la suya, o es la misma
  */
 export function apoyosDe(m: Mapa, distanciaControl: number, personaje: Personaje): Personaje[] {
-  const suya = enElMapa(m, personaje)
+  const suyas = huellaEnElMapa(m, personaje)
   const alianza = jugadorDe(m, personaje.id)?.alianza
-  if (!suya || !alianza) return []
+  if (!suyas.length || !alianza) return []
+  // en su zona de control: alguna casilla del otro está a la distancia de alguna de las suyas
+  const enSuZona = enZonaDeControl(m, suyas, distanciaControl)
   return todosLosPersonajes(m).filter((p) => {
     const otra = jugadorDe(m, p.id)?.alianza
-    const donde = enElMapa(m, p)
-    return p.id !== personaje.id && !!otra && !!donde && postura(m, otra, alianza) === 'aliada' && enZonaDeControl(m, [donde], distanciaControl)(suya)
+    return p.id !== personaje.id && !!otra && postura(m, otra, alianza) === 'aliada' && huellaEnElMapa(m, p).some(enSuZona)
   })
 }
