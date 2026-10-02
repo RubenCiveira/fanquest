@@ -85,6 +85,19 @@ export type Configuracion = {
    * 0, no retrocede
    */
   retrocesoTrasCombate: number
+  /**
+   * Lo que cuesta, en casillas de movimiento, cada giro de 90° del
+   * encaramiento (darse la vuelta, el doble): al moverse, el personaje gira
+   * hasta mirar hacia donde va y acaba mirando hacia su último paso. Con 0,
+   * girar es gratis
+   */
+  costeGiro: number
+  /**
+   * Lo que cuesta empezar un tramo en diagonal, hacia una de las dos
+   * diagonales de delante del encaramiento (para otra, antes hay que girar).
+   * Con 0, nada
+   */
+  costeGiroDiagonal: number
   /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
   jugadores: Jugadores
 }

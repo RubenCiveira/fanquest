@@ -1,5 +1,6 @@
 import type { Casilla } from './casilla'
 import type { MovimientoHecho } from './movimientoHecho'
+import type { Direccion } from './direccion'
 
 /**
  * Lo que ha hecho un personaje en un turno: sus acciones (sin contar moverse),
@@ -24,4 +25,6 @@ export type Personaje = {
   turnos: TurnoDePersonaje[]
   /** Marcas de estado del personaje que cambian durante la partida (aturdido…) */
   flags?: string[]
+  /** Hacia dónde mira (su encaramiento); sin ella, aún no ha girado: `ORIENTACION_INICIAL` */
+  orientacion?: Direccion
 }

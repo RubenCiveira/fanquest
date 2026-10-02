@@ -15,6 +15,7 @@ export type { DescripcionPersonaje, DescripcionPersonajeNoJugador } from './mode
 export type { Desplazamiento, DesplazamientoPorRecorrido, Referencia, ResultadoDesplazamiento } from './modelo/desplazamiento'
 export { OPUESTA, type Direccion } from './modelo/direccion'
 export type { Elemento, Mueble, Objeto } from './modelo/elemento'
+export type { Encaramiento } from './modelo/encaramiento'
 export type { Escuadra, TurnoDeEscuadra } from './modelo/escuadra'
 export type { Estancia, TipoEstancia } from './modelo/estancia'
 export type { Personaje, TurnoDePersonaje } from './modelo/personaje'
@@ -38,7 +39,7 @@ export type { TipoConFlags } from './modelo/tipoConFlags'
 export type { ResultadoActivacion } from './modelo/resultadoActivacion'
 export type { Ubicacion } from './modelo/ubicacion'
 export { aAgrupar, recorridoParaAgrupar, type RecorridoParaAgrupar } from './agrupar'
-export { AGRUPAR, ATACAR, accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
+export { AGRUPAR, ATACAR, GIROS, accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
 export {
   activacionDe,
   activacionDeJugador,
@@ -76,6 +77,7 @@ export { apoyosDe, estaTrabado, trabadoPor } from './zonaDeControl'
 export { aristaEntre, alOtroLado, coberturaDeArista, cruce, motivoParaNoAnadirMuro, muroEnArista, puertaEnArista, tramosDe } from './muros'
 export { guiaDeCoherencia } from './coherencia'
 export { construirEstancia } from './construccion'
+export { girada, giroDelPaso, girosDe, girosEntre, ORIENTACION_INICIAL, VECTOR, type Rumbo } from './encaramiento'
 export { conFlags, flagsDe } from './flags'
 export { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from './desplazamientos'
 export { buscarSitio, colocarElemento, motivoParaNoColocar, situar } from './elementos'
@@ -94,9 +96,11 @@ export {
   costesDe,
   enContacto,
   enElMapa,
+  encaramientoDe,
   enZonaDeControl,
   evaluarRecorrido,
   gastadoPor,
+  girar,
   desplazar,
   mover,
   planearMovimiento,

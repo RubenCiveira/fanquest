@@ -165,6 +165,12 @@
 }
 
 /* puntos de vida que le quedan */
+.vista-encaramiento {
+  fill: var(--tinta);
+  stroke: var(--vitela);
+  stroke-width: 1;
+}
+
 .vista-vida circle {
   fill: var(--rubrica);
 }

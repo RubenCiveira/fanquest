@@ -33,6 +33,13 @@ export const ATACAR: Accion = { id: 'atacar', nombre: 'Atacar', icono: '⚔️' 
 /** Acción del gestor para que el resto de la escuadra se coloque alrededor del personaje */
 export const AGRUPAR: Accion = { id: 'agrupar', nombre: 'Agrupar aquí', icono: '🫂' }
 
+/** Girar el encaramiento sin moverse: a la izquierda, a la derecha o darse la vuelta (`GestorMapa.girar`), con cuántos cuartos de vuelta en el sentido del reloj */
+export const GIROS: (Accion & { giro: 1 | -1 | 2 })[] = [
+  { id: 'girar-izquierda', nombre: 'Girar a la izquierda', icono: '↺', giro: -1 },
+  { id: 'girar-derecha', nombre: 'Girar a la derecha', icono: '↻', giro: 1 },
+  { id: 'darse-la-vuelta', nombre: 'Darse la vuelta', icono: '🔄', giro: 2 },
+]
+
 /** Id de la acción del gestor que pasa de agresivo a sigiloso o al revés */
 export const CAMBIAR_MODO = 'cambiar-modo'
 

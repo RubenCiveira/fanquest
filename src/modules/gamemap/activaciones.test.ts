@@ -28,8 +28,8 @@ const mapa: Mapa = {
   ],
   turno: 1,
 }
-const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: { alianzas: [], jugadores: [] } }
-const normales: Configuracion = { ordenActivaciones: 'personajes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: { alianzas: [], jugadores: [] } }
+const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: { alianzas: [], jugadores: [] } }
+const normales: Configuracion = { ordenActivaciones: 'personajes-primero', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: { alianzas: [], jugadores: [] } }
 
 const completas = (m: Mapa, config: Configuracion, modos: Record<string, 'normal' | 'agresivo' | 'sigiloso'>) =>
   Object.entries(modos).reduce((a, [id, modo]) => terminarActivacion(activar(a, config, id, modo), id), m)

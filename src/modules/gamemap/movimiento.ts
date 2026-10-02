@@ -1,6 +1,7 @@
 import { apuntarAccion } from './acciones'
 import { conPersonaje, conPersonajeNoJugador, conTurno, numeroDeTurno, todosLosPersonajes, turnoDePersonaje } from './activaciones'
 import { esEnemigo, jugadorDe } from './jugadores'
+import { ORIENTACION_INICIAL, giroDelPaso, girosDe, type Rumbo } from './encaramiento'
 import { estanciaEn } from './estancias'
 import { cruce } from './muros'
 import { factorDeTerreno } from './terrenos'
@@ -8,6 +9,7 @@ import type { Accion } from './modelo/accion'
 import type { Casilla } from './modelo/casilla'
 import type { Configuracion } from './modelo/configuracion'
 import type { Direccion } from './modelo/direccion'
+import type { Encaramiento } from './modelo/encaramiento'
 import type { Elemento } from './modelo/elemento'
 import type { Estancia } from './modelo/estancia'
 import type { Personaje } from './modelo/personaje'
@@ -39,8 +41,12 @@ const DIAGONALES: Casilla[] = [
 /** Cómo se miden los movimientos (`Configuracion.medicionMovimiento`) */
 export type MedicionMovimiento = Configuracion['medicionMovimiento']
 
-/** Cómo se mueve una forma de moverse por el mapa: lo que le cuesta cada terreno y si cruza muros interiores (`OpcionMovimiento`) */
-export type FormaDeMoverse = Pick<OpcionMovimiento, 'terreno' | 'cruzaMuros'>
+/**
+ * Cómo se mueve una forma de moverse por el mapa: lo que le cuesta cada
+ * terreno y si cruza muros interiores (`OpcionMovimiento`) y, si se cuentan
+ * los giros, hacia dónde mira al empezar y lo que le cuesta girar
+ */
+export type FormaDeMoverse = Pick<OpcionMovimiento, 'terreno' | 'cruzaMuros'> & { encaramiento?: Encaramiento }
 
 /** Pasos posibles desde una casilla: sin diagonales o con ellas */
 const pasosDe = (medicion: MedicionMovimiento) => (medicion === 'ortogonal' ? PASOS : [...PASOS, ...DIAGONALES])
@@ -239,6 +245,15 @@ export function sePuedePasar(m: Mapa, a: Casilla, b: Casilla, medicion: Medicion
   return !enDiagonal(a, b) || (medicion !== 'ortogonal' && [{ x: b.x, y: a.y }, { x: a.x, y: b.y }].every((lado) => transitable(m, lado, forma)))
 }
 
+/** Una casilla de una búsqueda de rutas y, si girar cuesta algo, cómo se llega a ella (hacia dónde mira y si va en diagonal): cuesta distinto seguir según el rumbo */
+type Nodo = { casilla: Casilla; rumbo?: Rumbo }
+
+const claveDeNodo = ({ casilla: { x, y }, rumbo }: Nodo) => (rumbo ? `${x},${y},${rumbo.orientacion},${rumbo.enDiagonal}` : `${x},${y}`)
+
+/** El encaramiento de la forma de moverse, si girar le cuesta algo: si no, las rutas no miran hacia dónde se mira */
+const conGiros = ({ encaramiento }: FormaDeMoverse): Encaramiento | undefined =>
+  encaramiento && (encaramiento.costeGiro || encaramiento.costeGiroDiagonal) ? encaramiento : undefined
+
 /** Lo que cuesta cada paso en diagonal al buscar la ruta: con diagonales que cuentan como uno, algo más, para preferir los rectos a igual coste */
 const PESO_DIAGONAL: Record<MedicionMovimiento, number> = { ortogonal: Number.POSITIVE_INFINITY, diagonal: 1.001, euclidea: Math.SQRT2 }
 
@@ -259,30 +274,33 @@ function falta(a: Casilla, b: Casilla, medicion: MedicionMovimiento) {
  * orden; nada si no se puede llegar
  */
 export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): Casilla[] | undefined {
-  const clave = ({ x, y }: Casilla) => `${x},${y}`
-  const acumulado = new Map([[clave(desde), 0]])
-  const previa = new Map<string, Casilla>()
+  const giro = conGiros(forma)
+  const inicio: Nodo = { casilla: desde, ...(giro && { rumbo: { orientacion: giro.orientacion, enDiagonal: false } }) }
+  const acumulado = new Map([[claveDeNodo(inicio), 0]])
+  const previa = new Map<string, Nodo>()
   const cerradas = new Set<string>()
-  const abiertas = [desde]
-  const prioridad = (c: Casilla) => (acumulado.get(clave(c)) ?? 0) + falta(c, hasta, medicion)
+  const abiertas = [inicio]
+  const prioridad = (n: Nodo) => (acumulado.get(claveDeNodo(n)) ?? 0) + falta(n.casilla, hasta, medicion)
   while (abiertas.length) {
     abiertas.sort((a, b) => prioridad(a) - prioridad(b))
     const actual = abiertas.shift()
     if (!actual) break
-    if (igual(actual)(hasta)) {
-      const vuelta = [actual]
-      for (let c = previa.get(clave(actual)); c; c = previa.get(clave(c))) vuelta.unshift(c)
+    if (igual(actual.casilla)(hasta)) {
+      const vuelta = [actual.casilla]
+      for (let n = previa.get(claveDeNodo(actual)); n; n = previa.get(claveDeNodo(n))) vuelta.unshift(n.casilla)
       return vuelta
     }
-    cerradas.add(clave(actual))
+    cerradas.add(claveDeNodo(actual))
     for (const paso of pasosDe(medicion)) {
-      const c = { x: actual.x + paso.x, y: actual.y + paso.y }
-      if (cerradas.has(clave(c)) || !sePuedePasar(m, actual, c, medicion, forma)) continue
-      const nuevo = (acumulado.get(clave(actual)) ?? 0) + (enDiagonal(actual, c) ? PESO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma)
-      if (nuevo < (acumulado.get(clave(c)) ?? Number.POSITIVE_INFINITY)) {
-        if (!acumulado.has(clave(c))) abiertas.push(c)
-        acumulado.set(clave(c), nuevo)
-        previa.set(clave(c), actual)
+      const c = { x: actual.casilla.x + paso.x, y: actual.casilla.y + paso.y }
+      const girando = giro && actual.rumbo && giroDelPaso(actual.rumbo, actual.casilla, c, giro)
+      const siguiente: Nodo = { casilla: c, ...(girando && { rumbo: girando.rumbo }) }
+      if (cerradas.has(claveDeNodo(siguiente)) || !sePuedePasar(m, actual.casilla, c, medicion, forma)) continue
+      const nuevo = (acumulado.get(claveDeNodo(actual)) ?? 0) + (enDiagonal(actual.casilla, c) ? PESO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma) + (girando ? girando.coste : 0)
+      if (nuevo < (acumulado.get(claveDeNodo(siguiente)) ?? Number.POSITIVE_INFINITY)) {
+        if (!acumulado.has(claveDeNodo(siguiente))) abiertas.push(siguiente)
+        acumulado.set(claveDeNodo(siguiente), nuevo)
+        previa.set(claveDeNodo(siguiente), actual)
       }
     }
   }
@@ -296,32 +314,38 @@ export function ruta(m: Mapa, desde: Casilla, hasta: Casilla, medicion: Medicion
  * barata a la más cara
  */
 export function alcanzables(m: Mapa, desde: Casilla, maximo: number, medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): { recorrido: Casilla[]; coste: number }[] {
-  const clave = ({ x, y }: Casilla) => `${x},${y}`
+  const giro = conGiros(forma)
   // sin arrastrar el error de coma flotante, como `costesDe` (y sin -0 en la de salida)
   const redondeado = (largo: number) => Math.max(0, Math.ceil(largo - 1e-9))
-  const llegadas = new Map<string, { recorrido: Casilla[]; largo: number }>([[clave(desde), { recorrido: [desde], largo: 0 }]])
+  const inicio: Nodo = { casilla: desde, ...(giro && { rumbo: { orientacion: giro.orientacion, enDiagonal: false } }) }
+  const llegadas = new Map<string, { nodo: Nodo; recorrido: Casilla[]; largo: number }>([[claveDeNodo(inicio), { nodo: inicio, recorrido: [desde], largo: 0 }]])
   const cerradas = new Set<string>()
-  const abiertas = [clave(desde)]
-  const alcanzadas: { recorrido: Casilla[]; coste: number }[] = []
+  const abiertas = [claveDeNodo(inicio)]
+  // de cada casilla, la primera vez que se cierra, que es la más barata
+  const alcanzadas = new Map<string, { recorrido: Casilla[]; coste: number }>()
   while (abiertas.length) {
     abiertas.sort((a, b) => (llegadas.get(a)?.largo ?? 0) - (llegadas.get(b)?.largo ?? 0))
     const k = abiertas.shift() ?? ''
     const actual = llegadas.get(k)
-    const donde = actual?.recorrido.at(-1)
-    if (!actual || !donde) break
+    if (!actual) break
+    const donde = actual.nodo.casilla
     cerradas.add(k)
-    alcanzadas.push({ recorrido: actual.recorrido, coste: redondeado(actual.largo) })
+    const casilla = `${donde.x},${donde.y}`
+    if (!alcanzadas.has(casilla)) alcanzadas.set(casilla, { recorrido: actual.recorrido, coste: redondeado(actual.largo) })
     for (const paso of pasosDe(medicion)) {
       const c = { x: donde.x + paso.x, y: donde.y + paso.y }
-      const antes = llegadas.get(clave(c))
-      if (cerradas.has(clave(c)) || !sePuedePasar(m, donde, c, medicion, forma)) continue
-      const largo = actual.largo + (enDiagonal(donde, c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma)
+      const girando = giro && actual.nodo.rumbo && giroDelPaso(actual.nodo.rumbo, donde, c, giro)
+      const siguiente: Nodo = { casilla: c, ...(girando && { rumbo: girando.rumbo }) }
+      const clave = claveDeNodo(siguiente)
+      const antes = llegadas.get(clave)
+      if (cerradas.has(clave) || !sePuedePasar(m, donde, c, medicion, forma)) continue
+      const largo = actual.largo + (enDiagonal(donde, c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma) + (girando ? girando.coste : 0)
       if (redondeado(largo) > maximo || (antes && antes.largo <= largo)) continue
-      if (!antes) abiertas.push(clave(c))
-      llegadas.set(clave(c), { recorrido: [...actual.recorrido, c], largo })
+      if (!antes) abiertas.push(clave)
+      llegadas.set(clave, { nodo: siguiente, recorrido: [...actual.recorrido, c], largo })
     }
   }
-  return alcanzadas
+  return [...alcanzadas.values()]
 }
 
 /** Lo que el personaje ya ha movido en el turno en curso: la suma de sus movimientos */
@@ -343,8 +367,9 @@ export const alcance = ({ base, variaciones }: OpcionesMovimiento) =>
  */
 export function costesDe(m: Mapa, recorrido: Casilla[], medicion: MedicionMovimiento = 'ortogonal', forma: FormaDeMoverse = {}): number[] {
   let largo = 0
+  const giros = forma.encaramiento ? girosDe(recorrido, forma.encaramiento).costes : []
   return recorrido.slice(1).map((c, i) => {
-    largo += (enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma)
+    largo += (enDiagonal(recorrido[i], c) ? LARGO_DIAGONAL[medicion] : 1) * factorEn(m, c, forma) + (giros[i] ?? 0)
     // sin arrastrar el error de coma flotante: 2 × √2 no llega a 3
     return Math.ceil(largo - 1e-9)
   })
@@ -362,7 +387,16 @@ function tramosDe(opcion: OpcionMovimiento, costes: number[]): number[] | undefi
 }
 
 /** Las reglas de la configuración que cuentan para planear un movimiento */
-export type ReglasDeMovimiento = Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl' | 'cuerpoACuerpo'>
+export type ReglasDeMovimiento = Pick<Configuracion, 'medicionMovimiento' | 'terrenoPersonajes' | 'distanciaControl' | 'cuerpoACuerpo'> &
+  // sin decir lo que cuesta girar, nada
+  Partial<Pick<Configuracion, 'costeGiro' | 'costeGiroDiagonal'>>
+
+/** El encaramiento del personaje para contar sus giros: hacia dónde mira (sin haber girado, `ORIENTACION_INICIAL`) y lo que le cuesta girar */
+export const encaramientoDe = (personaje: Pick<Personaje, 'orientacion'>, { costeGiro = 0, costeGiroDiagonal = 0 }: Partial<Pick<Configuracion, 'costeGiro' | 'costeGiroDiagonal'>>): Encaramiento => ({
+  orientacion: personaje.orientacion ?? ORIENTACION_INICIAL,
+  costeGiro,
+  costeGiroDiagonal,
+})
 
 /** Motivo de `evaluarRecorrido` cuando el recorrido entra en la zona de control de un enemigo sin cargar */
 const EN_ZONA_DE_CONTROL = 'El recorrido entra en la zona de control de un enemigo'
@@ -393,7 +427,16 @@ export function evaluarRecorrido(
     enemigos = [],
     distanciaControl = 0,
     cuerpoACuerpo = 'diagonal',
-  }: { medicion?: MedicionMovimiento; enemigos?: Casilla[]; distanciaControl?: number; cuerpoACuerpo?: Configuracion['cuerpoACuerpo'] } = {},
+    costeGiro = 0,
+    costeGiroDiagonal = 0,
+  }: {
+    medicion?: MedicionMovimiento
+    enemigos?: Casilla[]
+    distanciaControl?: number
+    cuerpoACuerpo?: Configuracion['cuerpoACuerpo']
+    costeGiro?: number
+    costeGiroDiagonal?: number
+  } = {},
 ): RecorridoEvaluado {
   const [salida, ...pasos] = recorrido
   const destino = pasos.at(-1)
@@ -421,7 +464,9 @@ export function evaluarRecorrido(
   }
   const terminaJunto = enemigos.some((en) => enContacto(destino, en, cuerpoACuerpo))
   const permite = (o: OpcionMovimiento) => segunZona[o.tipo] && (!o.terminarJuntoAEnemigo || terminaJunto)
-  const tramosPara = (o: OpcionMovimiento) => (pasa(o) ? tramosDe(o, costesDe(m, recorrido, medicion, o)) : undefined)
+  // los giros cuentan en lo que cuesta el recorrido
+  const encaramiento = encaramientoDe(personaje, { costeGiro, costeGiroDiagonal })
+  const tramosPara = (o: OpcionMovimiento) => (pasa(o) ? tramosDe(o, costesDe(m, recorrido, medicion, { ...o, encaramiento })) : undefined)
   for (const opcion of opciones) {
     const tramos = tramosPara(opcion)
     if (tramos && permite(opcion)) return { opcion, tramos }
@@ -433,7 +478,7 @@ export function evaluarRecorrido(
   if (trabado && llega('normal')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: para salir tiene que destrabarse` }
   if (entraEnZona && llega('normal')) return { motivo: EN_ZONA_DE_CONTROL }
   const maximo = alcance({ base, variaciones })
-  const coste = costeDe(m, recorrido, medicion)
+  const coste = costeDe(m, recorrido, medicion, { encaramiento })
   if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }
   return { motivo: 'Ninguna forma de moverse permite ese recorrido' }
 }
@@ -450,7 +495,7 @@ export function evaluarRecorrido(
  */
 export function planearMovimiento(
   m: Mapa,
-  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl, cuerpoACuerpo }: ReglasDeMovimiento,
+  { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal }: ReglasDeMovimiento,
   personaje: Personaje,
   destino: Casilla,
   opciones: OpcionesMovimiento,
@@ -459,12 +504,14 @@ export function planearMovimiento(
   if (!desde) return { motivo: `${personaje.nombre} no está colocado en el mapa` }
   const vista = conPersonajes(m, personaje.id, terrenoPersonajes)
   const enemigos = casillasDeEnemigos(m, personaje.id)
-  const reglas = { medicion, enemigos, distanciaControl, cuerpoACuerpo }
+  const reglas = { medicion, enemigos, distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal }
   const conZona = conZonaDeControl(vista, enemigos, distanciaControl)
+  // con lo que le cuesta girar desde donde mira
+  const encaramiento = encaramientoDe(personaje, { costeGiro, costeGiroDiagonal })
   // cada opción por su camino: con lo que le cuesta el terreno, si cruza muros interiores y, si es normal, rodeando la zona de control
-  const caminoPara = (opcion: OpcionMovimiento) => ruta(opcion.tipo === 'normal' ? conZona : vista, desde, destino, medicion, opcion)
-  const directo = ruta(vista, desde, destino, medicion)
-  const rodeando = ruta(conZona, desde, destino, medicion)
+  const caminoPara = (opcion: OpcionMovimiento) => ruta(opcion.tipo === 'normal' ? conZona : vista, desde, destino, medicion, { ...opcion, encaramiento })
+  const directo = ruta(vista, desde, destino, medicion, { encaramiento })
+  const rodeando = ruta(conZona, desde, destino, medicion, { encaramiento })
   for (const opcion of [opciones.base, ...opciones.variaciones]) {
     const recorrido = caminoPara(opcion)
     const evaluado = recorrido && evaluarRecorrido(vista, personaje, recorrido, { base: opcion, variaciones: [] }, reglas)
@@ -492,25 +539,44 @@ export const accionesConsumidas = (valido: Valido): string[] => [valido.opcion.a
 /**
  * Lleva al personaje (de una escuadra o no jugador) al final del recorrido ya
  * evaluado (en casillas del mapa: si es otra estancia, pasa a ella) y apunta
- * el movimiento en su turno: lo que cuesta según la medición y los demás
- * personajes de `config`, y las acciones que consume. Esas acciones no las
+ * el movimiento en su turno: lo que cuesta según la medición, los demás
+ * personajes y los giros de `config`, y las acciones que consume. Queda
+ * mirando hacia donde dio su último paso. Esas acciones no las
  * apunta en ninguna activación: eso depende de quién es (`mover`)
  */
 export function desplazar(m: Mapa, config: Configuracion, personaje: Personaje, recorrido: Casilla[], valido: Valido): Mapa {
   const destino = casillaDelMapa(m, recorrido.at(-1) ?? { x: Number.NaN, y: Number.NaN })
   if (!destino) throw new Error(`El recorrido de ${personaje.nombre} no termina en ninguna estancia`)
+  const encaramiento = encaramientoDe(personaje, config)
   const hecho = {
     opcion: valido.opcion.id,
-    casillas: costeDe(conPersonajes(m, personaje.id, config.terrenoPersonajes), recorrido, config.medicionMovimiento, valido.opcion),
+    casillas: costeDe(conPersonajes(m, personaje.id, config.terrenoPersonajes), recorrido, config.medicionMovimiento, { ...valido.opcion, encaramiento }),
     acciones: accionesConsumidas(valido),
   }
   const movido = <P extends Personaje>(p: P): P => ({
     ...p,
     estancia: destino.estancia.id,
     casilla: destino.casilla,
+    // acaba mirando hacia donde dio su último paso
+    orientacion: girosDe(recorrido, encaramiento).orientacion,
     turnos: conTurno(p.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })),
   })
   return conPersonajeNoJugador(conPersonaje(m, personaje.id, movido), personaje.id, movido)
+}
+
+/**
+ * Gira al personaje (de una escuadra o no jugador) hasta mirar hacia
+ * `orientacion`, sin moverse; si cuesta algo, lo apunta en su turno como un
+ * movimiento de `coste` casillas (opción `girar`, sin acciones)
+ */
+export function girar(m: Mapa, personajeId: string, orientacion: Direccion, coste: number): Mapa {
+  const hecho = { opcion: 'girar', casillas: coste, acciones: [] }
+  const girado = <P extends Personaje>(p: P): P => ({
+    ...p,
+    orientacion,
+    ...(coste && { turnos: conTurno(p.turnos, { numero: numeroDeTurno(m), acciones: [], movimientos: [] }, (t) => ({ ...t, movimientos: [...t.movimientos, hecho] })) }),
+  })
+  return conPersonajeNoJugador(conPersonaje(m, personajeId, girado), personajeId, girado)
 }
 
 /**

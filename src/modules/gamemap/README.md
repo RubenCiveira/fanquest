@@ -135,7 +135,8 @@ mismo sitio.
   `coherencia` con `distanciaCoherencia` (si las escuadras se mantienen
   juntas y cómo), `modoAtaque` (uno a uno o escuadra contra escuadra) y las
   distancias tras una carga y tras el combate (`apoyoALaCarga`,
-  `ajusteDelDefensor`, `consolidacionTrasCombate`, `retrocesoTrasCombate`).
+  `ajusteDelDefensor`, `consolidacionTrasCombate`, `retrocesoTrasCombate`) y
+  lo que cuesta girar el encaramiento (`costeGiro`, `costeGiroDiagonal`).
 - **Turno y activación**: la activación es de la escuadra y en ella pueden
   actuar todos sus personajes. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las

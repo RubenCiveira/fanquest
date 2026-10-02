@@ -36,6 +36,8 @@ export const CONFIGURACION_INICIAL: Configuracion = {
   ajusteDelDefensor: 0,
   consolidacionTrasCombate: 0,
   retrocesoTrasCombate: 0,
+  costeGiro: 0,
+  costeGiroDiagonal: 0,
   jugadores: JUGADORES_DE_PRUEBA,
 }
 
@@ -66,6 +68,8 @@ export const OPCIONES_CONFIGURACION: { [K in Ajuste]: { etiqueta: string; valore
   ajusteDelDefensor: { etiqueta: 'Tras una carga, la escuadra cargada se acerca', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas', 3: '3 casillas' } },
   consolidacionTrasCombate: { etiqueta: 'Tras destruir en cuerpo a cuerpo, se avanza', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas', 3: '3 casillas' } },
   retrocesoTrasCombate: { etiqueta: 'Tras un cuerpo a cuerpo sin destruir, se retrocede', valores: { 0: 'No', 1: '1 casilla', 2: '2 casillas' } },
+  costeGiro: { etiqueta: 'Coste de cada giro de 90° del encaramiento', valores: { 0: 'Gratis', 1: '1 casilla de movimiento' } },
+  costeGiroDiagonal: { etiqueta: 'Coste de empezar a ir en diagonal', valores: { 0: 'Gratis', 1: '1 casilla de movimiento' } },
 }
 
 const CLAVE = 'fetenquest.map-debug.configuracion.v3'

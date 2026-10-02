@@ -13,8 +13,8 @@ const mapa: Mapa = {
   ],
   turno: 2,
 }
-const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: { alianzas: [], jugadores: [] } }
-const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: { alianzas: [], jugadores: [] } }
+const conModos: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: { alianzas: [], jugadores: [] } }
+const normales: Configuracion = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: { alianzas: [], jugadores: [] } }
 const rojos = (m: Mapa) => m.escuadras?.find((e) => e.id === 'rojos') ?? { id: '', nombre: '', jugador: '', personajes: [], turnos: [] }
 
 describe('acciones de las escuadras', () => {

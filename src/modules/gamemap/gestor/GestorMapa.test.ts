@@ -89,6 +89,8 @@ function proveedor(descripcion = sala, conElfo = false, coherencia?: Coherencia)
       ajusteDelDefensor: 0,
       consolidacionTrasCombate: 0,
       retrocesoTrasCombate: 0,
+      costeGiro: 0,
+      costeGiroDiagonal: 0,
       jugadores: REPARTO,
     } as const,
     confirmar: vi.fn(async (_mensaje: string) => true),
@@ -185,7 +187,7 @@ describe('gestor del mapa: estancias y escuadras', () => {
   })
 
   it('sin modo agresivo o sigiloso, las escuadras no tienen modo de partida', async () => {
-    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: REPARTO } })
+    const gestor = new GestorMapa({ ...proveedor(), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: REPARTO } })
     await gestor.nuevaEstancia()
     expect(gestor.mapa.escuadras?.map((e) => e.modo)).toEqual([undefined, undefined])
   })
@@ -240,7 +242,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
 
   it('al pulsar un personaje, sus acciones van delante de las del gestor', async () => {
     const { gestor } = await conInicial()
-    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['gritar', 'buscar-trampas', 'cambiar-modo', 'terminar-turno'])
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['gritar', 'buscar-trampas', 'girar-izquierda', 'girar-derecha', 'darse-la-vuelta', 'cambiar-modo', 'terminar-turno'])
   })
 
   it('las acciones se piden a la clase del personaje, con su estado y el mapa', async () => {
@@ -259,7 +261,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
     await gestor.ejecutarAccion('rojos', 'buscar-trampas', 'barbaro')
     expect([gestor.tieneFlag('estancia', 'estancia-1', 'sin_trampas'), (await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)]).toEqual([
       true,
-      ['gritar', 'cambiar-modo', 'terminar-turno'],
+      ['gritar', 'girar-izquierda', 'girar-derecha', 'darse-la-vuelta', 'cambiar-modo', 'terminar-turno'],
     ])
   })
 
@@ -548,6 +550,42 @@ describe('gestor del mapa: desplazamientos forzados', () => {
   it('a una escuadra que no hay, el motivo', async () => {
     const { gestor } = await conOrco()
     expect(await gestor.desplazarEscuadra('nadie', { sentido: 'lejos', de: delOrco, casillas: 1 })).toBe('No hay ninguna escuadra «nadie» en el mapa')
+  })
+})
+
+describe('gestor del mapa: encaramiento', () => {
+  /** Sala amplia con girar a 1 casilla de movimiento por cada 90° (el bárbaro, en 1,1, mira arriba) */
+  async function conGiros() {
+    const base = proveedor(amplia)
+    const p = { ...base, configuracion: { ...base.configuracion, costeGiro: 1 } }
+    const gestor = new GestorMapa(p)
+    await gestor.nuevaEstancia()
+    const barbaro = () => gestor.personaje('barbaro')
+    return { gestor, p, barbaro }
+  }
+
+  it('girar a la derecha desde su corona', async () => {
+    const { gestor, barbaro } = await conInicial(amplia)
+    await gestor.ejecutarAccion('rojos', 'girar-derecha', 'barbaro')
+    expect(barbaro().orientacion).toBe('derecha')
+  })
+
+  it('darse la vuelta cuesta dos giros de su movimiento', async () => {
+    const { gestor, barbaro } = await conGiros()
+    await gestor.girar('barbaro', 'abajo')
+    expect(gastadoPor(gestor.mapa, barbaro() ?? { id: '', nombre: '', estancia: '', turnos: [] })).toEqual({ casillas: 2, acciones: [] })
+  })
+
+  it('sin movimiento para girar, no gira y dice por qué', async () => {
+    const { gestor, p, barbaro } = await conGiros()
+    p.opcionesMovimiento.mockResolvedValueOnce({ ...opciones, base: { ...opciones.base, tramos: [{ distancia: 1 }] } })
+    expect([await gestor.girar('barbaro', 'abajo'), barbaro()?.orientacion]).toEqual(['Bárbaro no tiene movimiento para girar: le cuesta 2 y le queda 1', undefined])
+  })
+
+  it('al moverse, gira hacia donde va, lo paga y acaba mirando hacia allí', async () => {
+    const { gestor, barbaro } = await conGiros()
+    await gestor.moverPersonaje('barbaro', enLinea(barbaro()?.casilla, 1))
+    expect([barbaro()?.orientacion, turnoDePersonaje(barbaro() ?? { id: '', nombre: '', estancia: '', turnos: [] }, 1).movimientos[0].casillas]).toEqual(['derecha', 2])
   })
 })
 
@@ -1427,7 +1465,7 @@ describe('gestor del mapa: puertas', () => {
   })
 
   it('con personajes impasables, no se pasa por encima de otro personaje', async () => {
-    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: REPARTO } as const }
+    const p = { ...proveedor(amplia), configuracion: { ordenActivaciones: 'alternas', modosActivacion: 'agresivo-sigiloso', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'impasable', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: REPARTO } as const }
     const gestor = new GestorMapa(p, {
       estancias: [{ id: 'estancia-1', tipo: 'sala', columnas: 12, filas: 8, puertas: [], elementos: [], estancias: [] }],
       escuadras: [

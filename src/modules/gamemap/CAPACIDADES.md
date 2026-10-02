@@ -141,7 +141,7 @@ juego que mejor encaja.
   `eliminarPersonaje`.
   - **Ventajas:** la cobertura sale de `coberturaEn` y de la trayectoria. El
     terreno difícil del defensor sale de `terrenoEn`. Atacar por la espalda
-    necesita encaramiento, que el motor no tiene (ver huecos).
+    sale del encaramiento del atacante y del defensor (`orientacion`).
 
 ### 2.3 Exploración con `describirEstancia`
 
@@ -254,7 +254,7 @@ recibe y el proyecto juega por él con estas piezas:
 | Mazos, tablas, Nivel de Peligro | 🟡 Proyecto, guardados aparte del `Mapa` |
 | Damero de monstruos | 🟡 Proyecto, con `casilla` relativa a la entrada |
 | Movimiento fijo o 2D6, correr, obstaculizado | ✅ Opciones de movimiento, tramos y `destrabarse` |
-| Ataques, línea de visión y cobertura | ✅ `medirAtaque` y `trayectoria`. ❌ Sin encaramiento |
+| Ataques, línea de visión y cobertura | ✅ `medirAtaque`, `trayectoria` y el encaramiento (`orientacion`) para que la clase decida el campo de visión |
 | Buscar trampas y revisar muebles | ✅ |
 | Dado de Trampa al entrar en una sección | ✅ `alEntrar` (en el banco de pruebas) |
 | Puertas secretas | ❌ Falta añadir puertas a estancias ya construidas |
@@ -491,7 +491,7 @@ un juego en el motor: son puntos de extensión.
 | 8 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
 | 9 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
 | 10 | **Despliegue** | OPR, y FAI con el damero | Zonas de despliegue por alianza en la estancia inicial y validación en `colocarPersonaje` con un `motivoParaNoColocar` del proveedor |
-| 11 | **Encaramiento** | FetenQuest (área de ataque, espalda, campo de visión) | `orientacion?: Direccion` en `Personaje` y un comando para girar. La clase decide qué hace con ella |
+| 11 | ✅ **Encaramiento** | FetenQuest (área de ataque, espalda, campo de visión) | Hecho: `Personaje.orientacion`, girar al moverse (`costeGiro` por cada 90° y `costeGiroDiagonal` al empezar a ir en diagonal, que solo se puede hacia las diagonales de delante) y girar sin moverse (`gestor.girar`). El área de ataque y el campo de visión los decide la clase con `ataque.atacante.orientacion` |
 | 12 | **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | `columnas`/`filas` en el personaje, que ya existen para objetos. Toca rutas, ocupación y medición |
 | 13 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |
 

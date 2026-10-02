@@ -8,6 +8,7 @@ import {
   costeDe,
   costesDe,
   enElMapa,
+  encaramientoDe,
   enemigoEn,
   esEnemigo,
   escuadrasDe,
@@ -18,6 +19,8 @@ import {
   planearMovimiento,
   ruta,
   type Accion,
+  type Direccion,
+  type Encaramiento,
   type AtaqueDeEscuadra,
   type Activacion,
   type Casilla,
@@ -39,6 +42,7 @@ import {
   type Terreno,
   type TipoTerreno,
   numeroDeTurno,
+  ORIENTACION_INICIAL,
   personajesNoJugadoresDe,
   turnoDeEscuadra,
   type PersonajeNoJugador,
@@ -90,7 +94,10 @@ function estadoBadge(activacion?: Activacion, ultimoModo?: ModoActivacion) {
  * turno, discontinuo con su último modo (`ultimoModo`). Si lleva la cuenta de
  * su vida, otro badge abajo con los puntos que le quedan
  */
-function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida }, x, y, activacion, ultimoModo }: PropsFicha) {
+/** Ángulo de la marca del encaramiento, en grados desde arriba en el sentido del reloj */
+const ANGULO: Record<Direccion, number> = { arriba: 0, derecha: 90, abajo: 180, izquierda: 270 }
+
+function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida, orientacion = ORIENTACION_INICIAL }, x, y, activacion, ultimoModo }: PropsFicha) {
   const modo = activacion?.modo ?? ultimoModo
   const estado = activacion ? (activacion.terminada ? ' terminada' : '') : ' anterior'
   const radio = LADO / 2 - 2
@@ -115,6 +122,8 @@ function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida }, x, y, activacion,
           </text>
         </g>
       )}
+      {/* encaramiento: un triángulo en el borde hacia el que mira */}
+      <path className="vista-encaramiento" d={`M${x + LADO / 2} ${y} l5 6 h-10 z`} transform={`rotate(${ANGULO[orientacion]} ${x + LADO / 2} ${y + LADO / 2})`} />
       {vida !== undefined && (
         <g className="vista-vida">
           <circle cx={x + 5} cy={y + LADO - 5} r={6} />
@@ -126,6 +135,7 @@ function FichaEnMapa({ ficha: { id, nombre, imagenVtt, vida }, x, y, activacion,
       <title>
         {modo ? `${nombre}: ${estadoBadge(activacion, ultimoModo)}` : nombre}
         {vida !== undefined && ` (${vida} de vida)`}
+        {`, mira hacia ${orientacion}`}
       </title>
     </>
   )
@@ -341,9 +351,9 @@ type LineaDeDisparo = { desde: Casilla; hasta: Casilla }
 
 const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
 
-/** El recorrido recortado hasta donde llega el alcance, según la medición y el terreno */
-function recortado(mapa: Mapa, recorrido: Casilla[], maximo: number, medicion: MedicionMovimiento) {
-  const pasa = costesDe(mapa, recorrido, medicion).findIndex((coste) => coste > maximo)
+/** El recorrido recortado hasta donde llega el alcance, según la medición, el terreno y los giros del encaramiento */
+function recortado(mapa: Mapa, recorrido: Casilla[], maximo: number, medicion: MedicionMovimiento, encaramiento: Encaramiento) {
+  const pasa = costesDe(mapa, recorrido, medicion, { encaramiento }).findIndex((coste) => coste > maximo)
   return pasa < 0 ? recorrido : recorrido.slice(0, pasa + 1)
 }
 
@@ -360,9 +370,10 @@ function trazar(mapa: Mapa, reglas: ReglasDeMovimiento, a: Arrastre, objetivo: C
   const plan = a.opciones ? planearMovimiento(mapa, reglas, a.ficha, objetivo, a.opciones) : undefined
   if (plan && 'opcion' in plan) return { ...a, objetivo, recorrido: plan.recorrido, fuera: false }
   const vista = conPersonajes(mapa, a.ficha.id, reglas.terrenoPersonajes)
-  const camino = plan?.recorrido ?? ruta(vista, a.recorrido[0], objetivo, reglas.medicionMovimiento)
+  const encaramiento = encaramientoDe(a.ficha, reglas)
+  const camino = plan?.recorrido ?? ruta(vista, a.recorrido[0], objetivo, reglas.medicionMovimiento, { encaramiento })
   if (!camino) return { ...a, objetivo, fuera: true }
-  const recorrido = a.opciones ? recortado(vista, camino, alcance(a.opciones), reglas.medicionMovimiento) : camino
+  const recorrido = a.opciones ? recortado(vista, camino, alcance(a.opciones), reglas.medicionMovimiento, encaramiento) : camino
   return { ...a, objetivo, recorrido, fuera: recorrido.length < camino.length }
 }
 
@@ -392,6 +403,9 @@ type Props = {
   distanciaControl?: number
   /** Qué está en contacto para el cuerpo a cuerpo: en recto o también en diagonal (también, si no se dice) */
   cuerpoACuerpo?: Configuracion['cuerpoACuerpo']
+  /** Lo que cuesta girar el encaramiento al moverse: cada giro de 90° y empezar a ir en diagonal (gratis, si no se dice) */
+  costeGiro?: number
+  costeGiroDiagonal?: number
   /** Por qué no puede actuar ahora un personaje de una escuadra: si lo hay, se ve apagado y no se arrastra (pulsarlo solo lo elige) */
   motivoParaNoActuar?: (personajeId: string) => string | undefined
   /** Jugador al que le toca: los personajes no jugadores enemigos suyos se marcan como tales */
@@ -624,10 +638,10 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onAtacar, motivoParaNoAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0, cuerpoACuerpo = 'diagonal' } = props
+  const { opcionesMovimiento, onMover, onAtacar, motivoParaNoAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0, cuerpoACuerpo = 'diagonal', costeGiro = 0, costeGiroDiagonal = 0 } = props
   /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
   const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
-  const reglas: ReglasDeMovimiento = { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl, cuerpoACuerpo }
+  const reglas: ReglasDeMovimiento = { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal }
   const { estancias } = mapa
   const svg = useRef<SVGSVGElement>(null)
   // ids de las puntas de flecha, únicos aunque haya varios mapas en la página
@@ -690,7 +704,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const evaluado: RecorridoEvaluado | undefined =
     arrastre?.opciones === null
       ? { motivo: `${arrastre.ficha.nombre} no puede moverse ahora` }
-      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion, enemigos: casillasDeEnemigos(mapa, arrastre.ficha.id), distanciaControl, cuerpoACuerpo })
+      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion, enemigos: casillasDeEnemigos(mapa, arrastre.ficha.id), distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal })
   const x0 = Math.min(...estancias.map((e) => origenDe(e).x))
   const y0 = Math.min(...estancias.map((e) => origenDe(e).y))
   const x1 = Math.max(...estancias.map((e) => origenDe(e).x + e.columnas))
@@ -754,7 +768,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
           recorrido={arrastre.recorrido}
           evaluado={arrastre.fuera ? { motivo: 'Fuera de alcance' } : evaluado}
           marcador={marcador}
-          coste={costeDe(vistoPor(arrastre.ficha), arrastre.recorrido, medicion, evaluado && 'opcion' in evaluado ? evaluado.opcion : undefined)}
+          coste={costeDe(vistoPor(arrastre.ficha), arrastre.recorrido, medicion, { ...(evaluado && 'opcion' in evaluado ? evaluado.opcion : {}), encaramiento: encaramientoDe(arrastre.ficha, reglas) })}
         />
       )}
     </svg>

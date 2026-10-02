@@ -42,6 +42,7 @@ type Personaje = {
   estancia: string            // la estancia en que está
   casilla?: Casilla           // su casilla en ella; sin ella, en la zona de espera
   vida?: number               // puntos de vida que le quedan; sin ellos, no se lleva la cuenta
+  orientacion?: Direccion     // hacia dónde mira (su encaramiento); sin ella, `ORIENTACION_INICIAL` (arriba)
   turnos: TurnoDePersonaje[]      // { numero, acciones: string[], movimientos: [{ opcion, casillas, acciones }] }
   flags?: string[]            // marcas de estado: aturdido… (`marcarFlag('personaje', …)`)
 }
@@ -99,6 +100,8 @@ configuracion: {
   ajusteDelDefensor: number,
   consolidacionTrasCombate: number,
   retrocesoTrasCombate: number,
+  costeGiro: number,
+  costeGiroDiagonal: number,
   jugadores: {
     alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
     jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
@@ -226,6 +229,26 @@ configuracion: {
     de ella (One Page Rules: 1″).
 
   El banco de pruebas las ofrece en el formulario, todas apagadas al empezar.
+- Encaramiento: cada personaje mira hacia un lado (`Personaje.orientacion`,
+  nunca en diagonal; sin ella, `ORIENTACION_INICIAL`, arriba).
+  - `costeGiro`: lo que cuesta, en casillas de movimiento, cada giro de 90°
+    (darse la vuelta, el doble). Al moverse, el personaje gira hasta mirar
+    hacia donde da cada paso, lo paga y acaba mirando hacia su último paso:
+    la validación (`evaluarRecorrido`), las rutas (`ruta`, `planearMovimiento`,
+    también las de «Agrupar aquí») y lo que se apunta (`desplazar`) cuentan
+    los giros, y las rutas buscan las que menos giran.
+  - `costeGiroDiagonal`: en diagonal solo se va hacia una de las dos
+    diagonales de delante del encaramiento; para otra, primero gira (paga los
+    giros) a la orientación más cercana que la tenga delante. Empezar un tramo
+    en diagonal cuesta además `costeGiroDiagonal`.
+  - Girar sin moverse: `gestor.girar(personaje, orientacion)`, o las acciones
+    `GIROS` de la corona (girar a la izquierda, a la derecha, darse la
+    vuelta). Gasta los giros de su movimiento (se apuntan como un movimiento
+    `girar`) y necesita que le queden.
+  - Los desplazamientos forzados no cuestan giros ni cambian hacia dónde mira.
+
+  El banco de pruebas lo ofrece en el formulario (gratis o una casilla) y
+  dibuja en cada ficha un triángulo hacia donde mira.
 
 El gestor lee `configuracion` cada vez que la necesita: si el proveedor la
 expone con un getter, un cambio vale al momento (el banco de pruebas tiene un

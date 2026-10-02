@@ -7,7 +7,7 @@ import type { Personaje } from './modelo/personaje'
 import type { Mapa } from './modelo/mapa'
 import type { OpcionesMovimiento } from './modelo/opcionesMovimiento'
 import { turnoDePersonaje } from './activaciones'
-import { accionesConsumidas, casillasDeEnemigos, conPersonajes, conZonaDeControl, planearMovimiento, sePuedePasar, costeDe, evaluarRecorrido, gastadoPor, mover as moverPersonaje, ruta } from './movimiento'
+import { accionesConsumidas, casillasDeEnemigos, conPersonajes, conZonaDeControl, planearMovimiento, sePuedePasar, costeDe, evaluarRecorrido, gastadoPor, girar, mover as moverPersonaje, ruta } from './movimiento'
 import { orientar } from './orientacion'
 import type { Jugadores } from './modelo/jugadores'
 
@@ -190,7 +190,7 @@ describe('cruzar puertas', () => {
     expect(ruta(salaConSalida(true), { x: 1, y: 1 }, { x: 0, y: 4 })?.slice(0, 3)).toEqual(porLaPuerta.slice(0, 3))
   })
 
-  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: SIN_JUGADORES } as const
+  const normales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: SIN_JUGADORES } as const
   const moverPorLaPuerta = () => moverPersonaje(salaConSalida(true), normales, 'rojos', enLaSala, porLaPuerta, { opcion: opciones.base, tramos: [0, 0, 0] })
 
   it('al mover a la otra estancia, el personaje pasa a ella con su casilla en ella', () => {
@@ -262,7 +262,7 @@ describe('medición de los movimientos', () => {
   })
 
   it('el movimiento apunta lo que cuesta según la medición', () => {
-    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, jugadores: SIN_JUGADORES } as const
+    const conDiagonales = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'euclidea', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 0, costeGiroDiagonal: 0, jugadores: SIN_JUGADORES } as const
     const m = moverPersonaje(sala(), conDiagonales, 'rojos', barbaro, enDiagonal(3), { opcion: opciones.base, tramos: [0, 0, 0] })
     expect(gastadoPor(m, m.escuadras?.[0].personajes[0] ?? barbaro).casillas).toBe(5)
   })
@@ -502,3 +502,47 @@ describe('lo que le cuesta el terreno a cada forma de moverse', () => {
   })
 })
 
+
+describe('girar el encaramiento al moverse', () => {
+  /** Por la fila de arriba, de 0,0 a x,0: hacia la derecha */
+  const aLaDerecha = (hasta: number) => Array.from({ length: hasta + 1 }, (_, x) => ({ x, y: 0 }))
+  const unoPorGiro = { costeGiro: 1, costeGiroDiagonal: 0 }
+  const dos: OpcionesMovimiento = { base: { ...opciones.base, tramos: [{ distancia: 2 }] }, variaciones: [] }
+
+  it('girar hacia donde va cuesta su movimiento', () => {
+    // mira arriba: girar a la derecha (1) y dos pasos
+    expect(evaluarRecorrido(sala(), barbaro, aLaDerecha(2), dos, unoPorGiro)).toEqual({ motivo: 'Demasiado lejos: 3 casillas y como mucho 2' })
+  })
+
+  it('mirando ya hacia donde va, no gira', () => {
+    expect(evaluarRecorrido(sala(), { ...barbaro, orientacion: 'derecha' }, aLaDerecha(2), dos, unoPorGiro)).toMatchObject({ opcion: { id: 'mover' } })
+  })
+
+  it('con giros gratis, como siempre', () => {
+    expect(evaluarRecorrido(sala(), barbaro, aLaDerecha(2), dos)).toMatchObject({ opcion: { id: 'mover' } })
+  })
+
+  it('la ruta busca la que menos gira: mirando abajo, primero baja', () => {
+    // abajo (sin girar) y derecha (1 giro) es 1; derecha (1) y abajo (1) serían 2
+    expect(ruta(sala(), { x: 0, y: 0 }, { x: 2, y: 2 }, 'ortogonal', { encaramiento: { orientacion: 'abajo', ...unoPorGiro } })?.[1]).toEqual({ x: 0, y: 1 })
+  })
+
+  it('el coste del recorrido suma los giros', () => {
+    expect(costeDe(sala(), aLaDerecha(2), 'ortogonal', { encaramiento: { orientacion: 'abajo', ...unoPorGiro } })).toBe(3)
+  })
+
+  it('al moverse, acaba mirando hacia su último paso y lo apunta con los giros', () => {
+    const config = { ordenActivaciones: 'alternas', modosActivacion: 'normal', medicionMovimiento: 'ortogonal', terrenoPersonajes: 'normal', distanciaControl: 0, cuerpoACuerpo: 'diagonal', coherencia: 'ninguna', distanciaCoherencia: 0, modoAtaque: 'uno-a-uno', apoyoALaCarga: 0, ajusteDelDefensor: 0, consolidacionTrasCombate: 0, retrocesoTrasCombate: 0, costeGiro: 1, costeGiroDiagonal: 0, jugadores: SIN_JUGADORES } as const
+    const movido = moverPersonaje(sala(), config, 'rojos', barbaro, aLaDerecha(2), { opcion: opciones.base, tramos: [0, 0] }).escuadras?.[0].personajes[0]
+    expect([movido?.orientacion, movido && turnoDePersonaje(movido, 1).movimientos[0].casillas]).toEqual(['derecha', 3])
+  })
+
+  it('girar sin moverse cambia hacia dónde mira y apunta lo que cuesta', () => {
+    const girado = girar(sala(), 'barbaro', 'abajo', 2).escuadras?.[0].personajes[0]
+    expect([girado?.orientacion, girado && turnoDePersonaje(girado, 1).movimientos]).toEqual(['abajo', [{ opcion: 'girar', casillas: 2, acciones: [] }]])
+  })
+
+  it('girar gratis no apunta nada', () => {
+    expect(girar(sala(), 'barbaro', 'abajo', 0).escuadras?.[0].personajes[0].turnos).toEqual([])
+  })
+})
