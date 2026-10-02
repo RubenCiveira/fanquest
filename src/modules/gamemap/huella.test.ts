@@ -85,7 +85,7 @@ describe('personajes de varias casillas en el mapa', () => {
 
   it('al aparecer, no se pisa con otro', () => {
     const conLeon = anadirPersonajesNoJugadores(sala(), 'sala', [{ id: 'leon', nombre: 'León', jugador: 'oscuridad', largo: 2, ancho: 1, casilla: { x: 4, y: 0 } }]).mapa
-    // mirando arriba, el león ocuparía 4,0 y 4,1, que es del ogro: se queda en la zona de espera
+    // mirando abajo (como empieza), el león ocuparía 4,0 y 4,1, que es del ogro: se queda en la zona de espera
     expect(conLeon.personajesNoJugadores?.find((p) => p.id === 'leon')?.casilla).toBeUndefined()
   })
 

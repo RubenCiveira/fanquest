@@ -39,7 +39,7 @@ export type { TipoConFlags } from './modelo/tipoConFlags'
 export type { ResultadoActivacion } from './modelo/resultadoActivacion'
 export type { Ubicacion } from './modelo/ubicacion'
 export { aAgrupar, recorridoParaAgrupar, type RecorridoParaAgrupar } from './agrupar'
-export { AGRUPAR, ATACAR, GIROS, accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
+export { AGRUPAR, ATACAR, accionesDelGestor, accionesDelModo, apuntarAccion, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, modoActual, motivoParaNoActuar, TERMINAR_TURNO } from './acciones'
 export {
   activacionDe,
   activacionDeJugador,

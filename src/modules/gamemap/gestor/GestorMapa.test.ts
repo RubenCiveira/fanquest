@@ -242,7 +242,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
 
   it('al pulsar un personaje, sus acciones van delante de las del gestor', async () => {
     const { gestor } = await conInicial()
-    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['gritar', 'buscar-trampas', 'girar-izquierda', 'girar-derecha', 'darse-la-vuelta', 'cambiar-modo', 'terminar-turno'])
+    expect((await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)).toEqual(['gritar', 'buscar-trampas', 'cambiar-modo', 'terminar-turno'])
   })
 
   it('las acciones se piden a la clase del personaje, con su estado y el mapa', async () => {
@@ -261,7 +261,7 @@ describe('gestor del mapa: activaciones y acciones', () => {
     await gestor.ejecutarAccion('rojos', 'buscar-trampas', 'barbaro')
     expect([gestor.tieneFlag('estancia', 'estancia-1', 'sin_trampas'), (await gestor.accionesDisponibles('rojos', 'barbaro')).map((a) => a.id)]).toEqual([
       true,
-      ['gritar', 'girar-izquierda', 'girar-derecha', 'darse-la-vuelta', 'cambiar-modo', 'terminar-turno'],
+      ['gritar', 'cambiar-modo', 'terminar-turno'],
     ])
   })
 
@@ -554,7 +554,7 @@ describe('gestor del mapa: desplazamientos forzados', () => {
 })
 
 describe('gestor del mapa: encaramiento', () => {
-  /** Sala amplia con girar a 1 casilla de movimiento por cada 90° (el bárbaro, en 1,1, mira arriba) */
+  /** Sala amplia con girar a 1 casilla de movimiento por cada 90° (el bárbaro, en 1,1, mira abajo) */
   async function conGiros() {
     const base = proveedor(amplia)
     const p = { ...base, configuracion: { ...base.configuracion, costeGiro: 1 } }
@@ -564,28 +564,36 @@ describe('gestor del mapa: encaramiento', () => {
     return { gestor, p, barbaro }
   }
 
-  it('girar a la derecha desde su corona', async () => {
+  it('girar sin moverse cambia hacia dónde mira', async () => {
     const { gestor, barbaro } = await conInicial(amplia)
-    await gestor.ejecutarAccion('rojos', 'girar-derecha', 'barbaro')
+    await gestor.girar('barbaro', 'derecha')
     expect(barbaro().orientacion).toBe('derecha')
+  })
+
+  it('también gira a un personaje no jugador de quien tiene el turno, con las opciones que le dan', async () => {
+    const { gestor } = await conInicial(amplia)
+    gestor.anadirPersonajes('estancia-1', [{ id: 'orco', nombre: 'Orco', jugador: 'oscuridad', casilla: { x: 6, y: 6 } }])
+    await gestor.ejecutarAccion('rojos', 'terminar-turno')
+    await gestor.girarNoJugador('orco', 'izquierda', opciones)
+    expect(gestor.personaje('orco')?.orientacion).toBe('izquierda')
   })
 
   it('darse la vuelta cuesta dos giros de su movimiento', async () => {
     const { gestor, barbaro } = await conGiros()
-    await gestor.girar('barbaro', 'abajo')
+    await gestor.girar('barbaro', 'arriba')
     expect(gastadoPor(gestor.mapa, barbaro() ?? { id: '', nombre: '', estancia: '', turnos: [] })).toEqual({ casillas: 2, acciones: [] })
   })
 
   it('sin movimiento para girar, no gira y dice por qué', async () => {
     const { gestor, p, barbaro } = await conGiros()
     p.opcionesMovimiento.mockResolvedValueOnce({ ...opciones, base: { ...opciones.base, tramos: [{ distancia: 1 }] } })
-    expect([await gestor.girar('barbaro', 'abajo'), barbaro()?.orientacion]).toEqual(['Bárbaro no tiene movimiento para girar: le cuesta 2 y le queda 1', undefined])
+    expect([await gestor.girar('barbaro', 'arriba'), barbaro()?.orientacion]).toEqual(['Bárbaro no tiene movimiento para girar: le cuesta 2 y le queda 1', undefined])
   })
 
   it('ocupando varias casillas, no gira si su huella girada no cabe', async () => {
     const base = proveedor(amplia)
     const clases = await base.listarEscuadras()
-    // el bárbaro ocupa 2 × 1: mirando arriba, su casilla y la de debajo
+    // el bárbaro ocupa 2 × 1: mirando abajo (como empieza), su casilla y la de debajo
     const conLargo = clases.map((c) => (c.id === 'rojos' ? { ...c, personajes: async () => (await c.personajes()).map((h) => ({ ...h, largo: 2 })) } : c))
     const gestor = new GestorMapa({ ...base, listarEscuadras: vi.fn(async () => conLargo) })
     await gestor.nuevaEstancia()

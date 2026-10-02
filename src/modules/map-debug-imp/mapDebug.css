@@ -171,6 +171,24 @@
   stroke-width: 1;
 }
 
+/* al tirar de una ficha hacia un borde sin salir de su casilla: dónde quedaría encarada */
+.vista-giro {
+  pointer-events: none;
+}
+
+.vista-giro rect {
+  fill: none;
+  stroke: var(--tinta);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
+
+.vista-giro-marca {
+  fill: var(--rubrica);
+  stroke: var(--vitela);
+  stroke-width: 1;
+}
+
 .vista-vida circle {
   fill: var(--rubrica);
 }

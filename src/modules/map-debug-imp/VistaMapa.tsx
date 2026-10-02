@@ -99,6 +99,29 @@ function estadoBadge(activacion?: Activacion, ultimoModo?: ModoActivacion) {
 /** Ángulo de la marca del encaramiento, en grados desde arriba en el sentido del reloj */
 const ANGULO: Record<Direccion, number> = { arriba: 0, derecha: 90, abajo: 180, izquierda: 270 }
 
+/** Ángulo del retrato según hacia dónde mira: el retrato, tal cual, mira hacia abajo */
+const ANGULO_RETRATO: Record<Direccion, number> = { abajo: 0, izquierda: 90, arriba: 180, derecha: 270 }
+
+/** Triángulo del encaramiento en el centro del borde hacia el que mira el rectángulo de `x`, `y` y ese ancho y alto */
+function MarcaDeEncaramiento({ x, y, ancho, alto, hacia, className }: { x: number; y: number; ancho: number; alto: number; hacia: Direccion; className: string }) {
+  const [cx, cy] = [x + ancho / 2, y + alto / 2]
+  const [bx, by] = { arriba: [cx, y], abajo: [cx, y + alto], izquierda: [x, cy], derecha: [x + ancho, cy] }[hacia]
+  return <path className={className} d={`M${bx} ${by} l5 6 h-10 z`} transform={`rotate(${ANGULO[hacia]} ${bx} ${by})`} />
+}
+
+/** Mientras se tira de una ficha hacia un borde sin salir de su casilla: dónde quedaría encarada hacia él (su huella girada, desde su esquina `desde`) */
+function IndicadorDeGiro({ ficha, desde, hacia }: { ficha: Personaje; desde: Casilla; hacia: Direccion }) {
+  const { columnas, filas } = dimensionesDe({ ...ficha, orientacion: hacia })
+  const [x, y, ancho, alto] = [desde.x * LADO, desde.y * LADO, columnas * LADO, filas * LADO]
+  return (
+    <g className="vista-giro">
+      <rect x={x + 1} y={y + 1} width={ancho - 2} height={alto - 2} rx={LADO / 3} />
+      <MarcaDeEncaramiento x={x} y={y} ancho={ancho} alto={alto} hacia={hacia} className="vista-giro-marca" />
+      <title>{`Encarar hacia ${hacia}`}</title>
+    </g>
+  )
+}
+
 function FichaEnMapa({ ficha, x, y, activacion, ultimoModo }: PropsFicha) {
   const { id, nombre, imagenVtt, vida, orientacion = ORIENTACION_INICIAL } = ficha
   const modo = activacion?.modo ?? ultimoModo
@@ -108,14 +131,25 @@ function FichaEnMapa({ ficha, x, y, activacion, ultimoModo }: PropsFicha) {
   const [ancho, alto] = [columnas * LADO, filas * LADO]
   const [cx, cy] = [x + ancho / 2, y + alto / 2]
   const forma = esGrande(ficha) ? <rect x={x + 2} y={y + 2} width={ancho - 4} height={alto - 4} rx={LADO / 3} /> : <circle cx={cx} cy={cy} r={LADO / 2 - 2} />
-  // el triángulo del encaramiento, en el centro del borde hacia el que mira
-  const borde = { arriba: [cx, y], abajo: [cx, y + alto], izquierda: [x, cy], derecha: [x + ancho, cy] }[orientacion]
+  // el retrato mira hacia abajo: se dibuja con la huella mirando abajo y se gira hacia donde mira
+  const deFrente = dimensionesDe({ ...ficha, orientacion: 'abajo' })
+  const [anchoRetrato, altoRetrato] = [deFrente.columnas * LADO - 4, deFrente.filas * LADO - 4]
   return (
     <>
       <clipPath id={`ficha-${id}`}>{forma}</clipPath>
       {forma}
       {imagenVtt ? (
-        <image href={imagenVtt} x={x + 2} y={y + 2} width={ancho - 4} height={alto - 4} clipPath={`url(#ficha-${id})`} preserveAspectRatio="xMidYMid slice" />
+        <g clipPath={`url(#ficha-${id})`}>
+          <image
+            href={imagenVtt}
+            x={cx - anchoRetrato / 2}
+            y={cy - altoRetrato / 2}
+            width={anchoRetrato}
+            height={altoRetrato}
+            preserveAspectRatio="xMidYMid slice"
+            transform={`rotate(${ANGULO_RETRATO[orientacion]} ${cx} ${cy})`}
+          />
+        </g>
       ) : (
         <text x={cx} y={cy + 4}>
           {nombre.slice(0, 2)}
@@ -130,7 +164,7 @@ function FichaEnMapa({ ficha, x, y, activacion, ultimoModo }: PropsFicha) {
         </g>
       )}
       {/* encaramiento: un triángulo en el borde hacia el que mira */}
-      <path className="vista-encaramiento" d={`M${borde[0]} ${borde[1]} l5 6 h-10 z`} transform={`rotate(${ANGULO[orientacion]} ${borde[0]} ${borde[1]})`} />
+      <MarcaDeEncaramiento x={x} y={y} ancho={ancho} alto={alto} hacia={orientacion} className="vista-encaramiento" />
       {vida !== undefined && (
         <g className="vista-vida">
           <circle cx={x + 5} cy={y + alto - 5} r={6} />
@@ -342,7 +376,13 @@ function Flecha({ recorrido, evaluado, marcador, coste }: { recorrido: Casilla[]
 
 type Arrastre = {
   ficha: Personaje
-  /** Casilla bajo el puntero: la ruta va de la ficha hasta ella */
+  /** Por qué casilla de su huella se agarró la ficha, respecto a su esquina: la de bajo el puntero es donde acabará esa casilla */
+  agarre: Casilla
+  /** Casilla del mapa bajo el puntero */
+  puntero: Casilla
+  /** Sin salir de la casilla agarrada, hacia qué borde se tira de ella: soltar ahí la encara hacia él */
+  giro?: Direccion
+  /** Casilla a la que va la ficha (su esquina; o la del enemigo, si lo ataca): la ruta va de la ficha hasta ella */
   objetivo: Casilla
   recorrido: Casilla[]
   /** Mientras llegan, sin definir; `null` si el personaje no puede moverse */
@@ -357,6 +397,13 @@ type Arrastre = {
 type LineaDeDisparo = { desde: Casilla; hasta: Casilla }
 
 const misma = (a?: Casilla, b?: Casilla) => !!a && !!b && a.x === b.x && a.y === b.y
+
+/** Hacia qué borde de la casilla `c` está el punto `p` (en casillas con decimales), si se ha apartado lo bastante de su centro */
+function giroHacia(p: { x: number; y: number }, c: Casilla): Direccion | undefined {
+  const [dx, dy] = [p.x - (c.x + 0.5), p.y - (c.y + 0.5)]
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 0.2) return
+  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'derecha' : 'izquierda') : dy > 0 ? 'abajo' : 'arriba'
+}
 
 /** El recorrido recortado hasta donde llega el alcance, según la medición, el terreno y los giros del encaramiento */
 function recortado(mapa: Mapa, recorrido: Casilla[], maximo: number, medicion: MedicionMovimiento, encaramiento: Encaramiento) {
@@ -396,6 +443,8 @@ type Props = {
   opcionesMovimiento?: (personajeId: string) => Promise<OpcionesMovimiento | undefined>
   /** Al soltar una ficha arrastrada: sin esto, las fichas no se arrastran */
   onMover?: (personajeId: string, recorrido: Casilla[]) => void
+  /** Al soltar una ficha tirando hacia un borde sin salir de la casilla agarrada: encararla hacia él. Sin esto, no se encara así */
+  onGirar?: (personajeId: string, orientacion: Direccion) => void
   /** Al soltar una ficha arrastrada sobre la de un enemigo suyo: sin esto, no se ataca */
   onAtacar?: (personajeId: string, objetivoId: string) => void
   /** Por qué un personaje no puede atacar a ese enemigo (se pregunta al arrastrar su ficha por encima), o nada si puede */
@@ -645,7 +694,7 @@ const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
  * flecha del recorrido; pulsarlas sin arrastrar las elige
  */
 export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
-  const { opcionesMovimiento, onMover, onAtacar, motivoParaNoAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0, cuerpoACuerpo = 'diagonal', costeGiro = 0, costeGiroDiagonal = 0 } = props
+  const { opcionesMovimiento, onMover, onAtacar, onGirar, motivoParaNoAtacar, onElegirElemento, medicion = 'ortogonal', terrenoPersonajes = 'normal', distanciaControl = 0, cuerpoACuerpo = 'diagonal', costeGiro = 0, costeGiroDiagonal = 0 } = props
   /** El mapa como lo ve la ficha que se arrastra: los demás personajes, con su terreno */
   const vistoPor = (ficha: Personaje) => conPersonajes(mapa, ficha.id, terrenoPersonajes)
   const reglas: ReglasDeMovimiento = { medicionMovimiento: medicion, terrenoPersonajes, distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal }
@@ -655,19 +704,26 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   const marcador = `flecha${useId().replace(/[^a-zA-Z0-9]/g, '')}`
   const [arrastre, setArrastre] = useState<Arrastre>()
 
-  /** Casilla del mapa bajo el puntero */
-  const casillaBajo = (ev: PointerEvent): Casilla | undefined => {
+  /** Punto del mapa bajo el puntero, en casillas con decimales */
+  const puntoBajo = (ev: PointerEvent): { x: number; y: number } | undefined => {
     const matriz = svg.current?.getScreenCTM()
     if (!matriz) return
     const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(matriz.inverse())
-    return { x: Math.floor(p.x / LADO), y: Math.floor(p.y / LADO) }
+    return { x: p.x / LADO, y: p.y / LADO }
+  }
+
+  /** Casilla del mapa bajo el puntero */
+  const casillaBajo = (ev: PointerEvent): Casilla | undefined => {
+    const p = puntoBajo(ev)
+    return p && { x: Math.floor(p.x), y: Math.floor(p.y) }
   }
 
   function empezar(ev: PointerEvent, ficha: Personaje) {
     const desde = enElMapa(mapa, ficha)
-    if (!desde) return
+    const puntero = casillaBajo(ev)
+    if (!desde || !puntero) return
     svg.current?.setPointerCapture(ev.pointerId)
-    setArrastre({ ficha, objetivo: desde, recorrido: [desde] })
+    setArrastre({ ficha, agarre: { x: puntero.x - desde.x, y: puntero.y - desde.y }, puntero, objetivo: desde, recorrido: [desde] })
     // al llegar las opciones, la ruta que ya se estuviera mostrando se recorta a su alcance
     opcionesMovimiento?.(ficha.id).then((opciones) =>
       setArrastre((a) => (a?.ficha.id === ficha.id ? trazar(mapa, reglas, { ...a, opciones: opciones ?? null }, a.objetivo) : a)),
@@ -675,14 +731,19 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
   }
 
   function arrastrar(ev: PointerEvent) {
-    const c = casillaBajo(ev)
-    if (!c || !arrastre || misma(arrastre.objetivo, c)) return
+    const [p, c] = [puntoBajo(ev), casillaBajo(ev)]
+    if (!p || !c || !arrastre) return
+    const { ficha, agarre } = arrastre
+    const desde = arrastre.recorrido[0]
+    // sin salir de la casilla agarrada, tirando hacia uno de sus bordes: encarar sin moverse
+    if (misma(c, { x: desde.x + agarre.x, y: desde.y + agarre.y })) return setArrastre((a) => a && { ...a, puntero: c, objetivo: desde, recorrido: [desde], fuera: false, ataque: undefined, giro: giroHacia(p, c) })
+    if (misma(arrastre.puntero, c)) return
     // sobre un enemigo, en vez de la flecha del recorrido, el icono de ataque
-    const { ficha } = arrastre
     const enemigo = onAtacar && enemigoEn(mapa, ficha.id, c)
     const medida = enemigo && medirAtaque(mapa, reglas, ficha, enemigo)
-    if (!enemigo || !medida) return setArrastre((a) => a && { ...trazar(mapa, reglas, a, c), ataque: undefined })
-    setArrastre((a) => a && { ...a, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } })
+    // la esquina de la ficha va donde deja la casilla agarrada bajo el puntero
+    if (!enemigo || !medida) return setArrastre((a) => a && { ...trazar(mapa, reglas, a, { x: c.x - agarre.x, y: c.y - agarre.y }), puntero: c, giro: undefined, ataque: undefined })
+    setArrastre((a) => a && { ...a, puntero: c, giro: undefined, objetivo: c, ataque: { objetivo: enemigo, tipo: medida.tipo } })
     // si no puede atacarlo, el icono lo dice; la respuesta solo vale si el puntero sigue sobre ese enemigo
     motivoParaNoAtacar?.(ficha.id, enemigo.id).then((motivo) =>
       setArrastre((a) => (a?.ataque?.objetivo.id === enemigo.id ? { ...a, ataque: { ...a.ataque, ...(motivo && { motivo }) } } : a)),
@@ -699,9 +760,10 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
 
   function soltar() {
     if (!arrastre) return
-    const { ficha, recorrido, fuera, ataque } = arrastre
+    const { ficha, recorrido, fuera, ataque, giro } = arrastre
     setArrastre(undefined)
     if (ataque) return onAtacar?.(ficha.id, ataque.objetivo.id)
+    if (giro && giro !== (ficha.orientacion ?? ORIENTACION_INICIAL)) return onGirar?.(ficha.id, giro)
     if (fuera) return
     if (recorrido.length > 1) onMover?.(ficha.id, recorrido)
     else onElegirElemento?.(ficha.id)
@@ -769,6 +831,7 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
       {props.guiasDeCoherencia
         ?.filter((guia) => colocados.some(({ personaje, escuadra }) => personaje.id === props.elemento && escuadra.id === guia.escuadra))
         .map((guia) => <GuiaCoherencia key={guia.escuadra} guia={guia} mapa={mapa} />)}
+      {arrastre?.giro && <IndicadorDeGiro ficha={arrastre.ficha} desde={arrastre.recorrido[0]} hacia={arrastre.giro} />}
       {arrastre?.ataque && <IconoAtaque desde={arrastre.recorrido[0]} hasta={arrastre.objetivo} {...arrastre.ataque} />}
       {arrastre && !arrastre.ataque && (
         <Flecha

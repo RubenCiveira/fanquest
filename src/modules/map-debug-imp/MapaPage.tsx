@@ -14,6 +14,7 @@ import {
   BUSCAR_TRAMPAS,
   type Accion,
   type Casilla,
+  type Direccion,
   type Estancia,
   type Mapa,
 } from '../gamemap'
@@ -110,6 +111,17 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
     } catch (error) {
       if (!esCancelacion(error)) throw error
     }
+  }
+
+  /** Encarar sin moverse, tras confirmarlo: un gesto tan pequeño puede ser sin querer */
+  async function girar(personaje: string, orientacion: Direccion) {
+    const nombre = gestor.personaje(personaje)?.nombre ?? personaje
+    if (!(await proveedor.confirmar(`¿Encarar a ${nombre} hacia ${orientacion}, sin moverse?`))) return
+    setNota(
+      esNoJugador(personaje)
+        ? await gestor.girarNoJugador(personaje, orientacion, gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado)))
+        : await gestor.girar(personaje, orientacion),
+    )
   }
 
   async function moverPersonaje(personaje: string, recorrido: Casilla[]) {
@@ -219,6 +231,7 @@ function Gestionado({ id, inicial }: { id: string; inicial: Mapa }) {
         corona={actorElegido ? { acciones: accionesVigentes, onAccion: accionar } : undefined}
         opcionesMovimiento={(personaje) => (esNoJugador(personaje) ? Promise.resolve(gestor.opcionesMovimientoNoJugador(personaje, (_personaje, gastado) => movimientoDePrueba(gastado))) : gestor.opcionesMovimiento(personaje))}
         onMover={moverPersonaje}
+        onGirar={girar}
         onAtacar={atacar}
         motivoParaNoAtacar={(personaje, objetivo) => {
           const noJugador = personajesNoJugadoresDe(mapa).find((p) => p.id === personaje)

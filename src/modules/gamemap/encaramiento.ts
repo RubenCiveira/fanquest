@@ -2,8 +2,8 @@ import type { Casilla } from './modelo/casilla'
 import type { Direccion } from './modelo/direccion'
 import type { Encaramiento } from './modelo/encaramiento'
 
-/** Hacia dónde mira un personaje que aún no ha girado */
-export const ORIENTACION_INICIAL: Direccion = 'arriba'
+/** Hacia dónde mira un personaje que aún no ha girado: hacia abajo, como se supone que mira el retrato de su ficha */
+export const ORIENTACION_INICIAL: Direccion = 'abajo'
 
 /** El paso de una casilla a la de al lado en cada dirección */
 export const VECTOR: Record<Direccion, Casilla> = { arriba: { x: 0, y: -1 }, abajo: { x: 0, y: 1 }, izquierda: { x: -1, y: 0 }, derecha: { x: 1, y: 0 } }

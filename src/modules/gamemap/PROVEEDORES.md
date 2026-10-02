@@ -42,7 +42,7 @@ type Personaje = {
   estancia: string            // la estancia en que está
   casilla?: Casilla           // su casilla en ella; sin ella, en la zona de espera
   vida?: number               // puntos de vida que le quedan; sin ellos, no se lleva la cuenta
-  orientacion?: Direccion     // hacia dónde mira (su encaramiento); sin ella, `ORIENTACION_INICIAL` (arriba)
+  orientacion?: Direccion     // hacia dónde mira (su encaramiento); sin ella, `ORIENTACION_INICIAL` (abajo)
   largo?: number              // casillas que ocupa hacia donde mira; sin él, 1
   ancho?: number              // casillas que ocupa de lado; sin él, 1. Su `casilla` es la esquina superior izquierda de su huella
   turnos: TurnoDePersonaje[]      // { numero, acciones: string[], movimientos: [{ opcion, casillas, acciones }] }
@@ -232,7 +232,8 @@ configuracion: {
 
   El banco de pruebas las ofrece en el formulario, todas apagadas al empezar.
 - Encaramiento: cada personaje mira hacia un lado (`Personaje.orientacion`,
-  nunca en diagonal; sin ella, `ORIENTACION_INICIAL`, arriba).
+  nunca en diagonal; sin ella, `ORIENTACION_INICIAL`, abajo: como mira el
+  retrato tal cual).
   - `costeGiro`: lo que cuesta, en casillas de movimiento, cada giro de 90°
     (darse la vuelta, el doble). Al moverse, el personaje gira hasta mirar
     hacia donde da cada paso, lo paga y acaba mirando hacia su último paso:
@@ -243,10 +244,10 @@ configuracion: {
     diagonales de delante del encaramiento; para otra, primero gira (paga los
     giros) a la orientación más cercana que la tenga delante. Empezar un tramo
     en diagonal cuesta además `costeGiroDiagonal`.
-  - Girar sin moverse: `gestor.girar(personaje, orientacion)`, o las acciones
-    `GIROS` de la corona (girar a la izquierda, a la derecha, darse la
-    vuelta). Gasta los giros de su movimiento (se apuntan como un movimiento
-    `girar`) y necesita que le queden.
+  - Girar sin moverse: `gestor.girar(personaje, orientacion)` (o, para un
+    personaje no jugador, `gestor.girarNoJugador(personaje, orientacion,
+    opciones)`). Gasta los giros de su movimiento (se apuntan como un
+    movimiento `girar`) y necesita que le queden.
   - Los desplazamientos forzados no cuestan giros ni cambian hacia dónde mira.
 
 ### Personajes de varias casillas
@@ -278,7 +279,13 @@ toda su huella y ofrece, al crear una estancia, un ogro de 2 × 2 y un león de
 2 × 1 (`monstruosGrandesDePrueba`).
 
   El banco de pruebas lo ofrece en el formulario (gratis o una casilla) y
-  dibuja en cada ficha un triángulo hacia donde mira.
+  dibuja en cada ficha un triángulo hacia donde mira, con el retrato girado
+  (se supone que, tal cual, mira hacia abajo). Para encarar sin moverse, se
+  tira de la ficha hacia uno de los bordes de la casilla por la que se agarró,
+  sin salir de ella: se dibuja dónde quedaría encarada y, al soltar, pide
+  confirmación. Al arrastrar, la casilla bajo el puntero es donde acaba la
+  casilla por la que se agarró la ficha (para los grandes, su esquina se
+  mueve lo mismo).
 
 El gestor lee `configuracion` cada vez que la necesita: si el proveedor la
 expone con un getter, un cambio vale al momento (el banco de pruebas tiene un

@@ -1,4 +1,4 @@
-import { accionesDelGestor, accionesDelModo, AGRUPAR, apuntarAccion, ATACAR, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, GIROS, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
+import { accionesDelGestor, accionesDelModo, AGRUPAR, apuntarAccion, ATACAR, BUSCAR_TRAMPAS, CAMBIAR_MODO, ejecutarAccion, motivoParaNoActuar, TERMINAR_TURNO } from '../acciones'
 import {
   activacionDe,
   activacionDeNoJugador,
@@ -27,7 +27,7 @@ import { construirEstancia } from '../construccion'
 import { colocarElemento, motivoParaNoColocar, situarAleatorio } from '../elementos'
 import { casillasDeReferencia, conPersonajeEn, distanciaA, motivoParaNoRecorrer, planearDesplazamiento } from '../desplazamientos'
 import { guiaDeCoherencia } from '../coherencia'
-import { girada, girosDe, girosEntre, ORIENTACION_INICIAL } from '../encaramiento'
+import { girosDe, girosEntre, ORIENTACION_INICIAL } from '../encaramiento'
 import { huella, huellaEnElMapa, tamanoDe } from '../huella'
 import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
@@ -329,7 +329,6 @@ export class GestorMapa implements MapaEnJuego {
       ...(await this.#accionesDelPersonaje(escuadraId, personajeId)),
       ...(await this.#accionesDeEstancia(escuadraId, personajeId)),
       ...this.#accionesDeEscuadra(escuadraId, personajeId),
-      ...this.#accionesDeGiro(escuadraId, personajeId),
       ...accionesDelGestor(this.#mapa, this.configuracion, escuadraId),
     ]
   }
@@ -355,8 +354,6 @@ export class GestorMapa implements MapaEnJuego {
     const deEstancia = (await this.#accionesDeEstancia(escuadraId, personajeId)).find((a) => a.id === accionId)
     const deEscuadra = this.#accionesDeEscuadra(escuadraId, personajeId).find((a) => a.id === accionId)
     const delGestor = accionesDelGestor(this.#mapa, this.configuracion, escuadraId).find((a) => a.id === accionId)
-    const deGiro = GIROS.find((g) => g.id === accionId && this.#accionesDeGiro(escuadraId, personajeId).includes(g))
-    if (deGiro && personajeId) return this.girar(personajeId, girada(this.#personajeDe(personajeId)?.personaje.orientacion ?? ORIENTACION_INICIAL, deGiro.giro))
     if (!delPersonaje && !deEstancia && !deEscuadra && !delGestor) return `«${accionId}» no es una acción disponible ahora`
     const resultado = delPersonaje && esComando(delPersonaje) ? await delPersonaje.exec() : undefined
     if (deEstancia && personajeId) this.marcarFlag('estancia', this.#personajeDe(personajeId)?.personaje.estancia ?? '', 'sin_trampas')
@@ -921,12 +918,6 @@ export class GestorMapa implements MapaEnJuego {
     }
   }
 
-  /** Girar sin moverse (`GIROS`), para el personaje colocado de la escuadra */
-  #accionesDeGiro(escuadraId: string, personajeId?: string): Accion[] {
-    const encontrado = personajeId ? this.#personajeDe(personajeId) : undefined
-    return encontrado?.personaje.casilla && encontrado.escuadra.id === escuadraId ? GIROS : []
-  }
-
   /**
    * Gira al personaje de una escuadra hasta mirar hacia `orientacion`, sin
    * moverse. Cada giro de 90° cuesta `costeGiro` casillas de su movimiento
@@ -939,9 +930,25 @@ export class GestorMapa implements MapaEnJuego {
     if (!encontrado?.personaje.casilla) return `No hay ningún personaje «${personajeId}» colocado en el mapa`
     const { personaje, escuadra } = encontrado
     const motivo = motivoParaNoActuar(this.#mapa, this.configuracion, escuadra.id, personajeId)
-    if (motivo) return motivo
+    return motivo ?? this.#girar(personaje, orientacion, () => this.opcionesMovimiento(personajeId))
+  }
+
+  /**
+   * Gira a un personaje no jugador del jugador en turno, como `girar`: lo
+   * que le queda de movimiento lo dicen las `opciones` que le da quien lo
+   * maneja (como en `moverPersonajeNoJugador`)
+   */
+  async girarNoJugador(personajeId: string, orientacion: Direccion, opciones: OpcionesMovimiento | undefined): Promise<string | undefined> {
+    const personaje = this.#mapa.personajesNoJugadores?.find((p) => p.id === personajeId)
+    if (!personaje?.casilla) return `No hay ningún personaje no jugador «${personajeId}» colocado en el mapa`
+    return this.motivoParaNoActuarNoJugador(personajeId) ?? this.#girar(personaje, orientacion, async () => opciones)
+  }
+
+  /** Gira al personaje (`girar`, `girarNoJugador`), si le queda movimiento (lo que dan sus `opciones`) y su huella girada cabe */
+  async #girar(personaje: Personaje, orientacion: Direccion, opciones: () => Promise<OpcionesMovimiento | undefined>): Promise<string | undefined> {
+    const personajeId = personaje.id
     const coste = girosEntre(personaje.orientacion ?? ORIENTACION_INICIAL, orientacion) * this.configuracion.costeGiro
-    const queda = coste ? ((await this.opcionesMovimiento(personajeId))?.base.tramos[0]?.distancia ?? 0) : 0
+    const queda = coste ? ((await opciones())?.base.tramos[0]?.distancia ?? 0) : 0
     if (coste > queda) return `${personaje.nombre} no tiene movimiento para girar: le cuesta ${coste} y le ${queda === 1 ? 'queda' : 'quedan'} ${queda}`
     // ocupando varias casillas, gira su huella: tiene que caber, sin pisar a nadie
     const tamano = tamanoDe(personaje)
