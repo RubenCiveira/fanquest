@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { terrenosDePrueba } from './terrenos'
 
 describe('terreno de prueba', () => {
-  it('en una sala amplia caben los cuatro, uno con imagen', () => {
-    expect(terrenosDePrueba({ columnas: 10, filas: 8 }, 'escombros.webp').map((t) => [t.tipo, t.imagen])).toEqual([
-      ['dificil', undefined],
-      ['muy-dificil', undefined],
-      ['impasable', undefined],
-      ['dificil', 'escombros.webp'],
+  it('en una sala amplia caben los cinco, uno con imagen y otro con efecto', () => {
+    expect(terrenosDePrueba({ columnas: 10, filas: 8 }, 'escombros.webp').map((t) => [t.tipo, t.imagen, t.efecto])).toEqual([
+      ['dificil', undefined, undefined],
+      ['muy-dificil', undefined, undefined],
+      ['impasable', undefined, undefined],
+      ['dificil', undefined, 'lava'],
+      ['dificil', 'escombros.webp', undefined],
     ])
+  })
+
+  it('la lava lleva una decoración de fondo', () => {
+    expect(terrenosDePrueba({ columnas: 10, filas: 8 }).find((t) => t.efecto === 'lava')?.decoracion).toEqual({ fondo: '#d94a1e' })
   })
 
   it('cada uno con la cobertura de su tipo: difícil ligera, muy difícil pesada e impasable bloqueante', () => {
@@ -16,6 +21,7 @@ describe('terreno de prueba', () => {
       ['dificil', 'ligera'],
       ['muy-dificil', 'pesada'],
       ['impasable', 'bloqueante'],
+      ['dificil', 'ligera'],
       ['dificil', 'ligera'],
     ])
   })
@@ -26,7 +32,7 @@ describe('terreno de prueba', () => {
   })
 
   it('en una sala pequeña solo pone los que caben sin pisarse', () => {
-    expect(terrenosDePrueba({ columnas: 6, filas: 4 }).map((t) => t.tipo)).toEqual(['dificil', 'muy-dificil', 'impasable'])
+    expect(terrenosDePrueba({ columnas: 6, filas: 4 }).map((t) => t.efecto ?? t.tipo)).toEqual(['dificil', 'muy-dificil', 'impasable', 'lava'])
   })
 
   it('en un pasillo estrecho no pone ninguno', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Personaje, PersonajeEnJuego, MapaEnJuego, Puerta } from '../../gamemap'
 import { esComando } from '../../gamemap'
-import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba, PROBABILIDAD_DE_TRAMPA } from './personaje'
+import { PersonajeDePrueba, MOVIMIENTO_DE_PRUEBA, movimientoDePrueba, PROBABILIDAD_DETENERSE_EN_LAVA, PROBABILIDAD_DE_TRAMPA } from './personaje'
 import { JUGADOR_MONSTRUOS, JUGADORES_DE_PRUEBA } from '../configuracion'
 import { PuertasDePrueba } from './puerta'
 
@@ -14,6 +14,7 @@ const turno1: MapaEnJuego = {
   personaje: () => undefined,
   personajesEn: () => [],
   puertaEn: () => undefined,
+  terrenoEn: () => undefined,
   tieneFlag: () => false,
   marcarFlag: vi.fn(),
   quitarFlag: vi.fn(),
@@ -57,6 +58,7 @@ describe('acciones del personaje de prueba', () => {
   const mapa: MapaEnJuego = {
     mapa: { estancias: [], turno: 1 },
     puertaEn: () => salida,
+    terrenoEn: () => undefined,
     tieneFlag: () => false,
     marcarFlag: vi.fn(),
     dameLoQueEstaAlLado: () => [],
@@ -159,6 +161,7 @@ describe('coger objetos', () => {
   const mapaCon = (motivo?: string) => ({
     mapa: { estancias: [], turno: 1 },
     puertaEn: () => undefined,
+    terrenoEn: () => undefined,
     tieneFlag: () => false,
     marcarFlag: vi.fn(),
     dameLoQueEstaAlLado: () => [cofre],
@@ -208,6 +211,7 @@ describe('ataques del personaje de prueba', () => {
     return {
       mapa: estado,
       puertaEn: () => undefined,
+      terrenoEn: () => undefined,
       tieneFlag: () => false,
       marcarFlag: vi.fn(),
       dameLoQueEstaAlLado: () => [],
@@ -415,6 +419,7 @@ describe('trampas del personaje de prueba', () => {
   const mapaCon = (flags: string[] = [], estado: MapaEnJuego['mapa'] = { estancias: [], turno: 1 }): MapaEnJuego => ({
     mapa: estado,
     puertaEn: () => undefined,
+    terrenoEn: () => undefined,
     tieneFlag: (tipo, id, flag) => flags.includes(`${tipo}:${id}:${flag}`),
     marcarFlag: vi.fn(),
     quitarFlag: vi.fn(),
@@ -443,6 +448,16 @@ describe('trampas del personaje de prueba', () => {
     const avisos = dialogos()
     await conAzar(0, avisos).alEntrar(heroe, donde, mapaCon())
     expect(avisos.avisar.mock.lastCall?.[0].titulo).toBe('¡Trampa!')
+  })
+
+  it('al entrar en lava, avisa de que le va a hacer daño', async () => {
+    const avisos = dialogos()
+    await conAzar(PROBABILIDAD_DETENERSE_EN_LAVA, avisos).alEntrar(heroe, { ...donde, terreno: { tipo: 'dificil', efecto: 'lava', posicion: donde.casilla, columnas: 1, filas: 1 } }, mapaCon())
+    expect(avisos.avisar.mock.lastCall?.[0].texto).toContain('le va a hacer daño')
+  })
+
+  it('al entrar en lava, termina el turno la mitad de las veces para no poder seguir moviéndose', async () => {
+    expect(await conAzar(PROBABILIDAD_DETENERSE_EN_LAVA - 0.01).alEntrar(heroe, { ...donde, terreno: { tipo: 'dificil', efecto: 'lava', posicion: donde.casilla, columnas: 1, filas: 1 } }, mapaCon())).toBe('terminar-turno')
   })
 
   it('desde la probabilidad, sigue moviéndose', async () => {

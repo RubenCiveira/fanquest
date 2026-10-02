@@ -12,15 +12,17 @@ export const COBERTURA_DE_PRUEBA: Record<TipoTerreno, TipoCobertura> = { dificil
 
 /**
  * Terreno para probar en una sala de esas medidas: barro difícil, zarzas muy
- * difíciles, un pilar impasable y escombros difíciles con imagen, cada uno con
- * la cobertura de su tipo (`COBERTURA_DE_PRUEBA`). Solo los que caben dentro
- * sin tocar los muros (así no tapan puertas) ni pisarse entre sí
+ * difíciles, un pilar impasable, lava difícil con efecto y escombros difíciles
+ * con imagen, cada uno con la cobertura de su tipo (`COBERTURA_DE_PRUEBA`).
+ * Solo los que caben dentro sin tocar los muros (así no tapan puertas) ni
+ * pisarse entre sí
  */
 export function terrenosDePrueba({ columnas, filas }: Medida, imagen = IMAGEN_ESCOMBROS): Terreno[] {
   const candidatos: Terreno[] = [
     { tipo: 'dificil', posicion: { x: 1, y: 1 }, columnas: 2, filas: 1 },
     { tipo: 'muy-dificil', posicion: { x: columnas - 2, y: 1 }, columnas: 1, filas: 2 },
     { tipo: 'impasable', posicion: { x: 1, y: filas - 2 }, columnas: 1, filas: 1 },
+    { tipo: 'dificil', efecto: 'lava', decoracion: { fondo: '#d94a1e' }, posicion: { x: Math.floor(columnas / 2) - 1, y: Math.floor(filas / 2) }, columnas: 2, filas: 1 },
     { tipo: 'dificil', posicion: { x: columnas - 3, y: filas - 3 }, columnas: 2, filas: 2, ...(imagen && { imagen }) },
   ]
   const dentro = ({ posicion: { x, y }, columnas: c, filas: f }: Terreno) => x >= 1 && y >= 1 && x + c <= columnas - 1 && y + f <= filas - 1

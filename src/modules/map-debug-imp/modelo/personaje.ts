@@ -62,6 +62,9 @@ export const VOLAR: OpcionMovimiento = {
 /** Probabilidad de pisar una trampa al entrar en cada casilla de una estancia en la que no se han buscado trampas */
 export const PROBABILIDAD_DE_TRAMPA = 0.3
 
+/** Probabilidad de que la lava de prueba detenga el movimiento al entrar */
+export const PROBABILIDAD_DETENERSE_EN_LAVA = 0.5
+
 /** Un personaje de prueba hace una acción por turno (moverse no cuenta): tras ella, ya no le quedan */
 const TRAS_SU_ACCION: ResultadoAccion = { quedanAcciones: false }
 const DESLIZAR = { id: 'deslizar', nombre: 'Deslizar', icono: '💨' }
@@ -238,12 +241,21 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   }
 
   /**
-   * Trampas de prueba: un héroe que entra en una casilla de una estancia en la
-   * que nadie ha buscado trampas (sin `sin_trampas`) pisa una trampa con
-   * `PROBABILIDAD_DE_TRAMPA`: lo avisa en un diálogo y se detiene en esa
-   * casilla. Los monstruos no pisan trampas. Cada llamada se ve en la consola
+   * Terreno y trampas de prueba: la lava avisa siempre y puede detener el
+   * movimiento; un héroe que entra en una casilla de una estancia en la que
+   * nadie ha buscado trampas (sin `sin_trampas`) pisa una trampa con
+   * `PROBABILIDAD_DE_TRAMPA`. Los monstruos no pisan trampas. Cada llamada se
+   * ve en la consola
    */
   async alEntrar(personaje: PersonajeEnJuego, donde: Ubicacion, mapa: MapaEnJuego): Promise<ResultadoAlEntrar> {
+    const terreno = donde.terreno ?? mapa.terrenoEn(donde)
+    if (terreno?.efecto === 'lava') {
+      await this.#dialogos.avisar({ titulo: 'Lava', texto: `${personaje.nombre} ha entrado en lava: le va a hacer daño.` })
+      const resultado: ResultadoAlEntrar = this.#azar() < PROBABILIDAD_DETENERSE_EN_LAVA ? 'terminar-turno' : 'seguir'
+      if (resultado === 'terminar-turno') await this.#dialogos.avisar({ titulo: 'Lava', texto: `${personaje.nombre} tiene que pararse.` })
+      console.log(`[map-debug] alEntrar: ${personaje.nombre} en ${donde.casilla.x},${donde.casilla.y} de «${donde.estancia}»`, { terreno: terreno.efecto, resultado })
+      return resultado
+    }
     const sinPeligro = jugadorDe(mapa.mapa, personaje.id)?.id === JUGADOR_MONSTRUOS || mapa.tieneFlag('estancia', donde.estancia, 'sin_trampas')
     const pisaTrampa = !sinPeligro && this.#azar() < PROBABILIDAD_DE_TRAMPA
     if (pisaTrampa) await this.#dialogos.avisar({ titulo: '¡Trampa!', texto: `${personaje.nombre} ha pisado una trampa: se detiene aquí.` })

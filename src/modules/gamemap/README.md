@@ -73,7 +73,8 @@ mismo sitio.
   dos), muy difícil (tres) o impasable, con o sin imagen que la cubra. La
   ruta de un personaje lo tiene en cuenta y lo rodea si sale más barato.
   Además, da a los disparos que lo cruzan una cobertura: ninguna, ligera,
-  pesada o bloqueante.
+  pesada o bloqueante. Puede llevar `efecto` y `decoracion`; al entrar, la
+  clase del personaje recibe ese terreno y decide qué pasa.
 - **Objeto** (elemento): ocupa `filas` × `columnas` casillas de una estancia.
   Al crearla, el gestor lo pone en el sitio libre más cercano al centro, sin
   tapar puertas ni pisar otros; si no cabe, queda en la **zona de espera**

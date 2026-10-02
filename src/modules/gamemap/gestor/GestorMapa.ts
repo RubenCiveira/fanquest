@@ -34,6 +34,7 @@ import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enContacto, enElMapa, encaramientoDe, enemigosDe, evaluarRecorrido, gastadoPor, girar, mover, transitable } from '../movimiento'
 import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
+import { terrenoEn as terrenoEnDe } from '../terrenos'
 import { apoyosDe, estaTrabado, trabadoPor } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
 import type { Ataque, AtaqueDeEscuadra } from '../modelo/ataque'
@@ -96,6 +97,11 @@ export class GestorMapa implements MapaEnJuego {
   /** Reglas de activación del proyecto */
   get configuracion() {
     return this.#proveedor.configuracion
+  }
+
+  terrenoEn({ estancia, casilla }: Ubicacion) {
+    const e = this.#mapa.estancias.find(({ id }) => id === estancia)
+    return e && terrenoEnDe(e, casilla)
   }
 
   /** Avisa de cada cambio del mapa; devuelve cómo dejar de recibir avisos */
@@ -834,7 +840,8 @@ export class GestorMapa implements MapaEnJuego {
     const libre = (c: Casilla, i: number) => !(tamano ? huella(c, tamano, enCadaPaso[i]) : [c]).some((suya) => ocupadas.some(({ x, y }) => x === suya.x && y === suya.y))
     for (const [i, c] of recorrido.entries()) {
       const donde = i > 0 && libre(c, i) && casillaDelMapa(this.#mapa, c)
-      const resultado = donde ? await alEntrar({ estancia: donde.estancia.id, casilla: donde.casilla }) : 'seguir'
+      const terreno = donde ? this.terrenoEn({ estancia: donde.estancia.id, casilla: donde.casilla }) : undefined
+      const resultado = donde ? await alEntrar({ estancia: donde.estancia.id, casilla: donde.casilla, ...(terreno?.efecto && { terreno }) }) : 'seguir'
       if (resultado !== 'seguir') return { hasta: i, resultado }
     }
     return { hasta: recorrido.length - 1, resultado: 'seguir' }

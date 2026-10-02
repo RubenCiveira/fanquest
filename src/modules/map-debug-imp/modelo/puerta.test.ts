@@ -8,6 +8,7 @@ const donde = { estancia: 'estancia-1', casilla: { x: 2, y: 3 } }
 const mapaCon = (puerta?: Puerta): MapaEnJuego => ({
   mapa: { estancias: [] },
   puertaEn: () => puerta,
+  terrenoEn: () => undefined,
   tieneFlag: () => false,
   marcarFlag: vi.fn(),
   dameLoQueEstaAlLado: () => [],

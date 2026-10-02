@@ -341,7 +341,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   salidas: number,
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
   muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
-  terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante', posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
+  terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante', efecto?: string, decoracion?: { imagen?: string, fondo?: string }, posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
   muros?: [{ desde: { x, y }, hasta: { x, y }, pasos?: number[], puertas?: number[], cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante' }],
   personajesNoJugadores?: [{ id: string, nombre: string, imagenVtt?: string, vida?: number, largo?: number, ancho?: number, jugador: string, casilla?: { x, y }, zona?: { posicion: { x, y }, columnas: number, filas: number } }],
 }
@@ -362,6 +362,10 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   terreno impasable, y un terreno que se sale de la estancia no se puede
   construir. Con `imagen`, la vista pinta solo la imagen sobre todas sus
   casillas; sin ella, un rayado según el tipo.
+- Con `efecto`, el gestor pasa ese terreno en `donde.terreno` al llamar a
+  `alEntrar`, para que la clase decida si aplica daño, detiene el movimiento o
+  termina el turno. Con `decoracion` (`imagen` o `fondo`), la vista pinta el
+  efecto así; sin ella, usa un patrón de aviso con `!`.
 - La `cobertura` de un terreno dice cuánto protege de los disparos que lo
   cruzan: `ligera`, `pesada` o `bloqueante` (sin ella, `ninguna`). Es
   independiente del `tipo`, que solo afecta al movimiento: un seto puede ser
@@ -505,6 +509,7 @@ interface MapaEnJuego {
   personaje(id: string): PersonajeEnJuego | undefined  // cualquier personaje del mapa, en juego
   personajesEn(estancia: string): PersonajeEnJuego[]   // los de esa estancia, en juego
   puertaEn(ubicacion: Ubicacion): Puerta | undefined   // la puerta de esa casilla
+  terrenoEn(ubicacion: Ubicacion): Terreno | undefined // el terreno de esa casilla, si no es normal
   tieneFlag(tipo: TipoConFlags, id: string, flag: string): boolean // marcas de estado (`sin_trampas`, `aturdido`, `revisado`…)
   marcarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined // si no está en el mapa, el motivo
   quitarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined
@@ -787,9 +792,10 @@ alEntrar?(personaje: PersonajeEnJuego, donde: Ubicacion, mapa: MapaEnJuego): Pro
 Opcional. Al soltar la ficha de un personaje de escuadra, con el recorrido ya
 validado (y confirmado, si desliza) y antes de moverlo, el gestor pregunta a
 su clase por cada casilla del recorrido, en orden: `donde` es la estancia y
-la casilla en ella. Es el sitio para lo que pasa al pisar una casilla (una
-trampa, el área de influencia de un elemento, un terreno peligroso…), igual
-que `acciones` lo es para lo que se hace a propósito. La clase puede
+la casilla en ella, con `terreno` si esa casilla tiene un terreno con
+`efecto`. Es el sitio para lo que pasa al pisar una casilla (una trampa, el
+área de influencia de un elemento, un terreno peligroso…), igual que
+`acciones` lo es para lo que se hace a propósito. La clase puede
 delegar en los objetos del proyecto que haya en esa casilla y cambiar el
 mapa (`reducirVida`, `marcarFlag`…).
 
@@ -810,11 +816,13 @@ mapa (`reducirVida`, `marcarFlag`…).
 - No se llama al mover personajes no jugadores (`moverPersonajeNoJugador`) ni
   al agrupar la escuadra.
 
-En el banco de pruebas, un héroe (no un monstruo) que entra en una casilla
-de una estancia sin `sin_trampas` pisa una trampa con un 30% de
-probabilidades (`PROBABILIDAD_DE_TRAMPA`): lo avisa en un diálogo y se
-detiene en esa casilla (`detenerse`). Cada llamada a `alEntrar` se ve en la
-consola, con lo que responde.
+En el banco de pruebas, entrar en lava avisa de que va a hacer daño y tiene un
+50% de probabilidades de parar del todo al personaje (`terminar-turno`, para
+que no siga moviéndose con el movimiento restante). Si no hay lava, un héroe
+(no un monstruo) que entra en una casilla de una estancia sin `sin_trampas`
+pisa una trampa con un 30% de probabilidades (`PROBABILIDAD_DE_TRAMPA`): lo
+avisa en un diálogo y se detiene en esa casilla (`detenerse`). Cada llamada a
+`alEntrar` se ve en la consola, con lo que responde.
 
 ## Desplazamientos forzados: desplazar y desplazarEscuadra
 

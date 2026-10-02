@@ -551,15 +551,25 @@ function CapaEstancia({
       })}
       {estancia.terrenos?.map((t, i) => {
         const [x, y, width, height] = [t.posicion.x * LADO, t.posicion.y * LADO, t.columnas * LADO, t.filas * LADO]
-        // con imagen, solo la imagen; sin ella, el rayado de su tipo
-        return t.imagen ? (
-          <image key={i} className="vista-terreno" href={t.imagen} x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid slice">
+        const tieneDecoracion = !!(t.decoracion?.imagen || t.decoracion?.fondo)
+        const imagen = t.decoracion?.imagen ?? t.imagen
+        const fill = t.decoracion?.fondo ?? `url(#${patrones}-${t.efecto ? 'efecto' : t.tipo})`
+        const aviso = t.efecto && !tieneDecoracion
+        return imagen ? (
+          <image key={i} className="vista-terreno" href={imagen} x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid slice">
             <title>{conCobertura(t)}</title>
           </image>
         ) : (
-          <rect key={i} className={`vista-terreno ${t.tipo}`} x={x} y={y} width={width} height={height} fill={`url(#${patrones}-${t.tipo})`}>
-            <title>{conCobertura(t)}</title>
-          </rect>
+          <g key={i} className="vista-terreno">
+            <rect className={t.efecto ? 'con-efecto' : t.tipo} x={x} y={y} width={width} height={height} fill={fill}>
+              <title>{conCobertura(t)}</title>
+            </rect>
+            {aviso && (
+              <text className="vista-terreno-aviso" x={x + width / 2} y={y + height / 2} dominantBaseline="central" textAnchor="middle">
+                !
+              </text>
+            )}
+          </g>
         )
       })}
       {estanciasDe(estancia).map(({ estancia: e, origen }) => (
@@ -658,8 +668,8 @@ function CapaEstancia({
 
 const NOMBRE_TERRENO: Record<TipoTerreno, string> = { dificil: 'Terreno difícil', 'muy-dificil': 'Terreno muy difícil', impasable: 'Terreno impasable' }
 
-/** Nombre del terreno y, si la da, su cobertura contra los disparos */
-const conCobertura = ({ tipo, cobertura = 'ninguna' }: Terreno) => `${NOMBRE_TERRENO[tipo]}${cobertura === 'ninguna' ? '' : `, cobertura ${cobertura}`}`
+/** Nombre del terreno y, si los da, su efecto y su cobertura contra los disparos */
+const conCobertura = ({ tipo, cobertura = 'ninguna', efecto }: Terreno) => `${NOMBRE_TERRENO[tipo]}${efecto ? `, efecto ${efecto}` : ''}${cobertura === 'ninguna' ? '' : `, cobertura ${cobertura}`}`
 
 /**
  * Rayados con que se marca el terreno sin imagen: rayas sueltas el difícil,
@@ -678,6 +688,10 @@ function RayadosDeTerreno({ prefijo }: { prefijo: string }) {
       <pattern id={`${prefijo}-impasable`} width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <rect className="vista-rayado-fondo" width="5" height="5" />
         <line className="vista-rayado impasable" x1="0" y1="0" x2="0" y2="5" />
+      </pattern>
+      <pattern id={`${prefijo}-efecto`} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect className="vista-rayado-fondo efecto" width="6" height="6" />
+        <line className="vista-rayado efecto" x1="0" y1="0" x2="0" y2="6" />
       </pattern>
     </>
   )

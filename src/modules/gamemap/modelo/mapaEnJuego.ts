@@ -9,6 +9,7 @@ import type { Personaje } from './personaje'
 import type { PersonajeEnJuego } from './personajeEnJuego'
 import type { PersonajeNoJugador } from './personajeNoJugador'
 import type { Puerta } from './puerta'
+import type { Terreno } from './terreno'
 import type { TipoConFlags } from './tipoConFlags'
 import type { Ubicacion } from './ubicacion'
 
@@ -22,6 +23,8 @@ export interface MapaEnJuego {
   personajesEn(estancia: string): PersonajeEnJuego[]
   /** Puerta de esa casilla, si la hay */
   puertaEn(ubicacion: Ubicacion): Puerta | undefined
+  /** Terreno de esa casilla, si no es normal; con varios terrenos, el peor */
+  terrenoEn(ubicacion: Ubicacion): Terreno | undefined
   /** Si lo que tiene ese tipo e id (estancia, escuadra, personaje, elemento o puerta) tiene marcada esa bandera de estado */
   tieneFlag(tipo: TipoConFlags, id: string, flag: string): boolean
   /** Marca esa bandera de estado en lo que tiene ese tipo e id; si no está en el mapa, el motivo */

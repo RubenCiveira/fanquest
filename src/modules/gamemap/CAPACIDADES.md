@@ -29,7 +29,7 @@ cinco proveedores y dos tipos de clase (ver `PROVEEDORES.md`).
 | Mapa | Estancias de tipo `sala`, `pasillo` o `exterior`, de cualquier tamaño en casillas. Se generan al vuelo al abrir puertas, pegadas a la puerta, o aparte con `nuevaEstancia()` | `ProveedorEstancias.describirEstancia`, `abrirPuerta` |
 | Mapa | Puertas de salida y puertas interiores (en muros dentro de la estancia), abiertas o cerradas | `Puerta`, `puertaEn` |
 | Mapa | Muros interiores con tramos de muro, paso o puerta. Bloquean el movimiento, la zona de control y el cuerpo a cuerpo, y dan cobertura | `DescripcionMuro`, `muros.ts` |
-| Mapa | Terreno `dificil` (×2), `muy-dificil` (×3) e `impasable`, con una `cobertura` (`ligera`, `pesada`, `bloqueante`) independiente del tipo | `Terreno`, `terrenos.ts` |
+| Mapa | Terreno `dificil` (×2), `muy-dificil` (×3) e `impasable`, con una `cobertura` (`ligera`, `pesada`, `bloqueante`) independiente del tipo y un `efecto` opcional con decoración | `Terreno`, `terrenos.ts` |
 | Mapa | Objetos (se colocan solos, se pueden coger) y muebles fijos | `elementos.ts` |
 | Estado | Flags en estancias, escuadras, personajes, objetos, muebles y puertas (`sin_trampas`, `aturdido`, `revisado`…), guardadas en el mapa | `tieneFlag`, `marcarFlag`, `quitarFlag` |
 | Mapa | Zona de espera para lo que no cabe o aún no está en juego | `Personaje.casilla` ausente, `colocarPersonaje` |
@@ -243,8 +243,8 @@ recibe y el proyecto juega por él con estas piezas:
   **monstruos errantes** en cada turno del MB (1-2 en 1D6) son del proyecto.
   Los errantes aparecen donde ningún héroe los ve (`trayectoria`) con
   `anadirPersonajes`.
-- Lava, abismos y suelos ardientes necesitan **terreno con efecto** (ver
-  huecos).
+- Lava, abismos y suelos ardientes salen como **terreno con efecto**: la clase
+  los recibe en `alEntrar` y decide si daña, detiene o termina el turno.
 
 ### 2.7 Resumen FAI
 
@@ -461,7 +461,7 @@ elegir objetivo y acción con las mismas consultas.
 | Acción única para toda la unidad | 🟡 Clase de escuadra, con la acción declarada como flag |
 | Mantener, Avanzar, Correr y Cargar | ✅ Opciones de movimiento, `carga` y distancia de control 1 |
 | Terreno difícil (máximo 6″) | 🟡 Dos variaciones de movimiento |
-| Terreno peligroso | ❌ Falta terreno con efecto |
+| Terreno peligroso | ✅ `Terreno.efecto` y `alEntrar` |
 | Elevación, saltos y caídas | ❌ El mapa es plano |
 | Peanas grandes (vehículos, monstruos) | ✅ `largo` × `ancho` en la clase o la descripción del personaje |
 | Disparo de unidad, cobertura y PA | ✅ `modoAtaque: 'escuadra'` y `atacarEscuadra`; dados, cobertura y PA, del proyecto |
@@ -487,7 +487,7 @@ un juego en el motor: son puntos de extensión.
 | 4 | ✅ **Coherencia de escuadra** | OPR | Hecho: `coherencia` y `distanciaCoherencia` en la configuración (en cadena, con todos o desde el centro), comprobada al terminar la activación (`escuadraSinCoherencia`) y con guía para dibujarla. Falta combinar dos reglas (1″ en cadena y 6″ o 9″ con todos) |
 | 5 | ✅ **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Hecho: `ordenActivaciones: 'iniciativa'` en la configuración y `ProveedorTurnos.ordenDelTurno(mapa)`, que al empezar cada turno da los huecos (jugador y cuántas activaciones seguidas; sin cupo, todas); lo que queda después va como `alternas` |
 | 6 | ✅ **Ataque de escuadra contra escuadra** (1.1) | OPR (disparo y cuerpo a cuerpo de unidad) | Hecho: `modoAtaque` (`uno-a-uno` o `escuadra`) en la configuración y `ClaseDeEscuadra.atacarEscuadra(ataque, mapa)`: el gestor reúne a los de la escuadra con acciones a los que su clase deja atacar al objetivo elegido, ordena a los defensores (los más cercanos primero) y apunta la acción a todos; `planearAtaqueDeEscuadra` para dibujar las líneas de disparo. Falta mezclar los dos modos por escuadra |
-| 7 | **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | `etiqueta?: string` en `Terreno`, para que la clase lo reconozca en `alEntrar` y en `trayectoria` |
+| 7 | ✅ **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | Hecho: `efecto?: string` y `decoracion?: { imagen?, fondo? }` en `Terreno`; el gestor pasa el terreno en `alEntrar` y `MapaEnJuego.terrenoEn` deja consultarlo. Si no hay decoración, la vista usa un patrón de aviso |
 | 8 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
 | 9 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
 | 10 | **Despliegue** | OPR, y FAI con el damero | Zonas de despliegue por alianza en la estancia inicial y validación en `colocarPersonaje` con un `motivoParaNoColocar` del proveedor |

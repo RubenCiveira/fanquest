@@ -520,9 +520,29 @@
   stroke-width: 2.5;
 }
 
+.vista-rayado.efecto {
+  stroke: var(--tinta);
+  stroke-width: 2;
+}
+
 .vista-rayado-fondo {
   fill: var(--grafito);
   opacity: 0.35;
+}
+
+.vista-rayado-fondo.efecto {
+  fill: #d94a1e;
+  opacity: 0.45;
+}
+
+.vista-terreno-aviso {
+  fill: var(--tinta);
+  font-family: var(--fuente-titulos);
+  font-size: 26px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: var(--pergamino-claro);
+  stroke-width: 3px;
 }
 
 .map-debug-casilla-marcar {

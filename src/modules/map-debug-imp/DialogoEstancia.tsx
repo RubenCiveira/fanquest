@@ -175,7 +175,7 @@ export function DialogoEstancia({ mapa, entrada, onCrear, onEscuadrasMonstruos, 
 
         <label className="map-debug-casilla-marcar">
           <input type="checkbox" checked={conTerreno} onChange={(e) => setConTerreno(e.target.checked)} />
-          Terreno de prueba: barro difícil, zarzas muy difíciles, un pilar impasable y escombros con imagen (los que quepan)
+          Terreno de prueba: barro difícil, zarzas muy difíciles, un pilar impasable, lava con efecto y escombros con imagen (los que quepan)
         </label>
 
         <label className="map-debug-casilla-marcar">

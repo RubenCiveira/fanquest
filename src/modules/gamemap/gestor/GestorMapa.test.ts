@@ -362,6 +362,15 @@ describe('gestor del mapa: al entrar en cada casilla', () => {
     expect([barbaro().casilla, p.alEntrar.mock.calls.length]).toEqual([aLaDerecha(desde, 1), 1])
   })
 
+  it('al detenerse en terreno con efecto, se queda en esa casilla', async () => {
+    const lava = { ...amplia, terrenos: [{ tipo: 'dificil' as const, efecto: 'lava', posicion: { x: 2, y: 1 }, columnas: 1, filas: 1 }] }
+    const { gestor, p, barbaro } = await conInicial(lava)
+    const desde = barbaro().casilla
+    p.alEntrar.mockResolvedValueOnce('detenerse')
+    await gestor.moverPersonaje('barbaro', enLinea(desde, 2))
+    expect([barbaro().casilla, p.alEntrar.mock.calls.at(-1)?.[1].terreno?.efecto]).toEqual([aLaDerecha(desde, 1), 'lava'])
+  })
+
   it('al detenerse antes de deslizar, solo gasta lo que ha recorrido', async () => {
     const { gestor, p, barbaro } = await conInicial(amplia)
     p.alEntrar.mockResolvedValueOnce('seguir').mockResolvedValueOnce('detenerse')
