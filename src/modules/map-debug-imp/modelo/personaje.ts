@@ -95,19 +95,31 @@ export const MOVIMIENTO_DE_PRUEBA: OpcionesMovimiento = {
   ],
 }
 
+/** La opción con `casillas` menos en su primer tramo (lo que ya gastó al encararse) */
+const descontada = (opcion: OpcionMovimiento, casillas: number): OpcionMovimiento => ({
+  ...opcion,
+  tramos: opcion.tramos.map((t, i) => (i ? t : { ...t, distancia: Math.max(0, t.distancia - casillas) })),
+})
+
 /**
  * Cómo puede moverse un personaje de prueba tras lo que ya ha movido este turno:
- * sin moverse, `MOVIMIENTO_DE_PRUEBA`; si ya se ha movido, lo que le quede de
- * mover más deslizar 3 (sin cargar); si ya ha deslizado, no puede moverse más
+ * - sin moverse, `MOVIMIENTO_DE_PRUEBA`; si solo se ha encarado (girar sin
+ *   moverse no apunta ninguna acción), todo eso menos lo que le costó girar:
+ *   encararse es parte del movimiento;
+ * - si ya se ha movido, lo que le quede de mover más deslizar 3 y, si solo se
+ *   ha movido de forma normal (`mover`), también cargar con lo que le quede
+ *   de la carga; tras posicionarse, destrabarse o cargar, ya no carga;
+ * - si ya ha deslizado, no puede moverse más
  */
 export function movimientoDePrueba({ casillas, acciones }: MovimientoGastado): OpcionesMovimiento | undefined {
   if (acciones.includes(DESLIZAR.id)) return
-  if (!casillas) return MOVIMIENTO_DE_PRUEBA
+  if (!acciones.length) return casillas ? { base: descontada(MOVIMIENTO_DE_PRUEBA.base, casillas), variaciones: MOVIMIENTO_DE_PRUEBA.variaciones.map((v) => descontada(v, casillas)) } : MOVIMIENTO_DE_PRUEBA
   const quedan = Math.max(0, MOVIMIENTO - casillas)
-  const [, deslizar] = MOVIMIENTO_DE_PRUEBA.variaciones
+  const [cargar, deslizar] = MOVIMIENTO_DE_PRUEBA.variaciones
+  const soloNormal = acciones.every((a) => a === MOVER.id)
   return {
     base: { ...MOVIMIENTO_DE_PRUEBA.base, tramos: [{ distancia: quedan }] },
-    variaciones: [{ ...deslizar, tramos: [{ distancia: quedan }, { distancia: 3, accion: DESLIZAR }] }],
+    variaciones: [...(soloNormal ? [descontada(cargar, casillas)] : []), { ...deslizar, tramos: [{ distancia: quedan }, { distancia: 3, accion: DESLIZAR }] }],
   }
 }
 
@@ -172,12 +184,12 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     if (trayectoria.coberturas.bloqueante) return `Hay terreno bloqueante entre ${this.nombre} y ${objetivo.nombre}`
   }
 
-  /** `movimientoDePrueba` y, si vuela (`VUELAN`) y aún no se ha movido, `VOLAR` detrás de cargar */
+  /** `movimientoDePrueba` y, si vuela (`VUELAN`) y aún no se ha movido (encararse no cuenta, pero se descuenta), `VOLAR` detrás de cargar */
   async opcionesMovimiento(_personaje: Personaje, gastado: MovimientoGastado) {
     const opciones = movimientoDePrueba(gastado)
-    if (!opciones || !VUELAN.includes(this.id) || gastado.casillas) return opciones
+    if (!opciones || !VUELAN.includes(this.id) || gastado.acciones.length) return opciones
     const [cargar, ...resto] = opciones.variaciones
-    return { ...opciones, variaciones: [cargar, VOLAR, ...resto] }
+    return { ...opciones, variaciones: [cargar, descontada(VOLAR, gastado.casillas), ...resto] }
   }
 
   async acciones(personaje: Personaje, mapa: MapaEnJuego): Promise<Comando[]> {
@@ -203,10 +215,10 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
   /**
    * Pinta en la consola lo que el gestor dice del ataque (tipo, distancias,
    * trayectoria con las coberturas que cruza y si el atacante y el objetivo
-   * están trabados y con qué apoyos) y, si aún le queda su acción del turno: un monstruo falla
-   * siempre contra un héroe (lo avisa en un diálogo); en otro caso, pide el
-   * daño del ataque (`resolverAtaque`: el diálogo del banco de pruebas), se lo
-   * quita al objetivo y, si se queda sin vida, lo elimina del mapa
+   * están trabados y con qué apoyos) y, si aún le queda su acción del turno:
+   * un monstruo hace 1 de daño a un héroe; en otro caso, pide el daño del
+   * ataque (`resolverAtaque`: el diálogo del banco de pruebas), se lo quita al
+   * objetivo y, si se queda sin vida, lo elimina del mapa
    */
   async atacar(ataque: Ataque, mapa: MapaEnJuego): Promise<ResultadoAccion> {
     const { atacante, objetivo, tipo, distancia, recorrido, trayectoria } = ataque
@@ -230,7 +242,9 @@ export class PersonajeDePrueba implements ClaseDePersonaje {
     await this.#gastarAccion(mapa)
     const esMonstruo = (id: string) => jugadorDe(mapa.mapa, id)?.id === JUGADOR_MONSTRUOS
     if (esMonstruo(atacante.id) && !esMonstruo(objetivo.id)) {
-      await this.#dialogos.avisar({ titulo: 'Ataque', texto: `${atacante.nombre} ataca a ${objetivo.nombre}: ¡ups, ha fallado!` })
+      const motivo = mapa.reducirVida(objetivo.id, 1)
+      if (motivo) throw new Error(motivo)
+      await this.#dialogos.avisar({ titulo: 'Ataque', texto: `${atacante.nombre} ataca a ${objetivo.nombre}: hace 1 de daño.` })
       return TRAS_SU_ACCION
     }
     const motivo = mapa.reducirVida(objetivo.id, await this.#dialogos.resolverAtaque(ataque))

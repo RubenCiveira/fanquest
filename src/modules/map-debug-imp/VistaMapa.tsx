@@ -1,7 +1,8 @@
-import { useId, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useId, useRef, useState, type PointerEvent } from 'react'
 import { sitiosDeBotones } from './corona'
 import {
   alcance,
+  analizarRecorrido,
   activacionDeNoJugador,
   casillasDeEnemigos,
   conPersonajes,
@@ -47,6 +48,7 @@ import {
   ORIENTACION_INICIAL,
   personajesNoJugadoresDe,
   turnoDeEscuadra,
+  turnoDePersonaje,
   type PersonajeNoJugador,
 } from '../gamemap'
 
@@ -783,11 +785,36 @@ export function VistaMapa({ mapa, ...props }: Props & { mapa: Mapa }) {
     else onElegirElemento?.(ficha.id)
   }
 
-  if (!estancias.length) return null
+  const reglasDelRecorrido = (ficha: Personaje) => ({ medicion, enemigos: casillasDeEnemigos(mapa, ficha.id), distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal })
   const evaluado: RecorridoEvaluado | undefined =
     arrastre?.opciones === null
       ? { motivo: `${arrastre.ficha.nombre} no puede moverse ahora` }
-      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, { medicion, enemigos: casillasDeEnemigos(mapa, arrastre.ficha.id), distanciaControl, cuerpoACuerpo, costeGiro, costeGiroDiagonal })
+      : arrastre?.opciones && evaluarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, reglasDelRecorrido(arrastre.ficha))
+  // banco de pruebas: si el recorrido no vale, se ve en la consola por qué no vale cada forma de moverse (una vez por recorrido)
+  const rechazado = arrastre?.opciones && arrastre.recorrido.length > 1 && evaluado && 'motivo' in evaluado ? `${arrastre.ficha.id}: ${arrastre.recorrido.map(({ x, y }) => `${x},${y}`).join(' ')}` : undefined
+  useEffect(() => {
+    if (!rechazado || !arrastre?.opciones || !evaluado || !('motivo' in evaluado)) return
+    const analisis = analizarRecorrido(vistoPor(arrastre.ficha), arrastre.ficha, arrastre.recorrido, arrastre.opciones, reglasDelRecorrido(arrastre.ficha))
+    if ('motivo' in analisis) return console.log(`[map-debug] recorrido rechazado (${rechazado}): ${evaluado.motivo}`)
+    const { opciones, ...zona } = analisis
+    // lo que ya ha movido en el turno decide qué formas de moverse le ofrece su clase (sin carga, si ya se movió)
+    const movimientos = turnoDePersonaje(arrastre.ficha, numeroDeTurno(mapa)).movimientos
+    console.log(`[map-debug] recorrido rechazado (${rechazado}): ${evaluado.motivo}`, zona, { yaMovido: movimientos })
+    console.table(
+      opciones.map(({ opcion, pasa, coste, alcance, tramos, segunZona, terminaJuntoSiLoPide }) => ({
+        opcion: `${opcion.nombre} (${opcion.tipo})`,
+        pasa,
+        coste: coste ?? '—',
+        alcance,
+        llega: !!tramos,
+        zonaDeControl: segunZona,
+        terminaJunto: terminaJuntoSiLoPide,
+      })),
+    )
+    // solo cuando cambia el recorrido rechazado (lo demás se lee de ese momento): con todas las dependencias, se pintaría en cada repintado
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rechazado])
+  if (!estancias.length) return null
   const x0 = Math.min(...estancias.map((e) => origenDe(e).x))
   const y0 = Math.min(...estancias.map((e) => origenDe(e).y))
   const x1 = Math.max(...estancias.map((e) => origenDe(e).x + e.columnas))

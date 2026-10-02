@@ -465,27 +465,61 @@ const SIN_SALIR_DE_LA_ZONA = 'Para destrabarse tiene que terminar fuera de la zo
  * destrabarse tiene que empezar en ella y terminar fuera; posicionarse tiene
  * que empezar en ella y terminar pegado a uno de los enemigos que lo traban
  */
-export function evaluarRecorrido(
+export function evaluarRecorrido(m: Mapa, personaje: Personaje, recorrido: Casilla[], opcionesMovimiento: OpcionesMovimiento, reglas: ReglasDeRecorrido = {}): RecorridoEvaluado {
+  const analisis = analizarRecorrido(m, personaje, recorrido, opcionesMovimiento, reglas)
+  if ('motivo' in analisis) return analisis
+  const { trabado, entraEnZona, terminaEnZona, terminaJunto, encimaDe, opciones } = analisis
+  if (opciones.every((o) => !o.pasa)) return { motivo: 'El recorrido pasa por donde no se puede' }
+  if (encimaDe) return { motivo: `No se puede terminar encima de ${encimaDe}` }
+  const valida = opciones.find((o) => o.tramos && o.segunZona && o.terminaJuntoSiLoPide)
+  if (valida?.tramos) return { opcion: valida.opcion, tramos: valida.tramos }
+  const llega = (tipo: OpcionMovimiento['tipo']) => opciones.some((o) => o.opcion.tipo === tipo && o.tramos)
+  if (trabado && terminaJunto && llega('posicionarse')) return { motivo: 'Para posicionarse tiene que pegarse a un enemigo que lo traba' }
+  if (trabado && terminaJunto && llega('carga')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: no puede cargar, solo posicionarse junto a quien lo traba` }
+  if (trabado && terminaEnZona && llega('destrabarse')) return { motivo: SIN_SALIR_DE_LA_ZONA }
+  if (trabado && llega('normal')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: para salir tiene que destrabarse` }
+  if (entraEnZona && llega('normal')) return { motivo: EN_ZONA_DE_CONTROL }
+  const maximo = alcance(opcionesMovimiento)
+  const coste = Math.min(...opciones.flatMap((o) => o.coste ?? []))
+  if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }
+  return { motivo: 'Ninguna forma de moverse permite ese recorrido' }
+}
+
+/** Reglas con que se mira un recorrido: la medición, las casillas de los enemigos (su zona de control y el contacto) y lo que cuesta girar */
+export type ReglasDeRecorrido = {
+  medicion?: MedicionMovimiento
+  enemigos?: Casilla[]
+  distanciaControl?: number
+  cuerpoACuerpo?: Configuracion['cuerpoACuerpo']
+  costeGiro?: number
+  costeGiroDiagonal?: number
+}
+
+/**
+ * Lo que `evaluarRecorrido` mira de un recorrido, para saber por qué vale o
+ * no cada forma de moverse: si empieza trabado, si entra en la zona de
+ * control enemiga o termina en ella, si termina en contacto con un enemigo,
+ * encima de quién terminaría y, de cada opción, si pasa por donde va, lo que
+ * le cuesta, hasta dónde llega, en qué tramo cae cada paso (si llega), si la
+ * zona de control se lo permite y si termina junto a un enemigo cuando lo pide
+ */
+export type AnalisisDeRecorrido = {
+  trabado: boolean
+  entraEnZona: boolean
+  terminaEnZona: boolean
+  terminaJunto: boolean
+  encimaDe?: string
+  opciones: { opcion: OpcionMovimiento; pasa: boolean; coste?: number; alcance: number; tramos?: number[]; segunZona: boolean; terminaJuntoSiLoPide: boolean }[]
+}
+
+/** Lo que mira `evaluarRecorrido` (`AnalisisDeRecorrido`), o el motivo si el recorrido no empieza en el personaje o no se mueve */
+export function analizarRecorrido(
   m: Mapa,
   personaje: Personaje,
   recorrido: Casilla[],
   { base, variaciones }: OpcionesMovimiento,
-  {
-    medicion = 'ortogonal',
-    enemigos = [],
-    distanciaControl = 0,
-    cuerpoACuerpo = 'diagonal',
-    costeGiro = 0,
-    costeGiroDiagonal = 0,
-  }: {
-    medicion?: MedicionMovimiento
-    enemigos?: Casilla[]
-    distanciaControl?: number
-    cuerpoACuerpo?: Configuracion['cuerpoACuerpo']
-    costeGiro?: number
-    costeGiroDiagonal?: number
-  } = {},
-): RecorridoEvaluado {
+  { medicion = 'ortogonal', enemigos = [], distanciaControl = 0, cuerpoACuerpo = 'diagonal', costeGiro = 0, costeGiroDiagonal = 0 }: ReglasDeRecorrido = {},
+): AnalisisDeRecorrido | { motivo: string } {
   const [salida, ...pasos] = recorrido
   const destino = pasos.at(-1)
   const donde = enElMapa(m, personaje)
@@ -499,11 +533,7 @@ export function evaluarRecorrido(
   const [deSalida, deLlegada] = [huellas[0], huellas.at(-1) ?? []]
   // cada forma de moverse, con lo que le cuesta el terreno: por dónde pasa y cuánto le cuesta
   const pasa = (o: OpcionMovimiento) => pasos.every((c, i) => sePuedePasar(m, recorrido[i], c, medicion, { ...o, tamano }, [enCadaPaso[i], enCadaPaso[i + 1]]))
-  if (![base, ...variaciones].some(pasa)) return { motivo: 'El recorrido pasa por donde no se puede' }
-  const otro = todosLosPersonajes(m).find((h) => h.id !== personaje.id && huellaEnElMapa(m, h).some((c) => deLlegada.some(igual(c))))
-  if (otro) return { motivo: `No se puede terminar encima de ${otro.nombre}` }
-
-  const opciones = [base, ...variaciones]
+  const encimaDe = todosLosPersonajes(m).find((h) => h.id !== personaje.id && huellaEnElMapa(m, h).some((c) => deLlegada.some(igual(c))))?.nombre
   const enZona = enZonaDeControl(m, enemigos, distanciaControl)
   const [trabado, entraEnZona, terminaEnZona] = [deSalida.some(enZona), huellas.slice(1).some((h) => h.some(enZona)), deLlegada.some(enZona)]
   const loTraban = enemigos.filter((en) => deSalida.some(enZonaDeControl(m, [en], distanciaControl)))
@@ -515,22 +545,27 @@ export function evaluarRecorrido(
     posicionarse: trabado && loTraban.some(enContactoCon),
   }
   const terminaJunto = enemigos.some(enContactoCon)
-  const permite = (o: OpcionMovimiento) => segunZona[o.tipo] && (!o.terminarJuntoAEnemigo || terminaJunto)
-  const tramosPara = (o: OpcionMovimiento) => (pasa(o) ? tramosDe(o, costesDe(m, recorrido, medicion, { ...o, encaramiento, tamano })) : undefined)
-  for (const opcion of opciones) {
-    const tramos = tramosPara(opcion)
-    if (tramos && permite(opcion)) return { opcion, tramos }
+  return {
+    trabado,
+    entraEnZona,
+    terminaEnZona,
+    terminaJunto,
+    ...(encimaDe && { encimaDe }),
+    opciones: [base, ...variaciones].map((opcion) => {
+      const pasaPor = pasa(opcion)
+      const costes = pasaPor ? costesDe(m, recorrido, medicion, { ...opcion, encaramiento, tamano }) : undefined
+      const tramos = costes && tramosDe(opcion, costes)
+      return {
+        opcion,
+        pasa: pasaPor,
+        ...(costes && { coste: costes.at(-1) ?? 0 }),
+        alcance: alcance({ base: opcion, variaciones: [] }),
+        ...(tramos && { tramos }),
+        segunZona: segunZona[opcion.tipo],
+        terminaJuntoSiLoPide: !opcion.terminarJuntoAEnemigo || terminaJunto,
+      }
+    }),
   }
-  const llega = (tipo: OpcionMovimiento['tipo']) => opciones.some((o) => o.tipo === tipo && tramosPara(o))
-  if (trabado && terminaJunto && llega('posicionarse')) return { motivo: 'Para posicionarse tiene que pegarse a un enemigo que lo traba' }
-  if (trabado && terminaJunto && llega('carga')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: no puede cargar, solo posicionarse junto a quien lo traba` }
-  if (trabado && terminaEnZona && llega('destrabarse')) return { motivo: SIN_SALIR_DE_LA_ZONA }
-  if (trabado && llega('normal')) return { motivo: `${personaje.nombre} está trabado en cuerpo a cuerpo: para salir tiene que destrabarse` }
-  if (entraEnZona && llega('normal')) return { motivo: EN_ZONA_DE_CONTROL }
-  const maximo = alcance({ base, variaciones })
-  const coste = costeDe(m, recorrido, medicion, { encaramiento, tamano })
-  if (coste > maximo) return { motivo: `Demasiado lejos: ${coste} casillas y como mucho ${maximo}` }
-  return { motivo: 'Ninguna forma de moverse permite ese recorrido' }
 }
 
 /**

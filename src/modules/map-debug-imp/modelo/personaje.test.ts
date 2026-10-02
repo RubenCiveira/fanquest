@@ -39,17 +39,36 @@ describe('personaje de prueba', () => {
     expect(movimientoDePrueba({ casillas: 0, acciones: [] })).toEqual(MOVIMIENTO_DE_PRUEBA)
   })
 
-  it('tras moverse, le queda el resto del movimiento más deslizar', () => {
+  it('tras moverse de forma normal, le queda el resto del movimiento, cargar con lo que le queda de la carga y deslizar', () => {
     const opciones = movimientoDePrueba({ casillas: 2, acciones: ['mover'] })
-    expect([opciones?.base.tramos, opciones?.variaciones.map((v) => v.tramos.map((t) => t.distancia))]).toEqual([[{ distancia: 4 }], [[4, 3]]])
+    expect([opciones?.base.tramos, opciones?.variaciones.map((v) => [v.id, v.tramos.map((t) => t.distancia)])]).toEqual([
+      [{ distancia: 4 }],
+      [
+        ['cargar', [6]],
+        ['mover-y-deslizar', [4, 3]],
+      ],
+    ])
   })
 
-  it('con todo el movimiento gastado, solo puede deslizar', () => {
-    expect(movimientoDePrueba({ casillas: 6, acciones: ['mover'] })?.variaciones[0].tramos.map((t) => t.distancia)).toEqual([0, 3])
+  it('con todo el movimiento gastado, solo puede deslizar (y cargar con lo que le queda de la carga)', () => {
+    expect(movimientoDePrueba({ casillas: 6, acciones: ['mover'] })?.variaciones.map((v) => v.tramos.map((t) => t.distancia))).toEqual([[2], [0, 3]])
+  })
+
+  it.each(['posicionarse', 'destrabarse', 'cargar'])('tras %s, ya no carga', (accion) => {
+    expect(movimientoDePrueba({ casillas: 2, acciones: [accion] })?.variaciones.map((v) => v.id)).toEqual(['mover-y-deslizar'])
   })
 
   it('si ya ha deslizado, no puede moverse más', () => {
     expect(movimientoDePrueba({ casillas: 7, acciones: ['mover', 'deslizar'] })).toBeUndefined()
+  })
+
+  it('tras encararse sin moverse, sigue pudiendo cargar: es parte del movimiento', () => {
+    expect(movimientoDePrueba({ casillas: 1, acciones: [] })?.variaciones.map((v) => v.id)).toEqual(MOVIMIENTO_DE_PRUEBA.variaciones.map((v) => v.id))
+  })
+
+  it('lo que le costó encararse se descuenta de cada forma de moverse', () => {
+    const opciones = movimientoDePrueba({ casillas: 1, acciones: [] })
+    expect([opciones?.base.tramos, opciones?.variaciones.map((v) => v.tramos.map((t) => t.distancia))]).toEqual([[{ distancia: 5 }], [[7], [5, 3], [5], [5]]])
   })
 })
 
@@ -293,17 +312,17 @@ describe('ataques del personaje de prueba', () => {
     return { mapa, avisos, resultado }
   }
 
-  it('un monstruo que ataca a un héroe falla y lo avisa en un diálogo', async () => {
-    const { avisos } = await orcoAtaca()
-    expect(avisos.avisar).toHaveBeenCalledWith({ titulo: 'Ataque', texto: 'Orco ataca a Bárbaro: ¡ups, ha fallado!' })
-  })
-
-  it('al fallar no pide el daño ni le quita vida', async () => {
+  it('un monstruo que ataca a un héroe hace 1 de daño y lo avisa en un diálogo', async () => {
     const { avisos, mapa } = await orcoAtaca()
-    expect([avisos.resolverAtaque.mock.calls.length, mapa.reducirVida.mock.calls.length]).toEqual([0, 0])
+    expect([mapa.reducirVida.mock.calls.at(-1), avisos.avisar.mock.lastCall?.[0]]).toEqual([['barbaro', 1], { titulo: 'Ataque', texto: 'Orco ataca a Bárbaro: hace 1 de daño.' }])
   })
 
-  it('fallar también gasta su acción del turno', async () => {
+  it('el ataque de un monstruo no pide el daño al diálogo', async () => {
+    const { avisos, mapa } = await orcoAtaca()
+    expect([avisos.resolverAtaque.mock.calls.length, mapa.reducirVida.mock.calls.length]).toEqual([0, 1])
+  })
+
+  it('el ataque de un monstruo gasta su acción del turno', async () => {
     const { resultado } = await orcoAtaca()
     expect(resultado).toEqual({ quedanAcciones: false })
   })

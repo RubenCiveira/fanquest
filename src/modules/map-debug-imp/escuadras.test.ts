@@ -43,6 +43,12 @@ describe('escuadras de prueba', () => {
     expect((await barbaro.opcionesMovimiento(enJuego, { casillas: 0, acciones: [] }))?.variaciones.map((v) => v.id)).toContain('volar')
   })
 
+  it('tras encararse sin moverse, aún vuela, con lo que le queda', async () => {
+    const [barbaro] = await (await escuadras())[0].personajes()
+    const volar = (await barbaro.opcionesMovimiento(enJuego, { casillas: 1, acciones: [] }))?.variaciones.find((v) => v.id === 'volar')
+    expect(volar?.tramos).toEqual([{ distancia: 3 }])
+  })
+
   it('tras moverse, ya no vuela', async () => {
     const [barbaro] = await (await escuadras())[0].personajes()
     expect((await barbaro.opcionesMovimiento(enJuego, { casillas: 2, acciones: ['mover'] }))?.variaciones.map((v) => v.id)).not.toContain('volar')
@@ -120,9 +126,15 @@ describe('ataque de escuadra en el banco de pruebas', () => {
   /** Mapa en juego con el bárbaro de Ana y dos orcos de la Oscuridad (2 y 1 de vida), que reduce la vida de verdad */
   function mapaDePrueba() {
     const estado = { estancias: [], turno: 1, escuadras: [{ id: 'escuadra-barbaro', nombre: 'Bárbaro', jugador: 'ana', personajes: [barbaro], turnos: [] }], personajesNoJugadores: [orco('orco-1', 2), orco('orco-2', 1)], jugadores: JUGADORES_DE_PRUEBA }
+    const herirHeroe = (id: string, puntos: number) => {
+      estado.escuadras = estado.escuadras.map((e) => ({ ...e, personajes: e.personajes.map((p) => (p.id === id ? { ...p, vida: Math.max(0, (p.vida ?? 0) - puntos) } : p)) }))
+    }
     return {
       mapa: estado,
-      reducirVida: vi.fn((id: string, puntos: number) => void (estado.personajesNoJugadores = estado.personajesNoJugadores.map((p) => (p.id === id ? { ...p, vida: Math.max(0, p.vida - puntos) } : p)))),
+      reducirVida: vi.fn((id: string, puntos: number) => {
+        estado.personajesNoJugadores = estado.personajesNoJugadores.map((p) => (p.id === id ? { ...p, vida: Math.max(0, p.vida - puntos) } : p))
+        herirHeroe(id, puntos)
+      }),
       eliminarPersonaje: vi.fn(),
     } as unknown as MapaEnJuego & { reducirVida: ReturnType<typeof vi.fn>; eliminarPersonaje: ReturnType<typeof vi.fn> }
   }
@@ -153,9 +165,10 @@ describe('ataque de escuadra en el banco de pruebas', () => {
     expect(await atacarEscuadraDePrueba(ataqueDe(barbaro, orco('orco-1', 2)), mapaDePrueba(), conReparto({}))).toEqual({ quedanAcciones: false })
   })
 
-  it('si atacan monstruos a quien no lo es, fallan y no se reparte nada', async () => {
+  it('si atacan monstruos a quien no lo es, hacen 1 de daño por atacante y no se reparte nada', async () => {
+    const mapa = mapaDePrueba()
     const avisos = conReparto({})
-    await atacarEscuadraDePrueba(ataqueDe(orco('orco-1', 2), barbaro), mapaDePrueba(), avisos)
-    expect([avisos.repartirDano.mock.calls.length, avisos.avisar.mock.lastCall?.[0].texto]).toEqual([0, 'orco-1 ataca: ¡ups, ha fallado!'])
+    await atacarEscuadraDePrueba(ataqueDe(orco('orco-1', 2), barbaro), mapa, avisos)
+    expect([avisos.repartirDano.mock.calls.length, mapa.reducirVida.mock.calls.at(-1), avisos.avisar.mock.lastCall?.[0].texto]).toEqual([0, ['barbaro', 1], 'orco-1 hace 1 de daño.'])
   })
 })

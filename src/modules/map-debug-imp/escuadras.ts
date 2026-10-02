@@ -58,10 +58,10 @@ const sinDialogos: DialogosDePrueba = {
 
 /**
  * Ataque de escuadra contra escuadra del banco de pruebas: lo pinta en la
- * consola; si atacan monstruos a quien no lo es, fallan (lo avisa en un
- * diálogo); si no, se reparte el daño en un diálogo (`repartirDano`), se
- * quita a cada objetivo y se elimina a quien se queda sin vida. Tras él, a
- * los atacantes no les quedan acciones
+ * consola; si atacan monstruos a quien no lo es, hacen 1 de daño por atacante;
+ * si no, se reparte el daño en un diálogo (`repartirDano`), se quita a cada
+ * objetivo y se elimina a quien se queda sin vida. Tras él, a los atacantes no
+ * les quedan acciones
  */
 export async function atacarEscuadraDePrueba(ataque: AtaqueDeEscuadra, mapa: MapaEnJuego, dialogos: DialogosDePrueba): Promise<ResultadoAccion> {
   const { ataques, objetivos, sinAtacar } = ataque
@@ -69,8 +69,14 @@ export async function atacarEscuadraDePrueba(ataque: AtaqueDeEscuadra, mapa: Map
   console.log('[map-debug] ataque de escuadra', { ataques: ataques.map((a) => `${a.atacante.nombre} → ${a.objetivo.nombre} (${a.tipo}, a ${a.distancia})`), objetivos: objetivos.map((p) => p.nombre), sinAtacar })
   const esMonstruo = (id: string) => jugadorDe(mapa.mapa, id)?.id === JUGADOR_MONSTRUOS
   if (ataques.every((a) => esMonstruo(a.atacante.id)) && !objetivos.some((p) => esMonstruo(p.id))) {
-    const varios = ataques.length > 1
-    await dialogos.avisar({ titulo: 'Ataque', texto: `${ataques.map((a) => a.atacante.nombre).join(', ')} ${varios ? 'atacan' : 'ataca'}: ¡ups, ${varios ? 'han' : 'ha'} fallado!` })
+    const objetivo = objetivos[0]
+    if (objetivo) {
+      const motivo = mapa.reducirVida(objetivo.id, ataques.length)
+      if (motivo) throw new Error(motivo)
+      const vida = todosLosPersonajes(mapa.mapa).find((p) => p.id === objetivo.id)?.vida
+      if (vida !== undefined && vida <= 0) mapa.eliminarPersonaje(objetivo.id)
+    }
+    await dialogos.avisar({ titulo: 'Ataque', texto: `${ataques.map((a) => a.atacante.nombre).join(', ')} ${ataques.length > 1 ? 'hacen' : 'hace'} ${ataques.length} de daño.` })
     return { quedanAcciones: false }
   }
   const reparto = await dialogos.repartirDano(ataque)

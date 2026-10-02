@@ -354,6 +354,11 @@ describe('planear un movimiento', () => {
     expect(opcionDe(planear({ x: 2, y: 1 }, { x: 1, y: 1 }))).toBe('cargar')
   })
 
+  it('puede cargar hacia un enemigo aunque empiece mirando hacia otro lado', () => {
+    const m = conOrco({ x: 5, y: 0 })
+    expect(opcionDe(planearMovimiento(m, { ...reglas(), costeGiro: 1 }, { ...barbaro, orientacion: 'abajo' }, { x: 4, y: 0 }, opciones))).toBe('cargar')
+  })
+
   it('si solo se llega cruzando la zona de control y no es una carga, lo dice', () => {
     // con zona de 2, el orco en 5,1 cierra la sala de arriba abajo
     expect(planear({ x: 5, y: 1 }, { x: 9, y: 0 }, 2)).toMatchObject({ motivo: 'El recorrido entra en la zona de control de un enemigo', recorrido: expect.any(Array) })
