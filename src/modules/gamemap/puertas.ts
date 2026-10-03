@@ -35,6 +35,34 @@ const PASO: Record<Direccion, Casilla> = { arriba: { x: 0, y: -1 }, abajo: { x: 
 
 const origenDe = (e: Estancia): Casilla => e.posicion ?? { x: 0, y: 0 }
 
+const dentro = ({ x, y }: Casilla, e: Estancia) => {
+  const o = origenDe(e)
+  return x >= o.x && y >= o.y && x < o.x + e.columnas && y < o.y + e.filas
+}
+
+const global = (e: Estancia, c: Casilla): Casilla => ({ x: origenDe(e).x + c.x, y: origenDe(e).y + c.y })
+
+/** Estancia ya explorada que hay justo al otro lado de esa puerta, si existe */
+export function estanciaAlOtroLado(m: Mapa, ubicacion: Ubicacion): Estancia | undefined {
+  const estancia = m.estancias.find((e) => e.id === ubicacion.estancia)
+  const puerta = puertaEn(m, ubicacion)
+  if (!estancia || !puerta || puerta.tipo === 'interior') return
+  const fuera = global(estancia, { x: puerta.casilla.x + PASO[puerta.lado].x, y: puerta.casilla.y + PASO[puerta.lado].y })
+  return m.estancias.find((e) => e.id !== estancia.id && dentro(fuera, e))
+}
+
+/** Añade una puerta cerrada en un muro exterior de una estancia ya construida */
+export function anadirPuerta(m: Mapa, estanciaId: string, casilla: Casilla, lado: Direccion): Mapa {
+  const estancia = m.estancias.find((e) => e.id === estanciaId)
+  if (!estancia) throw new Error(`No hay ninguna estancia «${estanciaId}» en el mapa`)
+  const i = lado === 'arriba' || lado === 'abajo' ? casilla.x : casilla.y
+  const enMuro = Number.isInteger(i) && i >= 0 && i < largoMuro(estancia, lado) && casillaDelMuro(estancia, lado, i)
+  if (!enMuro || enMuro.x !== casilla.x || enMuro.y !== casilla.y) throw new Error(`La casilla ${casilla.x},${casilla.y} no está en el muro de ${lado} de «${estanciaId}»`)
+  if (estancia.puertas.some((p) => p.casilla.x === casilla.x && p.casilla.y === casilla.y && p.lado === lado)) throw new Error(`Ya hay una puerta en la casilla ${casilla.x},${casilla.y} de «${estanciaId}»`)
+  const puertas = [...estancia.puertas, { id: `${estancia.id}-puerta-${estancia.puertas.length + 1}`, tipo: 'salida' as const, casilla, lado }]
+  return { ...m, estancias: m.estancias.map((e) => (e.id === estancia.id ? { ...e, puertas } : e)) }
+}
+
 const solapan = (a: Casilla, ma: Medida, b: Casilla, mb: Medida) =>
   a.x < b.x + mb.columnas && b.x < a.x + ma.columnas && a.y < b.y + mb.filas && b.y < a.y + ma.filas
 

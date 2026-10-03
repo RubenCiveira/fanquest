@@ -58,11 +58,14 @@ mismo sitio.
   izquierda de su estancia.
 - **Orientación**: hacia dónde se recorre una estancia: se sale por ese muro
   (las salidas repartidas a lo largo de él) y se entra por el contrario o, si
-  se abre desde una puerta, por el muro que encaja con ella.
+  se abre desde una puerta, por el muro que encaja con ella. Si la descripción
+  da `salidasPorMuro`, las salidas pueden estar en varios muros concretos.
 - **Puerta**: va en una arista del muro exterior, no dentro de una casilla:
-  la casilla del borde y el `lado` por el que se sale de ella. Al abrirla, la
+  la casilla del borde y el `lado` por el que se sale de ella. Al abrirla, si
+  al otro lado ya hay una estancia explorada, se conecta con ella; si no, la
   estancia de detrás se pega a ella y las dos quedan abiertas. Las de un muro
-  interior solo se abren.
+  interior solo se abren. También se pueden añadir a una estancia ya construida
+  con `anadirPuerta`.
 - **Muro interior**: separador dentro de una estancia, por los bordes entre
   casillas (no ocupa ninguna), en línea recta. No se cruza salvo por sus
   pasos y sus puertas abiertas: si aísla una zona sin ninguno, no se puede
@@ -142,7 +145,8 @@ mismo sitio.
   juntas y cómo), `modoAtaque` (uno a uno o escuadra contra escuadra) y las
   distancias tras una carga y tras el combate (`apoyoALaCarga`,
   `ajusteDelDefensor`, `consolidacionTrasCombate`, `retrocesoTrasCombate`) y
-  lo que cuesta girar el encaramiento (`costeGiro`, `costeGiroDiagonal`).
+  lo que cuesta girar el encaramiento (`costeGiro`, `costeGiroDiagonal`) y,
+  opcionalmente, `despliegue`: zonas por alianza para colocar personajes.
 - **Turno y activación**: la activación es de la escuadra y en ella pueden
   actuar todos sus personajes. Una escuadra se activa una vez por turno y no
   se activa otra hasta que termine la que está en curso; solo se activan las
@@ -184,4 +188,5 @@ mismo sitio.
   actuar ni moverse más en el turno) y, cuando ninguno de su escuadra tiene,
   la de la escuadra.
 - **Descripción de estancia**: lo que el proyecto devuelve al pedirle una
-  estancia nueva: tipo, tamaño, orientación, número de salidas y objetos.
+  estancia nueva: tipo, tamaño, orientación, número de salidas o salidas
+  concretas por muro y objetos.

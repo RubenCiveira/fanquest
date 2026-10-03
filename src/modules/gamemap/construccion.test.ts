@@ -19,6 +19,14 @@ describe('construir una estancia', () => {
     expect(construirEstancia('e1', descripcion).puertas.map((p) => p.lado)).toEqual(['arriba', 'abajo', 'abajo'])
   })
 
+  it('puede poner salidas explícitas en varios muros', () => {
+    expect(construirEstancia('e1', { ...descripcion, salidasPorMuro: [{ casilla: { x: 0, y: 1 }, lado: 'izquierda' }, { casilla: { x: 5, y: 2 }, lado: 'derecha' }] }).puertas.map((p) => [p.tipo, p.casilla, p.lado])).toEqual([
+      ['entrada', { x: 3, y: 0 }, 'arriba'],
+      ['salida', { x: 0, y: 1 }, 'izquierda'],
+      ['salida', { x: 5, y: 2 }, 'derecha'],
+    ])
+  })
+
   it('da id a cada elemento y le busca sitio', () => {
     expect(construirEstancia('e1', descripcion).elementos).toEqual([
       { id: 'e1-elemento-1', tipo: 'objeto', nombre: 'Mesa', columnas: 3, filas: 2, posicion: { x: 1, y: 1 } },

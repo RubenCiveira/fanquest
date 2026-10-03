@@ -42,7 +42,7 @@ export const CONFIGURACION_INICIAL: Configuracion = {
 }
 
 /** Ajustes del formulario: el reparto de jugadores se cambia en la partida */
-export type Ajuste = Exclude<keyof Configuracion, 'jugadores'>
+export type Ajuste = Exclude<keyof Configuracion, 'jugadores' | 'despliegue'>
 
 /** Textos del formulario para cada valor de cada ajuste */
 export const OPCIONES_CONFIGURACION: { [K in Ajuste]: { etiqueta: string; valores: Record<Configuracion[K], string> } } = {

@@ -19,6 +19,7 @@ const mapaCon = (puerta?: Puerta): MapaEnJuego => ({
   reducirVida: vi.fn(),
   eliminarPersonaje: vi.fn(),
   abrirPuerta: vi.fn(),
+  anadirPuerta: vi.fn(),
   anadirPersonajes: vi.fn(),
   anadirMuebles: vi.fn(),
   cambiarJugadores: vi.fn(),

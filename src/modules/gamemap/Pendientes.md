@@ -21,10 +21,27 @@ el mock de debug no ofrecen una forma de colocarlos después.
 escuadra. Hay que permitir colocar `personajesNoJugadores` en espera o ajustar
 el comportamiento/documentación para que no queden inaccesibles.
 
+## Bug: terreno peligroso bajo personajes
+
+Parece que, si hay un personaje en una casilla de terreno peligroso, el resto
+de personajes que pasan por encima no se ven afectados por ese terreno.
+
+Hay que revisar el cálculo de entrada en casillas durante el movimiento: la
+presencia del personaje no debería ocultar el terreno ni impedir que se aplique
+su efecto.
+
+## Mostrar detalle de personaje con doble click
+
+Al hacer doble click en una ficha de personaje se debe llamar a
+`mostrarDetalle` de la escuadra del personaje, indicando qué personaje está
+seleccionado.
+
+Así el proveedor puede mostrar fichas o paneles de detalle específicos de cada
+personaje sin que la vista conozca esas reglas.
+
 ## Distancia de coherencia para escuadras.
 En los datos de tipoDeEscuadra tendremos un flag para indicarle al gestor de juego si la escuadra debe mantener coherencia, cual es la distancia de coherencia, y cual es el modo de coherencia (con alguno, con el centro, o con todos).
 
 Al terminar un turno, tenemos que verificar qeu todas las unidades de la escuadra están en coherencia, para ello en función de la regla del modo de coherencia tendremos que verificar que algun personaje está a distancia de coherencia. Que todos están a distancia de coherencia; o que desde el punto central de la escuadra todos estan en coherencia.
 
 Si al final del turno hay personajes fuera de coherencia, se ejecutará un método de escuadra sin coherencia del proveedor (que en la implementación de test levantará un dialogo para avisar al jugador y eliminará a los personajes fuera de coherencia).
-

@@ -21,6 +21,7 @@ const turno1: MapaEnJuego = {
   dameLoQueEstaAlLado: () => [],
   quitarElemento: vi.fn(),
   abrirPuerta: vi.fn(),
+  anadirPuerta: vi.fn(),
   anadirPersonajes: vi.fn(),
   anadirMuebles: vi.fn(),
   reducirVida: vi.fn(),
@@ -88,6 +89,7 @@ describe('acciones del personaje de prueba', () => {
     reducirVida: vi.fn(),
     eliminarPersonaje: vi.fn(),
     abrirPuerta: vi.fn(),
+    anadirPuerta: vi.fn(),
     anadirPersonajes: vi.fn(),
     anadirMuebles: vi.fn(),
     cambiarJugadores: vi.fn(),
@@ -111,6 +113,7 @@ describe('acciones del personaje de prueba', () => {
   const conTurnos = (turnos: Personaje['turnos']) => ({
     ...mapa,
     abrirPuerta: vi.fn(),
+    anadirPuerta: vi.fn(),
     mapa: { ...mapa.mapa, escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'ana', personajes: [{ ...enLaPuerta, turnos }], turnos: [] }] },
   })
   /** El bárbaro abre la puerta con esos turnos: lo que resuelve, o el error, y si se abrió */
@@ -191,6 +194,7 @@ describe('coger objetos', () => {
     desplazar: vi.fn(),
     desplazarEscuadra: vi.fn(),
     abrirPuerta: vi.fn(),
+    anadirPuerta: vi.fn(),
     anadirPersonajes: vi.fn(),
     anadirMuebles: vi.fn(),
     cambiarJugadores: vi.fn(),
@@ -241,6 +245,7 @@ describe('ataques del personaje de prueba', () => {
       desplazar: vi.fn(),
       desplazarEscuadra: vi.fn(),
       abrirPuerta: vi.fn(),
+      anadirPuerta: vi.fn(),
       anadirPersonajes: vi.fn(),
       anadirMuebles: vi.fn(),
       cambiarJugadores: vi.fn(),
@@ -449,6 +454,7 @@ describe('trampas del personaje de prueba', () => {
     reducirVida: vi.fn(),
     eliminarPersonaje: vi.fn(),
     abrirPuerta: vi.fn(),
+    anadirPuerta: vi.fn(),
     anadirPersonajes: vi.fn(),
     anadirMuebles: vi.fn(),
     cambiarJugadores: vi.fn(),

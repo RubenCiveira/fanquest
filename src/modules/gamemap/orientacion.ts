@@ -4,6 +4,8 @@ import type { Estancia } from './modelo/estancia'
 import type { Medida } from './modelo/medida'
 import type { Puerta } from './modelo/puerta'
 
+export type Salida = { casilla: Casilla; lado: Direccion }
+
 /** Casillas a lo largo del muro de ese lado */
 export const largoMuro = (m: Medida, muro: Direccion) => (muro === 'arriba' || muro === 'abajo' ? m.columnas : m.filas)
 
@@ -39,4 +41,25 @@ export function orientar(e: Estancia, orientacion: Direccion, salidas: number, e
     lado: orientacion,
   })
   return { ...e, orientacion, puertas: [puertaEntrada, ...repartidas(largo, salidas).map(salida)] }
+}
+
+/** Orienta la estancia, pero con salidas concretas en cualquier muro */
+export function orientarConSalidas(e: Estancia, orientacion: Direccion, salidas: Salida[], entrada: Direccion = OPUESTA[orientacion]): Estancia {
+  const [centro] = repartidas(largoMuro(e, entrada), 1)
+  const puertaEntrada: Puerta = { id: 'entrada', tipo: 'entrada', casilla: casillaDelMuro(e, entrada, centro), lado: entrada }
+  const invalidas = salidas.filter(({ casilla, lado }) => {
+    const i = lado === 'arriba' || lado === 'abajo' ? casilla.x : casilla.y
+    const enMuro = Number.isInteger(i) && i >= 0 && i < largoMuro(e, lado) && casillaDelMuro(e, lado, i)
+    return !enMuro || enMuro.x !== casilla.x || enMuro.y !== casilla.y
+  })
+  if (invalidas.length) throw new Error(`Hay salidas de «${e.id}» que no están en su muro`)
+  if (salidas.some(({ lado }) => lado === entrada)) throw new Error(`«${e.id}» no puede salir por el muro de ${entrada}, que es el de su entrada`)
+  return {
+    ...e,
+    orientacion,
+    puertas: [
+      puertaEntrada,
+      ...salidas.map((s, i): Puerta => ({ id: `salida-${i + 1}`, tipo: 'salida', ...s })),
+    ],
+  }
 }

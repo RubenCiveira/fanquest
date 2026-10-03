@@ -33,7 +33,7 @@ import { estanciasDe } from '../estancias'
 import { conFlags, flagsDe, motivoSinFlags } from '../flags'
 import { esEnemigo, jugadorDe, motivoParaNoCambiarJugadores } from '../jugadores'
 import { accionesAdicionales, accionesConsumidas, casillaDelMapa, casillasDeEnemigos, conPersonajes, desplazar, enContacto, enElMapa, encaramientoDe, enemigosDe, evaluarRecorrido, gastadoPor, girar, mover, transitable } from '../movimiento'
-import { aparte, marcarAbierta, pegar, puertaEn } from '../puertas'
+import { anadirPuerta as conPuertaAnadida, aparte, estanciaAlOtroLado, marcarAbierta, pegar, puertaEn } from '../puertas'
 import { terrenoEn as terrenoEnDe } from '../terrenos'
 import { apoyosDe, estaTrabado, trabadoPor } from '../zonaDeControl'
 import type { Accion } from '../modelo/accion'
@@ -131,7 +131,12 @@ export class GestorMapa implements MapaEnJuego {
     const inicial = !this.#mapa.estancias.length
     const puerta = desde && this.puertaEn(desde)
     const entrada = puerta && OPUESTA[puerta.lado]
-    const descripcion = await this.#proveedor.describirEstancia(inicial ? undefined : this.#mapa, entrada)
+    const explorada = desde && estanciaAlOtroLado(this.#mapa, desde)
+    const descripcion = await this.#proveedor.describirEstancia(
+      inicial ? undefined : this.#mapa,
+      entrada,
+      desde && puerta ? { ubicacion: desde, puerta, ...(explorada && { explorada }) } : undefined,
+    )
     const construida = this.#situarMuebles(construirEstancia(this.#idLibre(), descripcion, entrada))
     const estancia = desde ? pegar(this.#mapa, desde, construida) : { ...construida, posicion: aparte(this.#mapa) }
     const escuadras = inicial ? await this.#escuadrasIniciales(estancia) : undefined
@@ -172,6 +177,13 @@ export class GestorMapa implements MapaEnJuego {
     return this.configuracion.jugadores.jugadores.find((j) => j.id === jugador)?.alianza ?? jugador
   }
 
+  #motivoDespliegue(estancia: Estancia, alianza: string, casilla: Casilla): string | undefined {
+    const zona = this.configuracion.despliegue?.find((d) => (!d.estancia || d.estancia === estancia.id) && d.alianza === alianza)?.zona
+    if (zona && (casilla.x < zona.posicion.x || casilla.y < zona.posicion.y || casilla.x >= zona.posicion.x + zona.columnas || casilla.y >= zona.posicion.y + zona.filas)) {
+      return `La casilla ${casilla.x},${casilla.y} no está en la zona de despliegue de «${alianza}»`
+    }
+  }
+
   #sitioInicial(estancia: Estancia, personaje: Objeto, alianza: string, ocupados: OcupadoInicial[]): Casilla | undefined {
     const alianzas = this.configuracion.jugadores.alianzas
     const indiceAlianza = Math.max(0, alianzas.findIndex((a) => a.id === alianza))
@@ -187,7 +199,7 @@ export class GestorMapa implements MapaEnJuego {
     const distancia = (a: Casilla, b: Casilla) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))
     const distanciaAlAncla = (c: Casilla) => (c.x - ancla.x) ** 2 + (c.y - ancla.y) ** 2
     const libres = Array.from({ length: estancia.columnas * estancia.filas }, (_, i) => ({ x: i % estancia.columnas, y: Math.floor(i / estancia.columnas) })).filter(
-      (c) => !motivoParaNoColocar(estancia, personaje, c),
+      (c) => !this.#motivoDespliegue(estancia, alianza, c) && !motivoParaNoColocar(estancia, personaje, c),
     )
     return libres.sort((a, b) => {
       const puntuacion = (c: Casilla) => {
@@ -228,7 +240,12 @@ export class GestorMapa implements MapaEnJuego {
     const estancia = this.#mapa.estancias.find((e) => e.id === personaje.estancia)
     if (!estancia) return `No hay ninguna estancia «${personaje.estancia}» en el mapa`
     const otros = todosLosPersonajes(this.#mapa).filter((h) => h.estancia === estancia.id && h.casilla)
-    const motivo = motivoParaNoColocar({ ...estancia, elementos: [...estancia.elementos, ...otros.map((h) => huecoDePersonaje(h, h.casilla))] }, huecoDePersonaje(personaje), casilla)
+    const escuadra = this.#personajeDe(personajeId)?.escuadra
+    const alianza = escuadra ? this.#alianzaDe(escuadra.jugador) : jugadorDe(this.#mapa, personajeId)?.alianza ?? jugadorDe(this.#mapa, personajeId)?.id ?? ''
+    const motivo =
+      this.#motivoDespliegue(estancia, alianza, casilla) ??
+      motivoParaNoColocar({ ...estancia, elementos: [...estancia.elementos, ...otros.map((h) => huecoDePersonaje(h, h.casilla))] }, huecoDePersonaje(personaje), casilla) ??
+      this.#proveedor.motivoParaNoColocar?.(personaje, casilla, this.#mapa)
     if (motivo) return motivo
     this.#cambiar(conPersonaje(this.#mapa, personajeId, (h) => ({ ...h, casilla })))
   }
@@ -407,6 +424,14 @@ export class GestorMapa implements MapaEnJuego {
     return puertaEn(this.#mapa, ubicacion)
   }
 
+  anadirPuerta(estancia: string, casilla: Casilla, lado: Direccion): Puerta {
+    const nuevo = conPuertaAnadida(this.#mapa, estancia, casilla, lado)
+    const puerta = puertaEn(nuevo, { estancia, casilla })
+    if (!puerta) throw new Error(`No se ha podido añadir la puerta en ${casilla.x},${casilla.y} de «${estancia}»`)
+    this.#cambiar(nuevo)
+    return puerta
+  }
+
   tieneFlag(tipo: TipoConFlags, id: string, flag: string): boolean {
     return flagsDe(this.#mapa, tipo, id)?.includes(flag) ?? false
   }
@@ -450,6 +475,11 @@ export class GestorMapa implements MapaEnJuego {
       // la de un muro interior no da a otra estancia: solo se abre
       this.#cambiar(marcarAbierta(this.#mapa, ubicacion, misma.id))
       return misma
+    }
+    const explorada = estanciaAlOtroLado(this.#mapa, ubicacion)
+    if (explorada) {
+      this.#cambiar(marcarAbierta(this.#mapa, ubicacion, explorada.id))
+      return explorada
     }
     const nueva = await this.#nuevaEstancia(ubicacion)
     this.#cambiar(marcarAbierta(this.#mapa, ubicacion, nueva.id))

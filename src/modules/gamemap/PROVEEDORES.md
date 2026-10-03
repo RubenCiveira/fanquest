@@ -108,6 +108,7 @@ configuracion: {
     alianzas: [{ id: string, nombre: string, posturas?: { [otraAlianza: string]: 'aliada' | 'neutral' | 'hostil' } }],
     jugadores: [{ id: string, nombre: string, tipo: 'humano' | 'ia', alianza: string }],
   },
+  despliegue?: [{ alianza: string, estancia?: string, zona: { posicion: { x, y }, columnas: number, filas: number } }],
 }
 ```
 
@@ -122,6 +123,10 @@ configuracion: {
   cualquier momento con `cambiarJugadores` (también desde un comando, con
   `MapaEnJuego`): un evento vuelve hostiles a los acólitos, un jugador cambia
   de alianza…
+- `despliegue`: zonas opcionales por alianza. Al crear la estancia inicial y al
+  usar `colocarPersonaje` desde la zona de espera, el personaje solo se coloca
+  dentro de la zona de su alianza. Si `estancia` no se indica, la zona vale
+  para cualquier estancia.
 - `ordenActivaciones`: a qué jugador le toca activar una escuadra. Con
   `alternas`, tras cada activación la siguiente alianza y, dentro de ella, el
   siguiente jugador al último suyo que activó: A (alianza 1), B (alianza 2),
@@ -325,13 +330,15 @@ mapa como si hubieran muerto y lo avisa en un diálogo.
 ## ProveedorEstancias
 
 ```ts
-describirEstancia(mapa?: Mapa, entrada?: Direccion): Promise<DescripcionEstancia>
+describirEstancia(mapa?: Mapa, entrada?: Direccion, puerta?: ContextoPuerta): Promise<DescripcionEstancia>
 estanciaCreada(estancia: Estancia, mapa: MapaEnJuego): void
 ```
 
 `describirEstancia` se llama cada vez que hay que generar una estancia.
 Recibe el mapa ya construido (`undefined` en la primera) y, si se abre desde
-una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
+una puerta, `entrada`: el muro de la nueva por el que se entrará. `puerta`
+incluye la ubicación, la puerta y, si el gestor ha detectado una estancia al
+otro lado, `explorada`. Devuelve:
 
 ```ts
 {
@@ -339,6 +346,7 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
   tamano: { columnas: number, filas: number },
   orientacion: 'arriba' | 'abajo' | 'izquierda' | 'derecha', // muro de las salidas; no puede ser el de `entrada`
   salidas: number,
+  salidasPorMuro?: [{ casilla: { x, y }, lado: 'arriba' | 'abajo' | 'izquierda' | 'derecha' }],
   elementos: [{ tipo: 'objeto', nombre: string, columnas: number, filas: number }],
   muebles?: [{ id: string, tipo: 'mueble', nombre: string, columnas: number, filas: number, imagenVtt?: string }],
   terrenos?: [{ tipo: 'impasable' | 'dificil' | 'muy-dificil', cobertura?: 'ninguna' | 'ligera' | 'pesada' | 'bloqueante', efecto?: string, decoracion?: { imagen?: string, fondo?: string }, posicion: { x, y }, columnas: number, filas: number, imagen?: string }],
@@ -349,7 +357,8 @@ una puerta, `entrada`: el muro de la nueva por el que se entrará. Devuelve:
 
 - La entrada va en el muro `entrada` (si no hay, en el contrario a
   `orientacion`) y las `salidas` se reparten por el muro de `orientacion`: no
-  puede haber más salidas que casillas tiene ese muro.
+  puede haber más salidas que casillas tiene ese muro. Si `salidasPorMuro` se
+  indica, se usa en lugar de repartirlas y permite salidas en varios muros.
 - Los objetos no llevan posición: el gestor busca un hueco para cada uno y,
   si no cabe, lo deja en la zona de espera para colocarlo a mano.
 - Los `muebles` son fijos: el proyecto les da un id estable, el gestor los
@@ -417,6 +426,7 @@ arista con la puerta y las dos abiertas una hacia la otra.
 
 ```ts
 listarEscuadras(): Promise<ClaseDeEscuadra[]>
+motivoParaNoColocar?(personaje: Personaje, casilla: Casilla, mapa: Mapa): string | undefined
 
 interface ClaseDeEscuadra {
   id: string
@@ -468,6 +478,8 @@ interface ClaseDePersonaje {
   `terminarActivacionJugador`.
 - El gestor pide las clases una sola vez. Un gestor creado con un mapa
   guardado vuelve a pedirlas: deben tener los mismos ids.
+- `motivoParaNoColocar` permite al proyecto vetar una colocación manual desde
+  la zona de espera después de las reglas del mapa y del despliegue.
 
 ## Acciones del personaje: comandos
 
@@ -515,7 +527,8 @@ interface MapaEnJuego {
   quitarFlag(tipo: TipoConFlags, id: string, flag: string): string | undefined
   dameLoQueEstaAlLado(personaje: Personaje): Elemento[] // objetos y muebles colocados junto a él (sin diagonales)
   quitarElemento(elemento: string): string | undefined // lo saca de su estancia (el personaje lo coge…)
-  abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // pide la estancia de detrás y la deja abierta
+  abrirPuerta(ubicacion: Ubicacion): Promise<Estancia> // conecta con lo explorado o pide la estancia de detrás
+  anadirPuerta(estancia: string, casilla: Casilla, lado: Direccion): Puerta // puerta cerrada en un muro exterior
   anadirPersonajes(estancia: string, personajes: DescripcionPersonajeNoJugador[]): PersonajeNoJugador[] // como los de la descripción
   anadirMuebles(estancia: string, muebles: DescripcionMueble[]): Elemento[] // al azar donde quepan
   reducirVida(personaje: string, puntos: number): string | undefined // sin bajar de cero; si no lleva la cuenta, el motivo
@@ -541,7 +554,8 @@ escuadra le quedan acciones, el gestor termina la activación de la escuadra
 sin esperar a `activar`; en una escuadra de un solo personaje, en cuanto él
 se queda sin acciones.
 
-`abrirPuerta` llama a `describirEstancia` con el muro de entrada, añade la
+`abrirPuerta` conecta con la estancia explorada que haya al otro lado, si la
+hay. Si no, llama a `describirEstancia` con el muro de entrada, añade la
 estancia pegada a la puerta y la marca `abierta` con su `destino`. Una
 puerta `interior` (de un muro de dentro de la estancia) no da a otra
 estancia: solo se abre, y se encuentra (`puertaEn`) y se abre desde la
@@ -549,6 +563,9 @@ casilla de cualquiera de sus dos lados. El banco de pruebas ofrece «Abrir
 puerta» a quien esté a un lado de una cerrada. Falla si no
 hay puerta, si ya está abierta o si el proveedor rechaza: entonces la puerta
 sigue cerrada.
+
+`anadirPuerta` crea una puerta cerrada en un muro exterior de una estancia ya
+construida, útil para puertas secretas o para conectar zonas exploradas.
 
 `anadirPersonajes` pone personajes no jugadores en una estancia que ya está
 en el mapa (una emboscada, refuerzos…) con el mismo criterio de aparición que

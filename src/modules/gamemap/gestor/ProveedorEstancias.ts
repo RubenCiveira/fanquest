@@ -3,6 +3,10 @@ import type { Direccion } from '../modelo/direccion'
 import type { Estancia } from '../modelo/estancia'
 import type { Mapa } from '../modelo/mapa'
 import type { MapaEnJuego } from '../modelo/mapaEnJuego'
+import type { Puerta } from '../modelo/puerta'
+import type { Ubicacion } from '../modelo/ubicacion'
+
+export type ContextoPuerta = { ubicacion: Ubicacion; puerta: Puerta; explorada?: Estancia }
 
 /**
  * Lo que implementa el proyecto para decidir cada estancia nueva: con una
@@ -13,7 +17,7 @@ import type { MapaEnJuego } from '../modelo/mapaEnJuego'
  * promesa, no se crea ninguna
  */
 export interface ProveedorEstancias {
-  describirEstancia(mapa?: Mapa, entrada?: Direccion): Promise<DescripcionEstancia>
+  describirEstancia(mapa?: Mapa, entrada?: Direccion, puerta?: ContextoPuerta): Promise<DescripcionEstancia>
   /**
    * Aviso de que la estancia ya está creada y en su sitio, con sus puertas:
    * el proyecto puede asociarle lo suyo (objetos para sus puertas…). `mapa`,

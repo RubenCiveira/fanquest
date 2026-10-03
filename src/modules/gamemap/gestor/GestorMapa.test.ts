@@ -697,6 +697,16 @@ describe('gestor del mapa: movimiento', () => {
     gestor.colocarPersonaje('barbaro', { x: 1, y: 1 })
     expect(gestor.mapa.escuadras?.[0].personajes[0].casilla).toEqual({ x: 1, y: 1 })
   })
+
+  it('valida la zona de despliegue al colocar desde la zona de espera', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa({ ...p, configuracion: { ...p.configuracion, despliegue: [{ alianza: 'heroes', zona: { posicion: { x: 0, y: 0 }, columnas: 1, filas: 1 } }] } }, {
+      estancias: [{ id: 'sala', tipo: 'sala', columnas: 3, filas: 3, puertas: [], elementos: [], estancias: [] }],
+      escuadras: [{ id: 'rojos', nombre: 'Rojos', jugador: 'j1', personajes: [{ id: 'barbaro', nombre: 'Bárbaro', estancia: 'sala', turnos: [] }], turnos: [] }],
+      jugadores: REPARTO,
+    })
+    expect(gestor.colocarPersonaje('barbaro', { x: 1, y: 1 })).toBe('La casilla 1,1 no está en la zona de despliegue de «heroes»')
+  })
 })
 
 describe('gestor del mapa: enemigos', () => {
@@ -1445,6 +1455,24 @@ describe('gestor del mapa: puertas', () => {
       ['estancia-1', 'estancia-2'],
       expect.objectContaining({ id: 'salida-1', abierta: true, destino: 'estancia-2' }),
     ])
+  })
+
+  it('añade una puerta a una estancia ya construida', async () => {
+    const { gestor } = await conInicial()
+    expect(gestor.anadirPuerta('estancia-1', { x: 0, y: 1 }, 'izquierda')).toMatchObject({ tipo: 'salida', casilla: { x: 0, y: 1 }, lado: 'izquierda' })
+  })
+
+  it('si al abrir una puerta al otro lado ya hay una estancia explorada, conecta con ella', async () => {
+    const p = proveedor()
+    const gestor = new GestorMapa(p, {
+      estancias: [
+        { id: 'estancia-1', tipo: 'sala', columnas: 4, filas: 3, puertas: [], elementos: [], estancias: [] },
+        { id: 'estancia-2', tipo: 'sala', columnas: 4, filas: 3, puertas: [], elementos: [], estancias: [], posicion: { x: 4, y: 0 } },
+      ],
+    })
+    gestor.anadirPuerta('estancia-1', { x: 3, y: 1 }, 'derecha')
+    const destino = await gestor.abrirPuerta({ estancia: 'estancia-1', casilla: { x: 3, y: 1 } })
+    expect([destino.id, p.describirEstancia.mock.calls.length, gestor.puertaEn({ estancia: 'estancia-1', casilla: { x: 3, y: 1 } })?.destino]).toEqual(['estancia-2', 0, 'estancia-2'])
   })
 
   it('una puerta abierta no se vuelve a abrir', async () => {

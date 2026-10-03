@@ -12,6 +12,8 @@ import type { Puerta } from './puerta'
 import type { Terreno } from './terreno'
 import type { TipoConFlags } from './tipoConFlags'
 import type { Ubicacion } from './ubicacion'
+import type { Casilla } from './casilla'
+import type { Direccion } from './direccion'
 
 /** Lo que el gestor deja hacer al proyecto sobre el mapa: al preguntar por las acciones y desde sus comandos */
 export interface MapaEnJuego {
@@ -42,6 +44,8 @@ export interface MapaEnJuego {
    * proveedor no da la estancia (la puerta sigue cerrada)
    */
   abrirPuerta(ubicacion: Ubicacion): Promise<Estancia>
+  /** Añade una puerta cerrada en un muro exterior de una estancia ya construida */
+  anadirPuerta(estancia: string, casilla: Casilla, lado: Direccion): Puerta
   /**
    * Añade a la estancia esos personajes no jugadores, cada uno donde diga su
    * aparición (en una casilla libre que no sea impasable; si no hay sitio, en la

@@ -5,7 +5,7 @@ import type { Direccion } from './modelo/direccion'
 import type { Estancia } from './modelo/estancia'
 import type { Puerta } from './modelo/puerta'
 import { motivoParaNoAnadirMuro, tramosDe } from './muros'
-import { orientar } from './orientacion'
+import { orientar, orientarConSalidas } from './orientacion'
 import { motivoParaNoAnadirTerreno } from './terrenos'
 
 /** La estancia con esos muros interiores (con ids `<estancia>-muro-<n>`) y sus puertas interiores, cerradas */
@@ -27,12 +27,13 @@ function conMuros(e: Estancia, muros: DescripcionMuro[]): Estancia {
  */
 export function construirEstancia(
   id: string,
-  { tipo, tamano, orientacion, salidas, elementos, muebles = [], terrenos = [], muros = [] }: DescripcionEstancia,
+  { tipo, tamano, orientacion, salidas, salidasPorMuro, elementos, muebles = [], terrenos = [], muros = [] }: DescripcionEstancia,
   entrada?: Direccion,
 ): Estancia {
   const invalido = [...elementos, ...muebles].find(({ columnas, filas }) => ![columnas, filas].every((n) => Number.isInteger(n) && n > 0))
   if (invalido) throw new Error(`«${invalido.nombre}» necesita filas y columnas enteras y positivas`)
-  const orientada = orientar(crearEstancia({ id, tipo, ...tamano }), orientacion, salidas, entrada)
+  const base = crearEstancia({ id, tipo, ...tamano })
+  const orientada = salidasPorMuro ? orientarConSalidas(base, orientacion, salidasPorMuro, entrada) : orientar(base, orientacion, salidas, entrada)
   const fuera = [...terrenos.map((t) => motivoParaNoAnadirTerreno(orientada, t)), ...muros.map((m) => motivoParaNoAnadirMuro(tamano, m, m.puertas))].find(Boolean)
   if (fuera) throw new Error(fuera)
   // con el terreno ya puesto, los objetos no caen en el impasable

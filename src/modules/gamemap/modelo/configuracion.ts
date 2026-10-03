@@ -1,6 +1,9 @@
 import type { Jugadores } from './jugadores'
 import type { TipoTerreno } from './terreno'
 import type { Coherencia } from './coherencia'
+import type { Casilla } from './casilla'
+
+export type ZonaDespliegue = { alianza: string; estancia?: string; zona: { posicion: Casilla; columnas: number; filas: number } }
 
 /** Reglas de activación y de movimiento que fija el proyecto */
 export type Configuracion = {
@@ -100,4 +103,6 @@ export type Configuracion = {
   costeGiroDiagonal: number
   /** Alianzas y jugadores con que empieza la partida: el gestor los guarda en el mapa y pueden cambiar (`cambiarJugadores`) */
   jugadores: Jugadores
+  /** Zonas donde puede desplegar cada alianza al crear la estancia inicial o colocar desde la zona de espera */
+  despliegue?: ZonaDespliegue[]
 }

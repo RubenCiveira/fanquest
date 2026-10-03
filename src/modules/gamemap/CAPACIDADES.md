@@ -26,13 +26,13 @@ cinco proveedores y dos tipos de clase (ver `PROVEEDORES.md`).
 
 | Área | Capacidad | Dónde |
 | --- | --- | --- |
-| Mapa | Estancias de tipo `sala`, `pasillo` o `exterior`, de cualquier tamaño en casillas. Se generan al vuelo al abrir puertas, pegadas a la puerta, o aparte con `nuevaEstancia()` | `ProveedorEstancias.describirEstancia`, `abrirPuerta` |
-| Mapa | Puertas de salida y puertas interiores (en muros dentro de la estancia), abiertas o cerradas | `Puerta`, `puertaEn` |
+| Mapa | Estancias de tipo `sala`, `pasillo` o `exterior`, de cualquier tamaño en casillas. Se generan al vuelo al abrir puertas, pegadas a la puerta, conectadas a una estancia explorada al otro lado, o aparte con `nuevaEstancia()` | `ProveedorEstancias.describirEstancia`, `abrirPuerta` |
+| Mapa | Puertas de salida y puertas interiores (en muros dentro de la estancia), abiertas o cerradas. Se pueden añadir a estancias ya construidas | `Puerta`, `puertaEn`, `anadirPuerta` |
 | Mapa | Muros interiores con tramos de muro, paso o puerta. Bloquean el movimiento, la zona de control y el cuerpo a cuerpo, y dan cobertura | `DescripcionMuro`, `muros.ts` |
 | Mapa | Terreno `dificil` (×2), `muy-dificil` (×3) e `impasable`, con una `cobertura` (`ligera`, `pesada`, `bloqueante`) independiente del tipo y un `efecto` opcional con decoración | `Terreno`, `terrenos.ts` |
 | Mapa | Objetos (se colocan solos, se pueden coger) y muebles fijos | `elementos.ts` |
 | Estado | Flags en estancias, escuadras, personajes, objetos, muebles y puertas (`sin_trampas`, `aturdido`, `revisado`…), guardadas en el mapa | `tieneFlag`, `marcarFlag`, `quitarFlag` |
-| Mapa | Zona de espera para lo que no cabe o aún no está en juego | `Personaje.casilla` ausente, `colocarPersonaje` |
+| Mapa | Zona de espera para lo que no cabe o aún no está en juego, con zonas de despliegue opcionales por alianza | `Personaje.casilla` ausente, `colocarPersonaje`, `Configuracion.despliegue` |
 | Jugadores | Jugadores `humano` o `ia`, en alianzas con posturas dirigidas (`aliada`, `neutral`, `hostil`), que se pueden cambiar en mitad de la partida | `Configuracion.jugadores`, `cambiarJugadores` |
 | Turnos | Turnos numerados con activaciones `alternas` o `personajes-primero`, y aviso al proyecto de a quién le toca y de cuándo acaba el turno | `ProveedorTurnos.turnoDe`, `finDeTurno`, `terminarTurno` |
 | Turnos | Modos de activación agresivo y sigiloso por escuadra | `modosActivacion` |
@@ -150,7 +150,7 @@ de exploración de FAI y la devuelve como `DescripcionEstancia`:
 
 1. **Roba la carta** del mazo (Mazmorra con losetas, Tipos de Sala y Pasillo
    con tablero):
-   - una sala da `tipo: 'sala'`, `tamano` y `salidas`;
+   - una sala da `tipo: 'sala'`, `tamano` y `salidas` o `salidasPorMuro`;
    - un pasillo da `tipo: 'pasillo'` con su largo, bifurcaciones (más
      salidas) o callejón sin salida (`salidas: 0`).
 2. **Atrezo:** las cartas de Atrezo son `muebles` con un id estable. Los muebles
@@ -180,8 +180,8 @@ la `Puerta` del proyecto (como hace `PuertaDePrueba`), que abre con
 `mapa.abrirPuerta` y coloca al héroe.
 
 **Puertas secretas:** el resultado (1D6 por pared libre, un 6 la encuentra) es
-del proyecto. Colocar una puerta en un muro de una estancia ya construida no
-se puede todavía (ver huecos).
+del proyecto. La puerta se coloca con `anadirPuerta`; al abrirla, si al otro
+lado ya hay una estancia explorada, se conecta con ella.
 
 ### 2.4 Trampas y búsquedas
 
@@ -257,7 +257,7 @@ recibe y el proyecto juega por él con estas piezas:
 | Ataques, línea de visión y cobertura | ✅ `medirAtaque`, `trayectoria` y el encaramiento (`orientacion`) para que la clase decida el campo de visión |
 | Buscar trampas y revisar muebles | ✅ |
 | Dado de Trampa al entrar en una sección | ✅ `alEntrar` (en el banco de pruebas) |
-| Puertas secretas | ❌ Falta añadir puertas a estancias ya construidas |
+| Puertas secretas | ✅ `anadirPuerta` y conexión con estancias exploradas |
 | IA del MB | 🟡 Proyecto, con todas las consultas que necesita |
 | Cartas de iniciativa y «turno escoba» | ✅ `iniciativa` y `ordenDelTurno` |
 | Áreas de influencia de elementos escenográficos | 🟡 Proyecto, con `alEntrar` |
@@ -413,9 +413,9 @@ consultas: `personajesEn`, las distancias de `medirAtaque` y `trayectoria`.
 - **En dos dispositivos**, el `Mapa` es JSON y el gestor avisa de cada cambio
   (`suscribir`). Sincronizarlo (Appwrite, websockets) y decidir quién tiene la
   autoridad es del proyecto.
-- **Despliegue alterno en zonas:** hoy el motor coloca a cada alianza hacia
-  una esquina. Para OPR, los modelos empezarían en la zona de espera y cada
-  jugador los coloca con `colocarPersonaje` dentro de su zona (ver huecos).
+- **Despliegue alterno en zonas:** los modelos pueden empezar en la zona de
+  espera y cada jugador los coloca con `colocarPersonaje` dentro de su zona de
+  `Configuracion.despliegue`.
 - **Partidas por equipos y todos contra todos:** salen de las alianzas y las
   posturas.
 
@@ -470,7 +470,7 @@ elegir objetivo y acción con las mismas consultas.
 | Coherencia de unidad | 🟡 `coherencia`: la cadena de 1″ o la distancia con todos, una de las dos |
 | Aturdido y moral | 🟡 Proyecto, con aturdido y fatiga como flags |
 | Quién empieza la ronda | 🟡 `iniciativa` y `ordenDelTurno`; quién terminó primero lo apunta el proyecto |
-| Despliegue alterno en zonas y emboscada | 🟡 La zona de espera y `colocarPersonaje` existen; faltan zonas y validación |
+| Despliegue alterno en zonas y emboscada | ✅ Zona de espera, `Configuracion.despliegue`, validación en `colocarPersonaje` y veto opcional del proveedor |
 | 1 contra 1 en el mismo dispositivo y equipos | ✅ |
 | IA de solitario | 🟡 Proyecto, con las consultas del motor |
 
@@ -488,9 +488,9 @@ un juego en el motor: son puntos de extensión.
 | 5 | ✅ **Orden de activación del proyecto** | FAI (iniciativa, turno escoba), OPR (quién empieza la ronda, IA por secciones) | Hecho: `ordenActivaciones: 'iniciativa'` en la configuración y `ProveedorTurnos.ordenDelTurno(mapa)`, que al empezar cada turno da los huecos (jugador y cuántas activaciones seguidas; sin cupo, todas); lo que queda después va como `alternas` |
 | 6 | ✅ **Ataque de escuadra contra escuadra** (1.1) | OPR (disparo y cuerpo a cuerpo de unidad) | Hecho: `modoAtaque` (`uno-a-uno` o `escuadra`) en la configuración y `ClaseDeEscuadra.atacarEscuadra(ataque, mapa)`: el gestor reúne a los de la escuadra con acciones a los que su clase deja atacar al objetivo elegido, ordena a los defensores (los más cercanos primero) y apunta la acción a todos; `planearAtaqueDeEscuadra` para dibujar las líneas de disparo. Falta mezclar los dos modos por escuadra |
 | 7 | ✅ **Terreno con efecto** | FAI (lava, suelos ardientes), OPR (peligroso, bosques que no se ven a través) | Hecho: `efecto?: string` y `decoracion?: { imagen?, fondo? }` en `Terreno`; el gestor pasa el terreno en `alEntrar` y `MapaEnJuego.terrenoEn` deja consultarlo. Si no hay decoración, la vista usa un patrón de aviso |
-| 8 | **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` y que `describirEstancia` sepa qué hay alrededor de la puerta |
-| 9 | **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Que `DescripcionEstancia` acepte salidas por muro además de `orientacion` + `salidas` |
-| 10 | **Despliegue** | OPR, y FAI con el damero | Zonas de despliegue por alianza en la estancia inicial y validación en `colocarPersonaje` con un `motivoParaNoColocar` del proveedor |
+| 8 | ✅ **Añadir puertas a estancias ya construidas** y saber si al otro lado hay algo explorado | FAI (puertas secretas, salas que conectan con zonas exploradas) | Hecho: `MapaEnJuego.anadirPuerta(estancia, casilla, lado)` crea puertas cerradas en muros exteriores, `abrirPuerta` conecta con una estancia explorada al otro lado y `describirEstancia` recibe el contexto de la puerta cuando genera una nueva |
+| 9 | ✅ **Puertas en varios muros** | FAI (como mucho una puerta por pared, centrada) | Hecho: `DescripcionEstancia.salidasPorMuro` acepta salidas concretas por muro además de `orientacion` + `salidas` |
+| 10 | ✅ **Despliegue** | OPR, y FAI con el damero | Hecho: `Configuracion.despliegue` define zonas por alianza, se usan en la estancia inicial y se validan en `colocarPersonaje`; el proveedor puede vetar colocaciones con `motivoParaNoColocar` |
 | 11 | ✅ **Encaramiento** | FetenQuest (área de ataque, espalda, campo de visión) | Hecho: `Personaje.orientacion`, girar al moverse (`costeGiro` por cada 90° y `costeGiroDiagonal` al empezar a ir en diagonal, que solo se puede hacia las diagonales de delante) y girar sin moverse (`gestor.girar`). El área de ataque y el campo de visión los decide la clase con `ataque.atacante.orientacion` |
 | 12 | ✅ **Personajes de varias casillas** | OPR (vehículos, monstruos), FetenQuest (miniaturas grandes) | Hecho: `largo` × `ancho` (hacia donde mira y de lado) en la clase o la descripción; la huella gira con el encaramiento y cuenta para colocar, moverse, ocupar, trabar, atacar (entre las casillas más cercanas) y la coherencia |
 | 13 | **Elevación** | OPR (colinas, tejados, saltar, caer), FetenQuest (mesas, escaleras) | Fuera de alcance por ahora. Se aproxima con terreno y reglas de la clase |

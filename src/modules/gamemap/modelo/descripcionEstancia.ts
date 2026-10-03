@@ -1,3 +1,4 @@
+import type { Casilla } from './casilla'
 import type { DescripcionPersonajeNoJugador } from './descripcionPersonaje'
 import type { Direccion } from './direccion'
 import type { Mueble, Objeto } from './elemento'
@@ -15,12 +16,16 @@ export type DescripcionMueble = Omit<Mueble, 'posicion' | 'flags'>
 /** Muro interior que pide la descripción: la librería le da id y crea sus puertas interiores, cerradas, en los tramos de `puertas` */
 export type DescripcionMuro = Omit<Muro, 'id'> & { puertas?: number[] }
 
+/** Salidas explícitas de una estancia, cuando no basta con repartirlas en un solo muro */
+export type DescripcionSalida = { casilla: Casilla; lado: Direccion }
+
 /** Lo que el proyecto dice de una estancia nueva; con ello la librería la crea y gestiona su estado */
 export type DescripcionEstancia = {
   tipo: TipoEstancia
   tamano: Medida
   orientacion: Direccion
   salidas: number
+  salidasPorMuro?: DescripcionSalida[]
   elementos: DescripcionElemento[]
   muebles?: DescripcionMueble[]
   /** Zonas de terreno difícil o impasable, en casillas de la estancia */
